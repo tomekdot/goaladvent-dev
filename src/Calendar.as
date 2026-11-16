@@ -66,6 +66,40 @@ bool IsPremiereDay(int day) {
     return now.Month == 12 && now.Day == day;
 }
 
+// ---------------------------------------------------------------------------
+// Moon phase (offline, no data file): synodic month counted from the new moon
+// of 2000-01-06 18:14 UTC. Accurate to about a day, plenty for a tile caption.
+// ---------------------------------------------------------------------------
+const double SYNODIC_DAYS = 29.530588853;
+const int64 NEW_MOON_REF = 947182440;     // 2000-01-06 18:14 UTC
+const int64 EVENT_DAY1_UTC = 1796083200;  // 2026-12-01 00:00 UTC
+
+// Moon age in days (0 = new moon) at noon UTC of the given event day.
+double MoonAge(int day) {
+    int64 stamp = EVENT_DAY1_UTC + int64(day - 1) * 86400 + 43200;
+    double days = double(stamp - NEW_MOON_REF) / 86400.0;
+    double age = days - Math::Floor(days / SYNODIC_DAYS) * SYNODIC_DAYS;
+    return age;
+}
+
+string MoonPhaseName(int day) {
+    double age = MoonAge(day);
+    if (age < 1.85) return "New moon";
+    if (age < 5.54) return "Waxing crescent";
+    if (age < 9.23) return "First quarter";
+    if (age < 12.92) return "Waxing gibbous";
+    if (age < 16.61) return "Full moon";
+    if (age < 20.30) return "Waning gibbous";
+    if (age < 23.99) return "Last quarter";
+    if (age < 27.68) return "Waning crescent";
+    return "New moon";
+}
+
+int MoonIlluminationPct(int day) {
+    double frac = (1.0 - Math::Cos(2.0 * Math::PI * MoonAge(day) / SYNODIC_DAYS)) * 0.5;
+    return int(frac * 100.0 + 0.5);
+}
+
 // Double points only on the day a map premieres (server time decides online).
 int DayMultiplier(int day) {
     return IsPremiereDay(day) ? 2 : 1;

@@ -216,7 +216,10 @@ void RenderDayGrid() {
     for (int day = 1; day <= DAY_COUNT; day++) {
         string num = day < 10 ? "0" + tostring(day) : tostring(day);
         string label = num + " " + DayTileStatus(day);
-        vec4 textCol = (day == DAY_COUNT || IsPremiereDay(day)) ? Gold() : Silver();
+        // Day 25 has a Gold tile: Gold text on it was invisible (blank tile).
+        vec4 textCol = Silver();
+        if (day == DAY_COUNT) textCol = vec4(0.14, 0.09, 0.02, 1.00);
+        else if (IsPremiereDay(day)) textCol = Gold();
 
         if (DrawCenteredDayTile(day, DayTileIcon(day), label,
                                 DayTileColor(day), textCol, day == g_selectedDay, tileW)) {
@@ -261,6 +264,7 @@ void RenderDayDetails() {
         statusColor = vec4(0.66, 0.70, 0.78, 1.00);   // Slate was unreadable on CardBg
     }
     TextTone(statusColor, status);
+    UI::TextDisabled(Icons::MoonO + "  " + MoonPhaseName(day) + " (" + tostring(MoonIlluminationPct(day)) + "%)");
     UI::Dummy(vec2(0, 4));
 
     UI::TextWrapped(g_hints[day - 1]);
@@ -271,7 +275,7 @@ void RenderDayDetails() {
         UI::PushStyleColor(UI::Col::ChildBg, vec4(0.20, 0.15, 0.30, 1.00));
         if (UI::BeginChild("##GoalmasPursuitCard", vec2(0, 104), UI::ChildFlags::Borders)) {
             TextTone(Silver(), Icons::MoonO + "  PURSUIT NIGHT ON MANIAPLANET");
-            UI::Text("No Goal Hunt today - the moon belongs to Pursuit.");
+            UI::Text("No Goal Hunt today - the moon belongs to Pursuit (" + MoonPhaseName(day) + ").");
             UI::Text("Your streak and points stay safe.");
             UI::TextDisabled("The next Goal Hunt window opens tomorrow.");
         }
