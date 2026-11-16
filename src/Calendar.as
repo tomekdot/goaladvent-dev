@@ -1,0 +1,259 @@
+// Calendar content, date rules, scoring and local storage.
+
+// ---------------------------------------------------------------------------
+// Content
+// ---------------------------------------------------------------------------
+array<string> g_titles = {
+    "First Snow", "The Old Garage", "Rest Day I", "Warm Cocoa", "Night Drive",
+    "Frozen Circuit", "Hidden Checkpoint", "Snowman Crew", "Golden Turbo", "Rest Day II",
+    "Winter Radio", "Lantern Trail", "Gift Wrap", "Starlight Lap", "Reindeer Shortcut",
+    "Candlelight Run", "Rest Day III", "Frostbite Drift", "A Little Help", "Silver Bell",
+    "Midnight Map", "Snowball Fight", "The Long Way Home", "Rest Day IV", "THE BIG FINALE"
+};
+
+array<string> g_hints = {
+    "Collect the goals near the spawn, then look up.",
+    "Someone left the garage door open - drive through it.",
+    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
+    "The warm line is never the direct line.",
+    "The dark route holds two extra goals.",
+    "Ice changes the racing line - brake early.",
+    "One goal is not visible on the minimap.",
+    "Three snowmen point at the hidden goals.",
+    "The boost pad is brighter than it looks.",
+    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
+    "Turn the radio on and follow the beat.",
+    "Follow the lanterns, not the road.",
+    "Some goals are wrapped - bump them open.",
+    "Count the stars above the finish line.",
+    "There is a shortcut only reindeer use.",
+    "Slow down to see the last two goals.",
+    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
+    "Drift on the cold side of the road.",
+    "A friend is waiting on the roof.",
+    "Listen for the bell before the last goal.",
+    "The map changes after midnight.",
+    "Aim at the biggest snowball.",
+    "The shortcut is the long way around.",
+    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
+    "Bring all 24 fragments together and chase every goal."
+};
+
+array<string> g_fragments = {
+    "M", "E", "R", "R", "Y", "X", "M", "A", "S", "O", "P", "E",
+    "N", "P", "L", "A", "N", "E", "T", "2", "0", "2", "6", "!"
+};
+
+// Rest days: Tuesdays without a Goal Hunt. Must match worker.js (TUESDAY_OFF_DAYS).
+array<int> g_offDays = { 1, 8, 15, 22 };
+
+// ---------------------------------------------------------------------------
+// Dates
+// ---------------------------------------------------------------------------
+bool IsOffDay(int day) {
+    for (uint i = 0; i < g_offDays.Length; i++) {
+        if (g_offDays[i] == day) return true;
+    }
+    return false;
+}
+
+Time::Info Today() {
+    return Time::Parse(Time::Stamp);
+}
+
+bool IsPremiereDay(int day) {
+    Time::Info now = Today();
+    return now.Month == 12 && now.Day == day;
+}
+
+// Double points only on the day a map premieres (server time decides online).
+int DayMultiplier(int day) {
+    return IsPremiereDay(day) ? 2 : 1;
+}
+
+// The finale stays open until 5 January so nobody has to be online on the 25th.
+bool FinaleOpen() {
+    Time::Info now = Today();
+    if (now.Month == 12) return now.Day >= 25;
+    if (now.Month == 1) return now.Day <= 5;
+    return false;
+}
+
+bool DayUnlocked(int day) {
+    if (S_TestMode) return true;
+    if (day < 1 || day > DAY_COUNT) return false;
+    if (day == 25) return FinaleOpen();
+    Time::Info now = Today();
+    if (now.Month == 12) return now.Day >= day;
+    return now.Month == 1 && now.Day <= 5;   // catch-up after the event
+}
+
+// Every day stays playable until the end of the event, so a missed day
+// only costs the premium multiplier, never the streak.
+bool DayPlayableNow(int day) {
+    if (S_TestMode) return true;
+    if (IsOffDay(day)) return false;
+    if (day == 25) return FinaleOpen();
+    Time::Info now = Today();
+    if (now.Month == 12) return now.Day >= day;
+    return now.Month == 1 && now.Day <= 5;
+}
+
+// ---------------------------------------------------------------------------
+// Scoring
+// ---------------------------------------------------------------------------
+int OpenedCount() {
+    int n = 0;
+    for (uint i = 0; i < g_opened.Length; i++) {
+        if (g_opened[i]) n++;
+    }
+    return n;
+}
+
+// Best 15 of the 24 regular days - a missed day never kills the run.
+int ScoreDays() {
+    array<int> vals;
+    for (int d = 1; d <= 24; d++) {
+        if (g_opened[d - 1]) vals.InsertLast(g_points[d - 1]);
+    }
+    vals.SortAsc();
+    int total = 0;
+    int start = int(vals.Length) > 15 ? int(vals.Length) - 15 : 0;
+    for (int i = start; i < int(vals.Length); i++) total += vals[i];
+    return total;
+}
+
+int TotalPoints() {
+    int total = ScoreDays();
+    total += g_points[24];   // finale always counts
+    return total;
+}
+
+string FinalCode() {
+    string code = "";
+    for (uint i = 0; i < g_fragments.Length; i++) code += g_fragments[i];
+    return code;
+}
+
+// ---------------------------------------------------------------------------
+// Badges
+// ---------------------------------------------------------------------------
+bool HasBadge(const string &in name) {
+    for (uint i = 0; i < g_badges.Length; i++) {
+        if (g_badges[i] == name) return true;
+    }
+    return false;
+}
+
+void AddBadge(const string &in name) {
+    if (name.Length == 0) return;
+    if (HasBadge(name)) return;
+    g_badges.InsertLast(name);
+}
+
+string BadgeSummary() {
+    if (g_badges.Length == 0) return "none";
+    string result = "";
+    for (uint i = 0; i < g_badges.Length; i++) {
+        if (i > 0) result += ", ";
+        result += g_badges[i];
+    }
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// Storage
+// ---------------------------------------------------------------------------
+void ResetProgress() {
+    g_opened.Resize(DAY_COUNT);
+    g_bests.Resize(DAY_COUNT);
+    g_points.Resize(DAY_COUNT);
+    g_bountyCp.Resize(DAY_COUNT);
+    g_bountyHolder.Resize(DAY_COUNT);
+    for (int i = 0; i < DAY_COUNT; i++) {
+        g_opened[i] = false;
+        g_bests[i] = 0;
+        g_points[i] = 0;
+        g_bountyCp[i] = DEFAULT_BOUNTY_CP;
+        g_bountyHolder[i] = "GrinchBot";
+    }
+    g_badges.Resize(0);
+    g_bountiesWon = 0;
+}
+
+void LoadArrayBool(Json::Value@ root, const string &in key, array<bool> &inout target) {
+    if (root is null || !root.HasKey(key)) return;
+    Json::Value@ arr = root[key];
+    if (arr is null || arr.GetType() != Json::Type::Array) return;
+    for (uint i = 0; i < target.Length && i < arr.Length; i++) {
+        target[i] = bool(arr[i]);
+    }
+}
+
+void LoadArrayInt(Json::Value@ root, const string &in key, array<int> &inout target) {
+    if (root is null || !root.HasKey(key)) return;
+    Json::Value@ arr = root[key];
+    if (arr is null || arr.GetType() != Json::Type::Array) return;
+    for (uint i = 0; i < target.Length && i < arr.Length; i++) {
+        target[i] = int(arr[i]);
+    }
+}
+
+void LoadProgress() {
+    ResetProgress();
+    if (!IO::FileExists(SAVE_FILE)) return;
+
+    Json::Value@ root = Json::FromFile(SAVE_FILE);
+    if (root is null || root.GetType() != Json::Type::Object) return;
+
+    if (root.HasKey("bounties")) g_bountiesWon = int(root["bounties"]);
+    LoadArrayBool(root, "opened", g_opened);
+    LoadArrayInt(root, "bests", g_bests);
+    LoadArrayInt(root, "points", g_points);
+    LoadArrayInt(root, "bountyCp", g_bountyCp);
+
+    if (root.HasKey("bountyHolder")) {
+        Json::Value@ arr = root["bountyHolder"];
+        if (arr !is null && arr.GetType() == Json::Type::Array) {
+            for (uint i = 0; i < g_bountyHolder.Length && i < arr.Length; i++) {
+                g_bountyHolder[i] = string(arr[i]);
+            }
+        }
+    }
+    if (root.HasKey("badges")) {
+        Json::Value@ arr = root["badges"];
+        if (arr !is null && arr.GetType() == Json::Type::Array) {
+            for (uint i = 0; i < arr.Length; i++) AddBadge(string(arr[i]));
+        }
+    }
+}
+
+void SaveProgress() {
+    Json::Value@ root = Json::Object();
+    root["version"] = 2;
+    root["bounties"] = g_bountiesWon;
+
+    Json::Value@ opened = Json::Array();
+    Json::Value@ bests = Json::Array();
+    Json::Value@ points = Json::Array();
+    Json::Value@ bountyCp = Json::Array();
+    Json::Value@ bountyHolder = Json::Array();
+    for (int i = 0; i < DAY_COUNT; i++) {
+        opened.Add(g_opened[i]);
+        bests.Add(g_bests[i]);
+        points.Add(g_points[i]);
+        bountyCp.Add(g_bountyCp[i]);
+        bountyHolder.Add(g_bountyHolder[i]);
+    }
+    root["opened"] = opened;
+    root["bests"] = bests;
+    root["points"] = points;
+    root["bountyCp"] = bountyCp;
+    root["bountyHolder"] = bountyHolder;
+
+    Json::Value@ badges = Json::Array();
+    for (uint i = 0; i < g_badges.Length; i++) badges.Add(g_badges[i]);
+    root["badges"] = badges;
+
+    Json::ToFile(SAVE_FILE, root, true);
+}
