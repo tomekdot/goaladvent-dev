@@ -166,6 +166,24 @@ string DayTileIcon(int day) {
     return Icons::Gift;   // a future gift, never an error X
 }
 
+// Moon brightness: dim blue-grey at new moon, warm white at full moon.
+vec4 MoonTint(int pct) {
+    float t = float(pct) / 100.0f;
+    return vec4(0.38 + 0.62 * t, 0.43 + 0.53 * t, 0.55 + 0.23 * t, 1.00);
+}
+
+// Phase name + a thin illumination bar tinted by the same brightness.
+void RenderMoonStrip(int day) {
+    int pct = MoonIlluminationPct(day);
+    vec4 tint = MoonTint(pct);
+    TextTone(tint, Icons::MoonO + "  " + MoonPhaseName(day));
+    UI::PushStyleColor(UI::Col::FrameBg, vec4(0.06, 0.09, 0.14, 1.00));
+    UI::PushStyleColor(UI::Col::PlotHistogram, tint);
+    UI::ProgressBar(float(pct) / 100.0f, vec2(-1, 8), "");
+    UI::PopStyleColor(2);
+    UI::TextDisabled(tostring(pct) + "% lit");
+}
+
 // Built from Calendar.as's g_offDays so the UI can never disagree with the logic.
 string OffDaysText() {
     string text = "";
@@ -278,7 +296,8 @@ void RenderDayDetails() {
         statusColor = vec4(0.66, 0.70, 0.78, 1.00);   // Slate was unreadable on CardBg
     }
     TextTone(statusColor, status);
-    UI::TextDisabled(Icons::MoonO + "  " + MoonPhaseName(day) + " (" + tostring(MoonIlluminationPct(day)) + "%)");
+    UI::Dummy(vec2(0, 2));
+    RenderMoonStrip(day);
     UI::Dummy(vec2(0, 4));
 
     UI::TextWrapped(g_hints[day - 1]);
@@ -287,10 +306,10 @@ void RenderDayDetails() {
     if (IsOffDay(day)) {
         // Pursuit night: no CP goal and no bounty on this day - say so clearly.
         UI::PushStyleColor(UI::Col::ChildBg, vec4(0.20, 0.15, 0.30, 1.00));
-        if (UI::BeginChild("##GoalmasPursuitCard", vec2(0, 104), UI::ChildFlags::Borders)) {
+        if (UI::BeginChild("##GoalmasPursuitCard", vec2(0, 118), UI::ChildFlags::Borders)) {
             TextTone(Silver(), Icons::MoonO + "  PURSUIT NIGHT ON MANIAPLANET");
-            UI::Text("No Goal Hunt today - the moon belongs to Pursuit (" + MoonPhaseName(day) + ").");
-            UI::Text("Your streak and points stay safe.");
+            UI::TextWrapped("No Goal Hunt today - the moon belongs to Pursuit.");
+            UI::TextWrapped("Your streak and points stay safe.");
             UI::TextDisabled("The next Goal Hunt window opens tomorrow.");
         }
         UI::EndChild();
