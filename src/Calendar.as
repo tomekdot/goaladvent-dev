@@ -109,7 +109,7 @@ int DayMultiplier(int day) {
 bool FinaleOpen() {
     Time::Info now = Today();
     if (now.Month == 12) return now.Day >= 25;
-    if (now.Month == 1) return now.Day <= 5;
+    if (now.Month == 1) return now.Day <= FINALE_GRACE_DAYS;
     return false;
 }
 
@@ -119,7 +119,7 @@ bool DayUnlocked(int day) {
     if (day == 25) return FinaleOpen();
     Time::Info now = Today();
     if (now.Month == 12) return now.Day >= day;
-    return now.Month == 1 && now.Day <= 5;   // catch-up after the event
+    return now.Month == 1 && now.Day <= FINALE_GRACE_DAYS;   // catch-up after the event
 }
 
 // Every day stays playable until the end of the event, so a missed day
@@ -130,7 +130,7 @@ bool DayPlayableNow(int day) {
     if (day == 25) return FinaleOpen();
     Time::Info now = Today();
     if (now.Month == 12) return now.Day >= day;
-    return now.Month == 1 && now.Day <= 5;
+    return now.Month == 1 && now.Day <= FINALE_GRACE_DAYS;
 }
 
 // ---------------------------------------------------------------------------

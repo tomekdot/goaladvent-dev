@@ -168,12 +168,12 @@ string DayTileIcon(int day) {
 
 // Built from Calendar.as's g_offDays so the UI can never disagree with the logic.
 string OffDaysText() {
-    string out = "";
+    string text = "";
     for (uint i = 0; i < g_offDays.Length; i++) {
-        if (i > 0) out += ", ";
-        out += tostring(g_offDays[i]);
+        if (i > 0) text += ", ";
+        text += tostring(g_offDays[i]);
     }
-    return out;
+    return text;
 }
 
 string DayTileStatus(int day) {
@@ -187,7 +187,8 @@ string DayTileStatus(int day) {
 // Centring with ImGui's native ButtonTextAlign. Multi-line labels are centred
 // by ImGui itself, so no SetCursorScreenPos() calls and no EndChild() assertions.
 bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
-                         vec4 bgCol, vec4 textCol, bool isSelected, float tileW) {
+                         const string &in moonLine, vec4 bgCol, vec4 textCol,
+                         bool isSelected, float tileW) {
     bool waiting = label.EndsWith("WAIT");
     if (isSelected || waiting) {
         UI::PushStyleVar(UI::StyleVar::FrameBorderSize, isSelected ? 2.0f : 1.0f);
@@ -199,10 +200,13 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
     UI::PushStyleColor(UI::Col::ButtonHovered, vec4(bgCol.x + 0.08, bgCol.y + 0.08, bgCol.z + 0.08, 1.0));
     UI::PushStyleColor(UI::Col::ButtonActive, vec4(bgCol.x + 0.14, bgCol.y + 0.14, bgCol.z + 0.14, 1.0));
     UI::PushStyleColor(UI::Col::Text, textCol);
+    UI::PushFontSize(13.0f);   // three short lines have to fit the tile
 
-    string caption = icon + "\n" + label + "##goalmastile" + tostring(day);
-    bool clicked = UI::Button(caption, vec2(tileW, 64));
+    // Every one of the 25 days carries its own moon phase, not only Pursuit days.
+    string caption = icon + "\n" + label + "\n" + moonLine + "##goalmastile" + tostring(day);
+    bool clicked = UI::Button(caption, vec2(tileW, 78));
 
+    UI::PopFontSize();
     UI::PopStyleColor(4);
     UI::PopStyleVar();
     if (isSelected || waiting) {
@@ -228,11 +232,14 @@ void RenderDayGrid() {
         if (day == DAY_COUNT) textCol = vec4(0.14, 0.09, 0.02, 1.00);
         else if (IsPremiereDay(day)) textCol = Gold();
 
-        if (DrawCenteredDayTile(day, DayTileIcon(day), label,
+        string moonLine = Icons::MoonO + " " + tostring(MoonIlluminationPct(day)) + "%";
+        if (DrawCenteredDayTile(day, DayTileIcon(day), label, moonLine,
                                 DayTileColor(day), textCol, day == g_selectedDay, tileW)) {
             g_selectedDay = day;
             g_confirmReset = false;
         }
+        UI::SetItemTooltip(MoonPhaseName(day) + " - " +
+                           tostring(MoonIlluminationPct(day)) + "% illumination");
         if (day % 5 != 0) UI::SameLine(0, 6);
     }
 }
@@ -439,7 +446,8 @@ void RenderFinaleTab() {
     } else {
         TextTone(Emerald(), Icons::Check + "  Raffle ticket earned - bring the code to the event.");
     }
-    UI::TextWrapped("The finale stays open until 5 January, so nobody has to be online on the 25th. "
+    UI::TextWrapped("The finale stays open until " + tostring(FINALE_GRACE_DAYS) +
+                    " January, so nobody has to be online on the 25th. "
                     "The raffle is drawn after the window closes.");
 }
 
@@ -447,7 +455,7 @@ void RenderFinaleTab() {
 // Main dashboard
 // ---------------------------------------------------------------------------
 void RenderDashboard() {
-    UI::SetNextWindowSize(900, 640, UI::Cond::FirstUseEver);
+    UI::SetNextWindowSize(900, 720, UI::Cond::FirstUseEver);
     if (!UI::Begin("Goalmas 2026", g_showCalendar)) {
         UI::End();
         return;

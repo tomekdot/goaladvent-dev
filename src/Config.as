@@ -14,6 +14,7 @@ const int BOUNTY_POINTS = 150;
 const int DEFAULT_BOUNTY_CP = 15;  // starting GrinchBot record
 const float SUBMIT_DEBOUNCE_SEC = 6.0f;
 const int SYNC_INTERVAL_SEC = 20;
+const int FINALE_GRACE_DAYS = 5;   // finale / catch-up window after Christmas
 
 // ---------------------------------------------------------------------------
 // Settings
