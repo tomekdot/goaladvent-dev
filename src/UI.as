@@ -73,10 +73,17 @@ vec4 BadgeColor(const string &in badge) {
 }
 
 void RenderBadgeLine() {
+    if (g_badges.Length == 0) return;
+
+    // One wrapping, coloured text line. SameLine() items never wrap in ImGui,
+    // so pills/segments overflowed the header with eight badges.
+    string badges = "";
     for (uint i = 0; i < g_badges.Length; i++) {
-        if (i > 0) UI::SameLine(0, 0);
-        TextTone(BadgeColor(g_badges[i]), (i > 0 ? "   |   " : "") + g_badges[i]);
+        vec4 col = BadgeColor(g_badges[i]);
+        badges += Text::FormatOpenplanetColor(vec3(col.x, col.y, col.z)) +
+                  g_badges[i] + "\\$z   ";
     }
+    UI::TextWrapped(badges);
 }
 
 void RenderHeaderCard() {

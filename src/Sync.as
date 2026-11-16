@@ -228,6 +228,8 @@ void SyncState() {
 }
 
 void SyncNow() {
+    if (g_syncing) return;   // guard also covers auto-refresh, not just the header button
+
     if (S_SyncMode == 1) {
         WriteFolderFile();
         RefreshFolderBoard();
