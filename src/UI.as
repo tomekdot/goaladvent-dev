@@ -74,34 +74,72 @@ void PopDashboardStyle() {
 // ---------------------------------------------------------------------------
 // Header card
 // ---------------------------------------------------------------------------
-// Badges are drawn as one wrapping text line instead of SameLine() pills:
-// ImGui does not wrap SameLine() items, so pills overflowed the window.
+// Badges are real pills again, but wrapping is done by hand: ImGui never wraps
+// SameLine() items, so the width of each pill is measured first and a new row
+// starts when the next one would not fit.
 vec4 BadgeColor(const string &in badge) {
     vec4 col = Emerald();
     string low = badge.ToLower();
     if (low.Contains("bounty") || low.Contains("final")) col = Gold();
     else if (low.Contains("pursuit")) col = Silver();
-    else if (low.Contains("galaxy")) col = Navy();
+    else if (low.Contains("galaxy")) col = vec4(0.35, 0.65, 1.00, 1.00);
     return col;
 }
 
-void RenderBadgeLine() {
+float BadgePillWidth(const string &in badge) {
+    return UI::MeasureString(badge, null, 13.0f, 0.0f).x + 22.0f;
+}
+
+// Rows the pill strip needs at the given width. Used for the header height
+// before anything is drawn, so a second row can never be clipped.
+int BadgeRowCount(float availW) {
+    if (g_badges.Length == 0) return 1;
+    float lineW = 0.0f;
+    int rows = 1;
+    for (uint i = 0; i < g_badges.Length; i++) {
+        float w = BadgePillWidth(g_badges[i]);
+        if (lineW > 0.0f && lineW + 6.0f + w > availW) {
+            rows++;
+            lineW = w;
+        } else {
+            lineW += (lineW > 0.0f ? 6.0f : 0.0f) + w;
+        }
+    }
+    return rows;
+}
+
+void RenderBadgePills() {
     if (g_badges.Length == 0) return;
 
-    // One wrapping, coloured text line. SameLine() items never wrap in ImGui,
-    // so pills/segments overflowed the header with eight badges.
-    string badges = "";
+    bool midline = false;
+    UI::PushFontSize(13.0f);
     for (uint i = 0; i < g_badges.Length; i++) {
         vec4 col = BadgeColor(g_badges[i]);
-        badges += Text::FormatOpenplanetColor(vec3(col.x, col.y, col.z)) +
-                  g_badges[i] + "\\$z   ";
+        float w = BadgePillWidth(g_badges[i]);
+        if (midline && UI::GetContentRegionAvail().x >= w) UI::SameLine(0, 6);
+
+        UI::PushStyleVar(UI::StyleVar::FrameRounding, 11.0f);
+        UI::PushStyleColor(UI::Col::Button, Tone(col));
+        UI::PushStyleColor(UI::Col::ButtonHovered, Lift(Tone(col)));
+        UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(Tone(col))));
+        UI::PushStyleColor(UI::Col::Text, col);
+        UI::Button(g_badges[i] + "##badge" + tostring(int(i)), vec2(w, 22));
+        UI::PopStyleColor(4);
+        UI::PopStyleVar();
+        midline = true;
     }
-    UI::TextWrapped(badges);
+    UI::PopFontSize();
 }
 
 void RenderHeaderCard() {
+    // Pills need as many rows as they measure; the card must know the count
+    // before BeginChild, otherwise the second row would be silently clipped.
+    float innerW = UI::GetContentRegionAvail().x - 34.0f;
+    int badgeRows = g_confirmReset ? 1 : BadgeRowCount(innerW);
+    float headerH = 168.0f + float(badgeRows - 1) * 30.0f;
+
     UI::PushStyleColor(UI::Col::ChildBg, vec4(0.12, 0.15, 0.22, 1.00));
-    if (UI::BeginChild("##GoalmasHeader", vec2(0, 168), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##GoalmasHeader", vec2(0, headerH), UI::ChildFlags::Borders)) {
         TextTone(Gold(), Icons::SnowflakeO + "   GOALMAS 2026");
         UI::SetCursorPosY(UI::GetCursorPos().y - 2);
         UI::TextDisabled("Goal Hunt calendar - checkpoint bounties, badges and a free leaderboard");
@@ -149,7 +187,7 @@ void RenderHeaderCard() {
         } else if (g_badges.Length == 0) {
             UI::TextDisabled("Badges: none (earn by playing!)");
         } else {
-            RenderBadgeLine();
+            RenderBadgePills();
         }
     }
     UI::EndChild();
