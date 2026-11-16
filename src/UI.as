@@ -61,25 +61,27 @@ void PopDashboardStyle() {
 // ---------------------------------------------------------------------------
 // Header card
 // ---------------------------------------------------------------------------
-void RenderBadgePill(const string &in badge, int index) {
+// Badges are drawn as one wrapping text line instead of SameLine() pills:
+// ImGui does not wrap SameLine() items, so pills overflowed the window.
+vec4 BadgeColor(const string &in badge) {
     vec4 col = Emerald();
     string low = badge.ToLower();
     if (low.Contains("bounty") || low.Contains("final")) col = Gold();
     else if (low.Contains("pursuit")) col = Silver();
     else if (low.Contains("galaxy")) col = Navy();
+    return col;
+}
 
-    UI::PushStyleColor(UI::Col::Button, Pill(col));
-    UI::PushStyleColor(UI::Col::ButtonHovered, Pill(col));
-    UI::PushStyleVar(UI::StyleVar::FrameRounding, 12.0f);
-    UI::Button(badge + "##badge" + tostring(index), vec2(0, 24));
-    UI::PopStyleVar();
-    UI::PopStyleColor(2);
-    UI::SameLine(0, 6);
+void RenderBadgeLine() {
+    for (uint i = 0; i < g_badges.Length; i++) {
+        if (i > 0) UI::SameLine(0, 0);
+        TextTone(BadgeColor(g_badges[i]), (i > 0 ? "   |   " : "") + g_badges[i]);
+    }
 }
 
 void RenderHeaderCard() {
     UI::PushStyleColor(UI::Col::ChildBg, vec4(0.12, 0.15, 0.22, 1.00));
-    if (UI::BeginChild("##GoalmasHeader", vec2(0, 132), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##GoalmasHeader", vec2(0, 150), UI::ChildFlags::Borders)) {
         TextTone(Gold(), Icons::SnowflakeO + "   GOALMAS 2026");
         UI::SetCursorPosY(UI::GetCursorPos().y - 2);
         UI::TextDisabled("Goal Hunt calendar - checkpoint bounties, badges and a free leaderboard");
@@ -87,7 +89,7 @@ void RenderHeaderCard() {
         float gap = UI::GetContentRegionAvail().x - 150;
         if (gap > 8) UI::Dummy(vec2(gap, 0));
         UI::SameLine(0, 0);
-        if (UI::Button(Icons::Refresh, vec2(34, 28))) SyncNow();
+        if (UI::Button(Icons::Refresh, vec2(34, 28)) && !g_syncing) SyncNow();
         UI::SameLine(0, 4);
         if (UI::Button(Icons::FloppyO, vec2(34, 28))) {
             SaveProgress();
@@ -124,7 +126,7 @@ void RenderHeaderCard() {
         } else if (g_badges.Length == 0) {
             UI::TextDisabled("Badges: none (earn by playing!)");
         } else {
-            for (uint i = 0; i < g_badges.Length; i++) RenderBadgePill(g_badges[i], int(i));
+            RenderBadgeLine();
         }
     }
     UI::EndChild();
@@ -132,7 +134,8 @@ void RenderHeaderCard() {
 
     if (g_confirmReset && UI::Button("Cancel reset")) g_confirmReset = false;
 
-    if (g_status.Length > 0) UI::TextDisabled(g_status);
+    if (g_syncing) UI::TextDisabled("Syncing with the server...");
+    else if (g_status.Length > 0) UI::TextDisabled(g_status);
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +157,16 @@ string DayTileIcon(int day) {
     if (g_opened[day - 1]) return Icons::CheckCircle;
     if (DayPlayableNow(day)) return Icons::FlagCheckered;
     return Icons::Gift;   // a future gift, never an error X
+}
+
+// Built from Calendar.as's g_offDays so the UI can never disagree with the logic.
+string OffDaysText() {
+    string out = "";
+    for (uint i = 0; i < g_offDays.Length; i++) {
+        if (i > 0) out += ", ";
+        out += tostring(g_offDays[i]);
+    }
+    return out;
 }
 
 string DayTileStatus(int day) {
@@ -193,7 +206,7 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
 }
 
 void RenderDayGrid() {
-    UI::TextDisabled("Pursuit rest days: 1, 8, 15, 22   |   Premiere day awards x2 points");
+    UI::TextDisabled("Pursuit rest days: " + OffDaysText() + "   |   Premiere day awards x2 points");
     UI::Dummy(vec2(0, 4));
 
     float width = UI::GetContentRegionAvail().x;
@@ -245,7 +258,7 @@ void RenderDayDetails() {
         statusColor = Crimson();
     } else if (!DayPlayableNow(day)) {
         status = "Waiting for the event";
-        statusColor = Slate();
+        statusColor = vec4(0.66, 0.70, 0.78, 1.00);   // Slate was unreadable on CardBg
     }
     TextTone(statusColor, status);
     UI::Dummy(vec2(0, 4));
@@ -346,7 +359,8 @@ void RenderLeaderboardTab() {
             if (i < 3) TextTone(i == 0 ? Gold() : (i == 1 ? Silver() : Bronze()), tostring(int(i) + 1));
             else UI::Text(tostring(int(i) + 1));
             UI::TableSetColumnIndex(1);
-            UI::Text(g_boardNames[i]);
+            if (g_boardNames[i] == LocalName()) TextTone(Gold(), g_boardNames[i] + "  (you)");
+            else UI::Text(g_boardNames[i]);
             UI::TableSetColumnIndex(2);
             TextTone(Gold(), tostring(g_boardPoints[i]));
             UI::TableSetColumnIndex(3);
