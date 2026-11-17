@@ -46,21 +46,29 @@ const BASE_BOUNTY_POINTS = 150;
 const BASE_BOUNTY_CP = 15;
 const STARTER_BADGE = "GOALMAS-2026";
 const MAX_EVENTS = 15;
+const MAX_CP = 250;   // reject forged/huge values without imposing a real limit
 
 // Older D1 databases had only (day, ms, holder). Add cp idempotently at runtime.
+// Cache per isolate so /admin and /state do not re-run DDL on every request.
+let schemaReady = null;
 async function ensureSchema(env) {
-  await env.DB.prepare(
-    "CREATE TABLE IF NOT EXISTS bounties (day INTEGER PRIMARY KEY, " +
-    "cp INTEGER NOT NULL DEFAULT 0, ms INTEGER NOT NULL DEFAULT 0, holder TEXT NOT NULL)"
-  ).run();
-  const info = await env.DB.prepare("PRAGMA table_info(bounties)").all();
-  if (!(info.results || []).some(col => col.name === "cp")) {
-    await env.DB.prepare("ALTER TABLE bounties ADD COLUMN cp INTEGER NOT NULL DEFAULT 0").run();
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      await env.DB.prepare(
+        "CREATE TABLE IF NOT EXISTS bounties (day INTEGER PRIMARY KEY, " +
+        "cp INTEGER NOT NULL DEFAULT 0, ms INTEGER NOT NULL DEFAULT 0, holder TEXT NOT NULL)"
+      ).run();
+      const info = await env.DB.prepare("PRAGMA table_info(bounties)").all();
+      if (!(info.results || []).some(col => col.name === "cp")) {
+        await env.DB.prepare("ALTER TABLE bounties ADD COLUMN cp INTEGER NOT NULL DEFAULT 0").run();
+      }
+      await env.DB.prepare(
+        "CREATE TABLE IF NOT EXISTS map_days (uid TEXT PRIMARY KEY, day INTEGER NOT NULL, " +
+        "first_seen INTEGER NOT NULL)"
+      ).run();
+    })();
   }
-  await env.DB.prepare(
-    "CREATE TABLE IF NOT EXISTS map_days (uid TEXT PRIMARY KEY, day INTEGER NOT NULL, " +
-    "first_seen INTEGER NOT NULL)"
-  ).run();
+  return schemaReady;
 }
 
 function normalizeBest(value) {
@@ -92,7 +100,15 @@ function scoreFromBests(bests) {
 function normalizeBests(raw) {
   const out = {};
   const src = raw && typeof raw === "object" ? raw : {};
-  for (const key of Object.keys(src)) out[key] = normalizeBest(src[key]);
+  for (const key of Object.keys(src)) {
+    const b = normalizeBest(src[key]);
+    // Legacy rows had no per-day pts; reconstruct the base so a returning
+    // player does not lose completed days when the best-15 rule takes over.
+    if (!b.pts && b.cp >= GOAL_CP) {
+      b.pts = (Number(key) === DAY_COUNT ? FINALE_POINTS : BASE_POINTS);
+    }
+    out[key] = b;
+  }
   return out;
 }
 
@@ -251,17 +267,21 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         return new Response("Bad JSON", { status: 400 });
       }
 
-      const { accountId, name, day, cpCount, timeMs = 0, mapUid = "" } = body;
-      if (!accountId || !day || !cpCount || cpCount <= 0 || day < 1 || day > DAY_COUNT) {
+      const { accountId, name, mapUid = "" } = body;
+      const day = Number(body.day);
+      const cpCount = Number(body.cpCount);
+      const timeMs = Number(body.timeMs) || 0;
+      if (!accountId || !Number.isInteger(day) || day < 1 || day > DAY_COUNT ||
+          !Number.isInteger(cpCount) || cpCount <= 0 || cpCount > MAX_CP) {
         return new Response("Bad Request", { status: 400 });
       }
       // Any day may be submitted. Tuesday nights are a Pursuit bonus in the
       // calendar UI, but when a Goal Hunt map is actually played on that day
       // the run must count - rejecting it here produced HTTP 403 in test runs.
 
-      // Learn the UID<->day pair from a real run so new, unknown maps can be
-      // recognised by every player without anyone editing settings by hand.
-      if (mapUid) {
+      // Learn the UID<->day pair only from a completed run. Debug submits with
+      // a handful of CP must not poison detection for every other player.
+      if (mapUid && cpCount >= GOAL_CP) {
         await env.DB.prepare(
           "INSERT INTO map_days (uid, day, first_seen) VALUES (?, ?, ?) " +
           "ON CONFLICT(uid) DO UPDATE SET day = excluded.day"
@@ -311,7 +331,14 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       if (beatsBounty) {
         await env.DB.prepare(
           "INSERT INTO bounties (day, cp, ms, holder) VALUES (?, ?, ?, ?) " +
-            "ON CONFLICT(day) DO UPDATE SET cp = excluded.cp, ms = excluded.ms, holder = excluded.holder"
+            "ON CONFLICT(day) DO UPDATE SET " +
+            "cp = MAX(bounties.cp, excluded.cp), " +
+            "ms = CASE WHEN excluded.cp > bounties.cp OR " +
+            "(excluded.cp = bounties.cp AND excluded.ms < bounties.ms) " +
+            "THEN excluded.ms ELSE bounties.ms END, " +
+            "holder = CASE WHEN excluded.cp > bounties.cp OR " +
+            "(excluded.cp = bounties.cp AND excluded.ms < bounties.ms) " +
+            "THEN excluded.holder ELSE bounties.holder END"
         )
           .bind(day, cpCount, timeMs, name || "Player")
           .run();
@@ -361,13 +388,14 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         )
         .run();
 
+      // Repeated +0 submits must not flood the 15-line feed or Discord.
       const timeInfo = timeMs > 0 ? " (" + (timeMs / 1000).toFixed(3) + "s)" : "";
       if (bountyWon) {
         await pushEvent(
           env,
           (name || "Player") + " stole the day " + day + " bounty with " + cpCount + " CP" + timeInfo + "!"
         );
-      } else {
+      } else if (gained > 0) {
         await pushEvent(
           env,
           (name || "Player") + " reached " + cpCount + " CP on day " + day + " (+" + gained + " pts)"

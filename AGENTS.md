@@ -12,7 +12,7 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goaladvent-dev`.
   Remote: `https://github.com/tomekdot/goaladvent-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.5.1-dev`.
+- Version in `info.toml`: `0.5.2-dev`.
 - Leaderboard points come from `scoreFromBests(bests)`: best 15 of days 1-24
   plus finale. Each day stores `pts` and a one-time bounty flag `b` in `bests`.
   Verified with 3x100 CP submits -> 300 points in `/state`.
@@ -54,11 +54,14 @@ editing code. The broader workspace rules also apply:
   into `DEFAULT_API_URL` in `Config.as`, so sync mode 2 is automatic for every
   player. D1 `goalmas` ID is in `backend/wrangler.toml`; redeploy with
   `wrangler deploy` from `backend/`.
-- Map detection is name-based only: `ParseDayFromMapName(app.RootMap.MapInfo.Name)`
-  looks for `#N` plus `Goal Hunt` / `GoalHunt` / `Goal-Hunt`, then gates on
-  `OnEventServer()`. `CurrentMapName()` and the live `detected day` are shown
-  in the debug panel; a `[goaladvent][DBG] Map ... -> day ...` line is logged on
-  every map change when `S_Debug` is on.
+- Map detection order: `S_MapDayOverride` -> server `mapDays` (UID) -> local
+  `S_MapUidDays` -> name parser (`#N`, `Day N`, `GH N`, `goalhuntarena`) ->
+  `CGameCtnChallenge.MapType` containing `GoalHuntArena` -> UTC event day.
+  `OnEventServer()` gates all of it. Maps named "Goal Hunt - Complex" are
+  recognised by their MapType metadata. `CurrentMapName()` and the
+  live `detected day` are shown in the debug panel; a
+  `[goaladvent][DBG] Map ... -> day ...` line is logged on every map change
+  when `S_Debug` is on.
 - Sidebar day state lives in its own 52 px status field (locked / Goal Hunt /
   Pursuit bonus). Keep the footer short - long sentences get clipped.
 - Admin debug: `S_Debug` (Settings -> Advanced -> Debug overlay) adds a `Debug`
@@ -84,7 +87,7 @@ editing code. The broader workspace rules also apply:
   labels, hints and footer text stay readable. Adjust there, not in `Theme.as`.
 - `Transparent Glass` uses neutral backgrounds (R == G == B). Intermediate
   containers must stay `alpha = 0` (`containerBg`) or transparency stacks into
-  an opaque wall. The window tint is `S_GlassOpacity` (0.15-0.80, default 0.45).
+  an opaque wall. The window tint is `S_GlassOpacity` (0.15-0.80, default 0.55).
 - Two themes share the **same layout**. `UiTheme` + `g_Theme` are persisted
   `[Setting]`s in `Config.as`; `Theme.as` holds `ThemePalette` and
   `RefreshPalette()`. UI code reads colours only through `Gold()`, `TextMain()`,
@@ -119,11 +122,11 @@ editing code. The broader workspace rules also apply:
 | `src/Theme.as` | `ThemePalette` - colours, alpha and radii for both themes |
 | `src/Debug.as` | Admin diagnostics window + `[goaladvent][DBG]` log line |
 | `src/Main.as` | Entry points: `Main`, `Update`, `Render`, `RenderInterface`, `RenderMenu` |
-| `backend/worker.js` | Cloudflare Worker + D1: `/state`, `/submit` |
+| `backend/worker.js` | Cloudflare Worker + D1: `/state`, `/submit`, `/admin` |
 | `backend/schema.sql` | D1 tables (`players`, `bounties`, `events`) |
 | `backend/wrangler.toml` | Worker/D1 config (fill in `database_id`) |
 | `backend/DEPLOY.md` | Free-tier deployment guide |
-| `README.md` | Player-facing overview and install steps |
+| `README.md` | Player-facing overview and install steps |\n| `DOCS.md` | Full technical reference (rules, architecture, troubleshooting) |
 | `goaladvent-dev.op` | Built package - **not** tracked in git; rebuild after changes |
 
 Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
@@ -199,7 +202,7 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 ### Runtime integration
 
 - `Update(float dt)` receives **milliseconds** (timers are in seconds).
-- Windows are hidden by default (`S_ShowOnStart = false`); the only menu entry
+- The dashboard opens on start (`S_ShowOnStart = true`); the only menu entry
   is `Icons::Calendar + " GoalAdvent"` in `RenderMenu()`. Do not add top-bar menus.
 - Checkpoint count path (same as working chase-mode overlay):
   `app.CurrentPlayground.Players[i]` -> `cast<CTrackManiaPlayer>` ->

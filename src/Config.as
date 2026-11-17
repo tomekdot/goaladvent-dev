@@ -33,6 +33,8 @@ int S_MapDayOverride = 0;
 
 
 
+const string PLUGIN_VERSION = "0.5.2-dev";
+
 // ---------------------------------------------------------------------------
 // Tuning
 // ---------------------------------------------------------------------------
@@ -146,6 +148,7 @@ int g_lastSentCp = 0;
 int g_pendingDay = 0;
 int g_pendingCp = 0;
 bool g_submitPending = false;
+bool g_submitQueued = false;
 float g_submitTimer = 0.0f;
 
 // Digits used by the "#N Goal Hunt" name parser.

@@ -59,7 +59,9 @@ void DrawSectionHeader(const string &in title) {
         g_palette.iceBlue);
     UI::Dummy(vec2(12, 0));
     UI::SameLine(0, 0);
-    TextTone(MixCol(TextMuted(), TextMain(), 0.50f), title);
+    UI::PushFontSize(15.0f);
+    TextTone(MixCol(TextMuted(), TextMain(), 0.65f), title);
+    UI::PopFontSize();
     UI::Dummy(vec2(0, 5));
 }
 
@@ -328,22 +330,28 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
 
     // The button carries only its ID. Its lines are drawn separately so the
     // short icon stays centred and the percentage never overlaps it.
-    float top = (tileH - 60.0f) * 0.5f;
+    const float iconF = 18.0f;
+    const float labelF = 16.0f;
+    const float pctF = 13.0f;
+    float top = (tileH - 68.0f) * 0.5f;
+    if (top < 0.0f) top = 0.0f;
     bool clicked = UI::Button("##goaladventtile" + tostring(day), vec2(tileW, tileH));
     vec4 r = UI::GetItemRect();
     float cx = r.x + r.z * 0.5f;
-    float iconW = UI::MeasureString(icon, null, 15.0f).x;
-    float labelW = UI::MeasureString(label, null, 13.0f).x;
-    UI::GetWindowDrawList().AddText(vec2(cx - iconW * 0.5f, r.y + 7.0f + top),
-                                    textCol, icon, null, 15.0f);
-    UI::GetWindowDrawList().AddText(vec2(cx - labelW * 0.5f, r.y + 28.0f + top),
-                                    textCol, label, null, 13.0f);
+    float iconW = UI::MeasureString(icon, null, iconF).x;
+    float labelW = UI::MeasureString(label, null, labelF).x;
+    vec4 bright = MixCol(textCol, vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f);
+    UI::GetWindowDrawList().AddText(vec2(cx - iconW * 0.5f, r.y + 5.0f + top),
+                                    bright, icon, null, iconF);
+    UI::GetWindowDrawList().AddText(vec2(cx - labelW * 0.5f, r.y + 25.0f + top),
+                                    bright, label, null, labelF);
 
     // Illumination goes on its own centred line under the status, so a narrow
     // tile can never push "45%" over the gift icon.
-    float pctW = UI::MeasureString(moonLine, null, 11.0f).x;
-    UI::GetWindowDrawList().AddText(vec2(cx - pctW * 0.5f, r.y + 44.0f + top),
-                                    TextMuted(), moonLine, null, 11.0f);
+    float pctW = UI::MeasureString(moonLine, null, pctF).x;
+    UI::GetWindowDrawList().AddText(vec2(cx - pctW * 0.5f, r.y + 45.0f + top),
+                                    MixCol(TextMuted(), vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.35f),
+                                    moonLine, null, pctF);
     DrawDot(vec2(r.x + 5.0f, r.y + 5.0f), 2.5f, accent);
     if (isSelected) {
         // Thin accent underline: the selected day reads at a glance.
@@ -358,8 +366,10 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
 
 void RenderDayGrid() {
     if (S_ShowTips) {
+        UI::PushFontSize(14.0f);
         UI::TextWrapped("Tip: play #" + tostring(g_selectedDay) + " Goal Hunt on the event server (" +
                         tostring(GOAL_CP) + " CP/run).");
+        UI::PopFontSize();
     }
 
     // Absolute column positions fill the panel edge to edge. SameLine() left a

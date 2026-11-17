@@ -18,7 +18,7 @@ string DebugStateLine() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    return "version=0.5.1-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    return "version=" + PLUGIN_VERSION + " theme=" + (GlassTheme() ? "glass" : "obsidian") +
            " localDate=" + localDate +
            " eventSeason=" + tostring(eventSeason) +
            " errors=" + tostring(g_debugErrors.Length) +
@@ -36,12 +36,13 @@ string DebugStateLine() {
            " syncing=" + tostring(g_syncing) +
            " lastSyncOk=" + tostring(g_lastSyncOk) +
            " lastHttp=" + tostring(g_lastSyncHttp) +
-           " syncAge=" + tostring(int(Time::Stamp) - g_lastSyncStamp) + "s" +
+           " syncAge=" + (g_lastSyncStamp > 0 ? tostring(int(Time::Stamp) - g_lastSyncStamp) + "s" : "never") +
            " boardRows=" + tostring(g_boardCount) +
            " selfTest=" + g_selfTestResult +
            " api=" + ApiUrl() +
            " map=" + GetCurrentMapUid() +
            " mapName=" + CurrentMapName() +
+           " mapType=" + CurrentMapType() +
            " detected=" + tostring(DetectGoalHuntDay()) +
            " server=" + CurrentServerName() +
            " eventServer=" + tostring(OnEventServer());
@@ -98,7 +99,7 @@ void RenderDebugWindow() {
     UI::Separator();
 
     UI::Text("VERSION / VIEW");
-    UI::Text("  version: 0.4.3-dev");
+    UI::Text("  version: " + PLUGIN_VERSION);
     UI::Text("  local date: " + localDate + "   event season: " + tostring(eventSeason));
     UI::Text("  theme: " + string(GlassTheme() ? "Transparent Glass" : "Obsidian Minimal"));
     UI::Text("  glass opacity: " + tostring(S_GlassOpacity));
@@ -130,6 +131,7 @@ void RenderDebugWindow() {
     UI::Text("  name: " + LocalName());
     UI::Text("  server: " + CurrentServerName());
     UI::Text("  map name: " + CurrentMapName());
+    UI::Text("  map type: " + CurrentMapType());
     UI::Text("  map UID: " + GetCurrentMapUid());
     UI::Text("  detected day now: " + tostring(DetectGoalHuntDay()) +
              "   (name parse: " + tostring(ParseDayFromMapName(CurrentMapName())) + ")");

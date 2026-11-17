@@ -89,6 +89,12 @@ string CurrentMapName() {
     return string(app.RootMap.MapInfo.Name);
 }
 
+string CurrentMapType() {
+    auto app = cast<CGameManiaPlanet>(GetApp());
+    if (app is null || app.RootMap is null) return "";
+    return string(app.RootMap.MapType);
+}
+
 bool OnEventServer() {
     string keyword = S_EventServerKeyword.Trim().ToLower();
     if (keyword.Length == 0) return true;
@@ -165,26 +171,35 @@ int DayFromUidMapping(const string &in uid) {
     return 0;
 }
 
-// Detects the event day: explicit override, then UID mapping, then the
-// original #N Goal Hunt name parser. UID mapping exists for maps such as
-// "Goal Hunt - Minesweeper" that carry no day number in the name.
+bool IsGoalHuntMapType(const string &in rawType) {
+    string t = rawType.ToLower();
+    return t.Contains("goalhunt") || t.Contains("goal hunt") || t.Contains("goal-hunt");
+}
+
+// Detects the event day: explicit override, then UID mapping, then the name
+// parser, then the map-type metadata (GoalHuntArena), then the UTC event day.
+// Name and MapType are both checked because many event maps are named simply
+// "Goal Hunt - Complex" while their MapType carries "GoalHuntArena".
 int DetectGoalHuntDay() {
     auto app = cast<CGameManiaPlanet>(GetApp());
     if (app is null || app.RootMap is null || app.RootMap.MapInfo is null) return 0;
     if (!OnEventServer()) return 0;
 
+    string name = string(app.RootMap.MapInfo.Name);
+    string mapType = string(app.RootMap.MapType);
+    bool goalMap = IsGoalHuntMapName(name) || IsGoalHuntMapType(mapType);
+    if (!goalMap) return 0;
+
     if (S_MapDayOverride >= 1 && S_MapDayOverride <= DAY_COUNT) return S_MapDayOverride;
     int mapped = DayFromUidMapping(GetCurrentMapUid());
     if (mapped > 0) return mapped;
 
-    string name = string(app.RootMap.MapInfo.Name);
     int fromName = ParseDayFromMapName(name);
     if (fromName > 0) return fromName;
 
-    // A brand-new Goal Hunt map with no number in its name: during the event
-    // the day is simply today's UTC date (the worker uses the same clock).
-    if (IsGoalHuntMapName(name)) return CurrentEventDayUtc();
-    return 0;
+    // A new Goal Hunt / GoalHuntArena map with no day number: during the event
+    // the day is today's UTC date - the same clock the worker uses.
+    return CurrentEventDayUtc();
 }
 
 // Called from the debug panel: remember the current map as the selected day.
@@ -325,7 +340,8 @@ void TrackGoalHunt(float dt) {
 
     g_submitPending = false;
     if (g_sessionCp <= g_lastSentCp) return;
-    g_lastSentCp = g_sessionCp;
+    // Do NOT advance g_lastSentCp here. If a sync is in flight the submit is
+    // queued, and only the successful upload may mark these CP as sent.
     RequestCpSubmit(g_activeDay, g_sessionCp);
 }
 
@@ -338,11 +354,22 @@ void RequestCpSubmit(int day, int cp) {
     g_pendingDay = day;
     g_pendingCp = cp;
 
-    if (S_SyncMode == 2 && !g_syncing) {
-        startnew(Coroutine_SubmitCp);
+    if (S_SyncMode == 2) {
+        // A /state request may be in flight. Wait for it instead of dropping
+        // the submit - otherwise these CP are never retried.
+        if (!g_submitQueued) {
+            g_submitQueued = true;
+            startnew(SubmitWhenFree);
+        }
     } else if (S_SyncMode == 1) {
         WriteFolderFile();
     }
+}
+
+void SubmitWhenFree() {
+    while (g_syncing) yield();
+    g_submitQueued = false;
+    Coroutine_SubmitCp();   // still inside a coroutine, yield() is legal here
 }
 
 void Coroutine_SubmitCp() {
@@ -375,6 +402,7 @@ void Coroutine_SubmitCp() {
     g_syncing = false;
 
     if (code == 200) {
+        if (cp > g_lastSentCp) g_lastSentCp = cp;
         g_status = "Sent " + tostring(cp) + " CP to the event server.";
         SyncState();
     } else {

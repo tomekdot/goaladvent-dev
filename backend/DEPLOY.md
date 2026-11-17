@@ -62,9 +62,18 @@ wrangler secret put DISCORD_WEBHOOK_URL
 
 Paste the webhook URL when asked.
 
-## 6. Point the plugin at the worker
+## 6. Admin page token
 
-In game: Openplanet -> Settings -> Plugins -> goalmas
+```bash
+wrangler secret put ADMIN_TOKEN
+```
+
+Then open `/admin?token=<your-token>` on the worker URL. Without the token
+the page returns 404. The token is never stored in the repository.
+
+## 7. Point the plugin at the worker
+
+In game: Openplanet -> Settings -> Plugins -> GoalAdvent
 
 - `Worker URL` = the URL from step 4 (no trailing slash)
 - `Sync mode` = `2`

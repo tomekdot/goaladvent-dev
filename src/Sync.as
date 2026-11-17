@@ -221,6 +221,16 @@ void ApplyState(const string &in body) {
         }
     }
 
+    // A UID mapping may have just arrived for the map we are already on.
+    if (g_activeDay <= 0) {
+        int detected = DetectGoalHuntDay();
+        if (detected > 0) {
+            g_activeDay = detected;
+            g_selectedDay = detected;
+            ResetSession();
+        }
+    }
+
     g_lastSyncStamp = int(Time::Stamp);
 }
 

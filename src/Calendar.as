@@ -64,7 +64,9 @@ Time::Info Today() {
 }
 
 bool IsPremiereDay(int day) {
-    Time::Info now = Today();
+    // The worker awards x2 from the server UTC clock. Use the same clock here
+    // so the local badge/preview never disagrees with the leaderboard.
+    Time::Info now = Time::ParseUTC();
     return now.Month == 12 && now.Day == day;
 }
 

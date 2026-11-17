@@ -6,7 +6,8 @@ attached `goaladvent-dev.op` package only.
 
 A 25-day Christmas **Goal Hunt** advent: collect checkpoints on event maps,
 fight over a daily bounty, earn badges, and share one free leaderboard with up
-to ~30 players. All code, comments, UI strings and docs are in English.
+to ~30 players. All code, comments, UI strings and docs are in English. For the complete
+technical reference see [DOCS.md](DOCS.md).
 
 ---
 
@@ -96,11 +97,11 @@ window).
 | `Show dashboard on start` | on | Open the window with the game |
 | `UI Theme` | Obsidian Minimal | Colour scheme |
 | `Glass Opacity` | 0.55 | Window tint strength (Glass theme) |
-| `Show moon phase %` | on | Show illumination on tiles |
+| `Show moon phase percent` | on | Show illumination on tiles |
 | `Show in-game tips` | on | Short hint in the calendar tab |
 | `Show notifications` | on | Banners for completed days and bounties |
 | `Auto sync` | on | Refresh results every 20 seconds |
-| `Sync mode` | 2 | 0 offline, 1 shared folder, 2 HTTP worker |
+| `Sync mode` | 0 (effective 2) | 0 offline, 1 shared folder, 2 HTTP worker |
 | `Worker URL` | baked in | Cloudflare Worker base URL |
 | `Event server keyword` | empty | Restrict results to the event server |
 | `Map UID to day` | empty | `UID=day` pairs for maps without `#N` |
@@ -131,7 +132,7 @@ window).
 
 The worker URL is baked into `DEFAULT_API_URL`, so the plugin switches to mode
 `2` automatically on load. Players configure nothing. Set mode `0` to force
-offline. See [DEPLOY.md](DEPLOY.md) for redeployment steps.
+offline. See [DEPLOY.md](backend/DEPLOY.md) for redeployment steps.
 
 ---
 
@@ -160,7 +161,7 @@ with a live state window:
 - ✅ `SERVER ONLINE` / ❌ `NOT CONFIRMED`, HTTP code, last-sync age, board rows
 - 🎯 detected Goal Hunt day and playable state
 - 📤 submit queue, CP counters, API URL, event-server check, map name/UID
-- 🔘 buttons: **Test server**, **Run sync now**, **Log state to clipboard**,
+- 🔘 buttons: **Test server**, **Run sync now**, **Copy log to clipboard**,
   **Clear errors**
 
 The `[goaladvent][DBG]` line is written to `Openplanet.log` on load and on
