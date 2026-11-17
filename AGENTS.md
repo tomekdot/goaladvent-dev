@@ -12,7 +12,10 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.4.5-dev`.
+- Version in `info.toml`: `0.4.6-dev`.
+- `/submit` must accept runs on every day. The old Tuesday 403 check was
+  removed from `backend/worker.js` after a real Goal Hunt map mapped to day 1
+  was rejected; redeploy with `wrangler deploy` from `backend/` after edits.
 - Detection order: `S_MapDayOverride` -> `S_MapUidDays` (UID=day pairs) ->
   `#N Goal Hunt` name parser. Maps like "Goal Hunt - Minesweeper" have no
   number, so they need a UID mapping; the debug button adds the current map to

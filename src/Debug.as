@@ -18,7 +18,7 @@ string DebugStateLine() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    return "version=0.4.5-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    return "version=0.4.6-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
            " localDate=" + localDate +
            " eventSeason=" + tostring(eventSeason) +
            " errors=" + tostring(g_debugErrors.Length) +
@@ -152,6 +152,12 @@ void RenderDebugWindow() {
     UI::Separator();
     if (UI::Button("Copy log to clipboard")) CopyDebugLog();
     UI::SetItemTooltip("Copies state, status, server test and all error lines as one pasteable block.");
+    UI::SameLine(0, 6);
+    if (UI::Button("Clear errors")) {
+        g_debugErrors.Resize(0);
+        g_copyStatus = "Error history cleared.";
+    }
+    UI::SetItemTooltip("Clears only the in-memory list, not Openplanet.log.");
     if (g_copyStatus.Length > 0) UI::TextDisabled(g_copyStatus);
     UI::SameLine(0, 6);
     if (UI::Button("Test server")) startnew(SelfTestServer);
