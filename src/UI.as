@@ -149,11 +149,15 @@ void RenderTopBar() {
     UI::PushStyleColor(UI::Col::ButtonHovered, Lift(btn));
     UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(btn)));
 
+    UI::PushFontSize(16.0f);
     TextTone(IceBlue(), Icons::SnowflakeO);
     UI::SameLine(0, 8);
     TextTone(TextMain(), "goalmas 2026");
+    UI::PopFontSize();
     UI::SameLine(0, 8);
+    UI::PushFontSize(13.0f);
     UI::TextDisabled("- 25 days of checkpoints, bounties and badges");
+    UI::PopFontSize();
 
     // Right-align the three buttons on the SAME row as the title. Deriving the
     // offset from the remaining width keeps them aligned when the window size
@@ -220,7 +224,7 @@ void SidebarTab(int id, const string &in icon, const string &in label) {
 
 void RenderSidebar() {
     UI::PushStyleColor(UI::Col::ChildBg, CardBg());
-    if (UI::BeginChild("##goalmasSidebar", vec2(175, -36), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goalmasSidebar", vec2(175, -30), UI::ChildFlags::Borders)) {
         SidebarTab(0, Icons::Calendar, "Calendar");
         SidebarTab(1, Icons::Trophy, "Leaderboard");
         SidebarTab(2, Icons::Rss, "Live feed");
@@ -541,6 +545,88 @@ void RenderCalendarTab() {
     UI::PopStyleColor();
 }
 
+// ManiaPlanet nicknames carry inline colour codes ($fff, $48b, $z, ...).
+// ImGui has no rich text, so draw each coloured span with a Text style push.
+bool MpIsHexTriplet(const string &in s) {
+    if (s.Length != 3) return false;
+    for (int i = 0; i < 3; i++) {
+        string c = s.SubStr(i, 1);
+        if (!(c == "0" || c == "1" || c == "2" || c == "3" || c == "4" ||
+              c == "5" || c == "6" || c == "7" || c == "8" || c == "9" ||
+              c == "a" || c == "b" || c == "c" || c == "d" || c == "e" || c == "f" ||
+              c == "A" || c == "B" || c == "C" || c == "D" || c == "E" || c == "F")) return false;
+    }
+    return true;
+}
+
+int MpHexDigit(const string &in s, int index) {
+    string c = s.SubStr(index, 1).ToLower();
+    if (c == "0") return 0;
+    if (c == "1") return 1;
+    if (c == "2") return 2;
+    if (c == "3") return 3;
+    if (c == "4") return 4;
+    if (c == "5") return 5;
+    if (c == "6") return 6;
+    if (c == "7") return 7;
+    if (c == "8") return 8;
+    if (c == "9") return 9;
+    if (c == "a") return 10;
+    if (c == "b") return 11;
+    if (c == "c") return 12;
+    if (c == "d") return 13;
+    if (c == "e") return 14;
+    return 15;
+}
+
+vec4 MpColour(const string &in hex) {
+    return vec4(float(MpHexDigit(hex, 0)) / 15.0f,
+                float(MpHexDigit(hex, 1)) / 15.0f,
+                float(MpHexDigit(hex, 2)) / 15.0f, 1.0f);
+}
+
+void DrawMpSpan(const string &in text, const vec4 &in colour, bool &inout first) {
+    if (text.Length == 0) return;
+    if (!first) UI::SameLine(0, 0);
+    UI::PushStyleColor(UI::Col::Text, colour);
+    UI::Text(text);
+    UI::PopStyleColor();
+    first = false;
+}
+
+void DrawMpName(const string &in raw, const vec4 &in fallback) {
+    vec4 colour = fallback;
+    bool first = true;
+    int len = int(raw.Length);
+    int i = 0;
+    while (i < len) {
+        if (raw.SubStr(i, 1) != "$") {
+            int start = i;
+            while (i < len && raw.SubStr(i, 1) != "$") i++;
+            DrawMpSpan(raw.SubStr(start, i - start), colour, first);
+            continue;
+        }
+        if (i + 1 < len && raw.SubStr(i + 1, 1) == "$") {
+            DrawMpSpan("$", colour, first);
+            i += 2;
+            continue;
+        }
+        if (i + 3 < len && MpIsHexTriplet(raw.SubStr(i + 1, 3))) {
+            colour = MpColour(raw.SubStr(i + 1, 3));
+            i += 4;
+            continue;
+        }
+        if (i + 1 < len) {
+            string control = raw.SubStr(i + 1, 1).ToLower();
+            if (control == "z") colour = fallback;  // $z = default colour
+            // $s/$n/$t/$w/$i/$o are style toggles; skip them.
+            i += 2;
+            continue;
+        }
+        i++;
+    }
+}
+
 void RenderLeaderboardTab() {
     DrawSectionHeader("LEADERBOARD");
     if (g_boardNames.Length == 0) {
@@ -575,8 +661,11 @@ void RenderLeaderboardTab() {
             if (i < 3) TextTone(i == 0 ? Gold() : (i == 1 ? Silver() : Bronze()), tostring(int(i) + 1));
             else UI::Text(tostring(int(i) + 1));
             UI::TableSetColumnIndex(1);
-            if (mine) TextTone(Gold(), g_boardNames[i] + "  (you)");
-            else UI::Text(g_boardNames[i]);
+            DrawMpName(g_boardNames[i], mine ? Gold() : TextMain());
+            if (mine) {
+                UI::SameLine(0, 6);
+                TextTone(TextMuted(), "(you)");
+            }
             UI::TableSetColumnIndex(2);
             TextTone(Gold(), tostring(g_boardPoints[i]));
             UI::TableSetColumnIndex(3);
@@ -668,22 +757,24 @@ void RenderFooter() {
         link = "Connecting to results...";
         linkCol = TextMuted();
     }
+    UI::PushFontSize(14.0f);
     TextTone(linkCol, Icons::Circle + "  " + link);
     UI::SameLine(0, 0);
     string right = "DAY " + tostring(g_selectedDay) + "/25   BEST 15: " +
                    tostring(ScoreDays()) + " PTS   " +
                    tostring(OpenedCount()) + "/25 GIFTS";
-    float w = UI::MeasureString(right, null, 13.0f, 0.0f).x + 8.0f;
-    if (w < 1.0f) w = 300.0f;
+    float w = UI::MeasureString(right, null, 14.0f, 0.0f).x + 8.0f;
+    if (w < 1.0f) w = 320.0f;
     UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f);
     TextTone(MixCol(TextMuted(), TextMain(), 0.50f), right);
+    UI::PopFontSize();
 }
 
 void RenderWorkspace() {
     // No extra background layer here: stacking translucent panels would turn
     // the glass into an opaque wall.
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
-    if (UI::BeginChild("##goalmasWorkspace", vec2(0, -36), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goalmasWorkspace", vec2(0, -30), UI::ChildFlags::Borders)) {
         if (g_activeTab == 0) RenderCalendarTab();
         else if (g_activeTab == 1) RenderLeaderboardTab();
         else if (g_activeTab == 2) RenderFeedTab();

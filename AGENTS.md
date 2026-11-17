@@ -12,7 +12,9 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.4.7-dev`.
+- Version in `info.toml`: `0.4.8-dev`.
+- Top bar uses 16 px title / 13 px tagline; footer uses 14 px text. Footer
+  reserve is 30 px (`vec2(..., -30)`) so it sits low without a tall empty band.
 - New maps are learned automatically: the plugin sends `mapUid` with every
   submit, the worker stores it in D1 `map_days` and returns it as `mapDays` in
   `/state`. Detection order: override -> server mapDays -> local UID setting ->
