@@ -12,7 +12,9 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.2.2-dev`.
+- Version in `info.toml`: `0.2.3-dev`.
+- `main` is the default branch and the source of releases. Merge feature work
+  there first, then push a `v*` tag from `main`.
 - Display name is lowercase `goalmas` everywhere (menu, window, banner, docs).
   Keep uppercase identifiers unchanged: `GoalmasAdvent.json` (save file, would
   reset progress) and badge codes such as `GOALMAS-2026`.
