@@ -19,7 +19,7 @@ technical reference see [DOCS.md](DOCS.md).
   300 pts for the finale). Premiere day pays x2 - the **server UTC** clock
   decides, so changing the local clock cannot cheat.
 - 🛡️ **Bounty**: most checkpoints on a day wins the record and +150 pts.
-  Starts at 15 CP held by `GrinchBot`. Optional `timeMs` is a tie-breaker.
+  Starts at 15 CP held by `GrinchBot`. The optional `timeMs` tie-breaker is reserved in the schema; the plugin currently sends 0.
   The bounty bonus is granted at most once per day per player.
 - 🔁 **Catch-up**: past days stay playable until the event ends. The finale
   stays open until 5 January; the raffle is drawn afterwards.
@@ -44,7 +44,7 @@ technical reference see [DOCS.md](DOCS.md).
 
 The server stores the best checkpoint count and the earned points **per day**
 in D1. The leaderboard sorts days 1-24 by points, takes the top 15 and adds the
-finale. This is exactly the number shown as `BEST 15` in the footer, so the
+finale. This is exactly the number shown as `TOTAL` in the footer, so the
 local view and the online ranking always agree. Badge thresholds are 10 and 24
 completed days, and FINALIST for all 25.
 
@@ -103,7 +103,7 @@ window).
 | `Auto sync` | on | Refresh results every 20 seconds |
 | `Sync mode` | 0 (effective 2) | 0 offline, 1 shared folder, 2 HTTP worker |
 | `Worker URL` | baked in | Cloudflare Worker base URL |
-| `Event server keyword` | empty | Restrict results to the event server |
+| `Event server keyword` | pursuit | Restrict results to the event server |
 | `Map UID to day` | empty | `UID=day` pairs for maps without `#N` |
 | `Force current map as day` | 0 | 1-25 override for testing |
 | `Debug overlay` | off | Admin diagnostics window |
@@ -198,7 +198,7 @@ result and errors into one pasteable block.
 | `submit: HTTP 403` | Old worker - redeploy with `wrangler deploy` (all days now accepted) |
 | `Attempted to suspend...` | Fixed by running HTTP sync in a coroutine (`startnew`) |
 | Raw `$fff` codes in feed | Fixed - feed uses the ManiaPlanet colour parser |
-| Leaderboard disagrees with `BEST 15` | Updated worker scoring - submit once to migrate |
+| Leaderboard disagrees with `TOTAL` | Updated worker scoring - submit once to migrate |
 | `Script compilation failed` | Check `Openplanet.log`, then reload scripts |
 
 ---

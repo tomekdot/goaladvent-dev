@@ -12,7 +12,7 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goaladvent-dev`.
   Remote: `https://github.com/tomekdot/goaladvent-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.5.2-dev`.
+- Version in `info.toml`: `0.5.3-dev`.
 - Leaderboard points come from `scoreFromBests(bests)`: best 15 of days 1-24
   plus finale. Each day stores `pts` and a one-time bounty flag `b` in `bests`.
   Verified with 3x100 CP submits -> 300 points in `/state`.

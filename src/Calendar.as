@@ -59,8 +59,9 @@ bool IsOffDay(int day) {
     return false;
 }
 
+// Every event-window decision uses the server UTC clock, matching the worker.
 Time::Info Today() {
-    return Time::Parse(Time::Stamp);
+    return Time::ParseUTC();
 }
 
 bool IsPremiereDay(int day) {
@@ -121,8 +122,11 @@ bool FinaleOpen() {
 // day number in its name. Returns 0 outside 1-25 December / finale window.
 int CurrentEventDayUtc() {
     Time::Info now = Time::ParseUTC();
-    if (now.Month == 12 && now.Day >= 1 && now.Day <= DAY_COUNT) return now.Day;
-    if (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS) return DAY_COUNT;
+    if (now.Month == 12) {
+        // 26-31 December are still the finale window.
+        return now.Day >= 1 && now.Day <= DAY_COUNT ? now.Day : DAY_COUNT;
+    }
+    // In January a nameless map cannot be assigned to a specific catch-up day.
     return 0;
 }
 
@@ -217,12 +221,14 @@ void ResetProgress() {
     g_points.Resize(DAY_COUNT);
     g_bountyCp.Resize(DAY_COUNT);
     g_bountyHolder.Resize(DAY_COUNT);
+    g_bountyClaimed.Resize(DAY_COUNT);
     for (int i = 0; i < DAY_COUNT; i++) {
         g_opened[i] = false;
         g_bests[i] = 0;
         g_points[i] = 0;
         g_bountyCp[i] = DEFAULT_BOUNTY_CP;
         g_bountyHolder[i] = "GrinchBot";
+        g_bountyClaimed[i] = false;
     }
     g_badges.Resize(0);
     g_bountiesWon = 0;
@@ -258,6 +264,7 @@ void LoadProgress() {
     LoadArrayInt(root, "bests", g_bests);
     LoadArrayInt(root, "points", g_points);
     LoadArrayInt(root, "bountyCp", g_bountyCp);
+    LoadArrayBool(root, "bountyClaimed", g_bountyClaimed);
 
     if (root.HasKey("bountyHolder")) {
         Json::Value@ arr = root["bountyHolder"];
@@ -285,18 +292,21 @@ void SaveProgress() {
     Json::Value@ points = Json::Array();
     Json::Value@ bountyCp = Json::Array();
     Json::Value@ bountyHolder = Json::Array();
+    Json::Value@ bountyClaimed = Json::Array();
     for (int i = 0; i < DAY_COUNT; i++) {
         opened.Add(g_opened[i]);
         bests.Add(g_bests[i]);
         points.Add(g_points[i]);
         bountyCp.Add(g_bountyCp[i]);
         bountyHolder.Add(g_bountyHolder[i]);
+        bountyClaimed.Add(g_bountyClaimed[i]);
     }
     root["opened"] = opened;
     root["bests"] = bests;
     root["points"] = points;
     root["bountyCp"] = bountyCp;
     root["bountyHolder"] = bountyHolder;
+    root["bountyClaimed"] = bountyClaimed;
 
     Json::Value@ badges = Json::Array();
     for (uint i = 0; i < g_badges.Length; i++) badges.Add(g_badges[i]);

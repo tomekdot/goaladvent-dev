@@ -170,7 +170,7 @@ export default {
         return new Response("Not found", { status: 404 });
       }
       const [players, bounties, events, maps] = await Promise.all([
-        env.DB.prepare("SELECT account_id, name, points, bounties, badges, bests FROM players ORDER BY points DESC LIMIT 20").all(),
+        env.DB.prepare("SELECT account_id, name, points, bounties, badges, bests FROM players ORDER BY points DESC LIMIT 50").all(),
         env.DB.prepare("SELECT day, cp, ms, holder FROM bounties ORDER BY day").all(),
         env.DB.prepare("SELECT msg, created_at FROM events ORDER BY id DESC LIMIT 15").all(),
         env.DB.prepare("SELECT uid, day, first_seen FROM map_days ORDER BY day").all()
@@ -229,7 +229,7 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       }
 
       const top = await env.DB.prepare(
-        "SELECT account_id, name, points, bounties, badges FROM players ORDER BY points DESC LIMIT 20"
+        "SELECT account_id, name, points, bounties, badges FROM players ORDER BY points DESC LIMIT 50"
       ).all();
       const leaderboard = (top.results || []).map((p) => ({
         name: p.name,

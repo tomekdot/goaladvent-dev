@@ -33,7 +33,7 @@ int S_MapDayOverride = 0;
 
 
 
-const string PLUGIN_VERSION = "0.5.2-dev";
+const string PLUGIN_VERSION = "0.5.3-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -76,7 +76,7 @@ string S_ApiBaseUrl = "";
 string S_SharedFolder = "";
 
 [Setting category="Event" name="Event server keyword" description="Part of the event server name or login. Empty = accept any server (testing)."]
-string S_EventServerKeyword = "";
+string S_EventServerKeyword = "pursuit";
 
 // ---------------------------------------------------------------------------
 // Storage
@@ -106,6 +106,7 @@ array<bool> g_opened;
 array<int> g_bests;        // best checkpoint count of the local player
 array<int> g_points;       // points collected per day
 array<int> g_bountyCp;     // current bounty record per day
+array<bool> g_bountyClaimed;  // bounty bonus already granted per day
 array<string> g_bountyHolder;
 array<string> g_badges;
 int g_bountiesWon = 0;
@@ -149,6 +150,7 @@ int g_pendingDay = 0;
 int g_pendingCp = 0;
 bool g_submitPending = false;
 bool g_submitQueued = false;
+int g_submitRetries = 0;
 float g_submitTimer = 0.0f;
 
 // Digits used by the "#N Goal Hunt" name parser.

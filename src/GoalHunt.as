@@ -105,14 +105,18 @@ bool OnEventServer() {
 
 bool IsGoalHuntMapName(const string &in rawName) {
     string name = Text::StripFormatCodes(rawName).ToLower();
-    return name.Contains("goal hunt") || name.Contains("goalhunt") ||
-           name.Contains("goal-hunt") || name.Contains("goal hunt arena");
+    if (name.Contains("goal hunt") || name.Contains("goalhunt") ||
+        name.Contains("goal-hunt")) return true;
+    // Accept the documented short form "GH 7" only as a whole token, so
+    // words like "high" do not match.
+    int p = name.IndexOf("gh ");
+    return p == 0 || (p > 0 && name.SubStr(p - 1, 1) == " ");
 }
 
 int DayDigitsAt(const string &in name, int start) {
     int day = 0;
     int digits = 0;
-    for (int i = start; i < int(name.Length) && digits < 2; i++) {
+    for (int i = start; i < int(name.Length); i++) {
         string ch = name.SubStr(i, 1);
         int value = -1;
         for (uint d = 0; d < g_digits.Length; d++) {
@@ -125,6 +129,8 @@ int DayDigitsAt(const string &in name, int start) {
         day = day * 10 + value;
         digits++;
     }
+    // Read the whole number (no 2-digit truncation) and validate 1-25, so
+    // "Goal Hunt 2026" cannot be mistaken for day 20.
     if (digits == 0 || day < 1 || day > DAY_COUNT) return 0;
     return day;
 }
@@ -140,7 +146,9 @@ int ParseDayFromMapName(const string &in rawName) {
         if (d > 0) return d;
     }
 
-    string[] prefixes = { "day ", "gh ", "arena ", "goal hunt - ", "goal hunt ", "goalhunt ", "goal-hunt " };
+    // Explicit Goal Hunt patterns first; generic "day " / "gh " last.
+    string[] prefixes = { "goal hunt - ", "goal hunt ", "goalhunt ", "goal-hunt ",
+                          "gh ", "day ", "arena " };
     for (uint i = 0; i < prefixes.Length; i++) {
         int pos = name.IndexOf(prefixes[i]);
         if (pos < 0) continue;
@@ -281,18 +289,25 @@ void ClaimBounty(int day, int cp) {
     int idx = day - 1;
     if (cp <= g_bountyCp[idx]) return;
 
+    bool newRecord = cp > g_bountyCp[idx];
     g_bountyCp[idx] = cp;
     g_bountyHolder[idx] = LocalName();
-    int mult = DayMultiplier(day);
-    int points = BOUNTY_POINTS * mult;
-    g_points[idx] += points;
-    g_bountiesWon++;
-    AddBadge("BOUNTY-HUNTER");
+    int points = 0;
+    // The bonus is granted once per day, exactly like the worker's `b` flag.
+    if (newRecord && !g_bountyClaimed[idx]) {
+        g_bountyClaimed[idx] = true;
+        points = BOUNTY_POINTS * DayMultiplier(day);
+        g_points[idx] += points;
+        g_bountiesWon++;
+        AddBadge("BOUNTY-HUNTER");
+    }
 
     string msg = LocalName() + " stole the day " + tostring(day) + " bounty with " +
                  tostring(cp) + " CP";
-    ShowBanner("BOUNTY TAKEN: " + tostring(cp) + " CP, +" + tostring(points) + " pts");
-    PushFeed(msg);
+    if (points > 0) {
+        ShowBanner("BOUNTY TAKEN: " + tostring(cp) + " CP, +" + tostring(points) + " pts");
+        PushFeed(msg);
+    }
     SaveProgress();
 }
 
@@ -378,7 +393,7 @@ void Coroutine_SubmitCp() {
 
     int day = g_pendingDay;
     int cp = g_pendingCp;
-    string mapUid = g_lastMapUid;
+    string mapUid = S_TestMode ? "" : g_lastMapUid;
 
     g_syncing = true;
 
@@ -394,6 +409,7 @@ void Coroutine_SubmitCp() {
     if (req is null) {
         DebugError("submit", "could not create upload request");
         g_syncing = false;
+        QueueSubmitRetry();
         return;
     }
     while (!req.Finished()) yield();
@@ -402,11 +418,29 @@ void Coroutine_SubmitCp() {
     g_syncing = false;
 
     if (code == 200) {
+        g_submitRetries = 0;
         if (cp > g_lastSentCp) g_lastSentCp = cp;
         g_status = "Sent " + tostring(cp) + " CP to the event server.";
         SyncState();
     } else {
-        g_status = "Upload failed (HTTP " + tostring(code) + ").";
+        g_status = "Upload failed (HTTP " + tostring(code) + ") - retrying.";
         DebugError("submit", "HTTP " + tostring(code));
+        QueueSubmitRetry();
     }
+}
+
+// A failed upload must not lose the run: wait a few seconds, then send the
+// still-pending CP again. g_lastSentCp stays unchanged until HTTP 200.
+void QueueSubmitRetry() {
+    if (g_submitQueued || g_submitRetries >= 5) return;
+    g_submitRetries++;
+    g_submitQueued = true;
+    startnew(RetrySubmitLater);
+}
+
+void RetrySubmitLater() {
+    sleep(5000);
+    while (g_syncing) yield();
+    g_submitQueued = false;
+    Coroutine_SubmitCp();
 }

@@ -32,6 +32,29 @@ vec4 TileBg()    { return g_palette.tileBg; }
 vec4 TileSelectedBg() { return g_palette.tileSelectedBg; }
 vec4 IceBlue()   { return g_palette.iceBlue; }
 
+// Countdown shown above the calendar until the event starts (1 December UTC).
+string EventCountdown() {
+    Time::Info now = Time::ParseUTC();
+    if (now.Month == 12) return "";
+    if (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS) return "";
+    int days = 0;
+    if (now.Month == 11) days = 31 - now.Day;
+    else if (now.Month < 11) days = (11 - now.Month) * 30 + (31 - now.Day);
+    if (days <= 0) return "";
+    return "Starts in " + tostring(days) + " days - Dec 1";
+}
+
+// Keep the badges field on one line: show at most three, then a +N counter.
+string BadgeShort() {
+    if (g_badges.Length <= 3) return BadgeSummary();
+    string text = "";
+    for (uint i = 0; i < 3; i++) {
+        if (i > 0) text += ", ";
+        text += g_badges[i];
+    }
+    return text + "  +" + tostring(int(g_badges.Length) - 3);
+}
+
 vec4 Tone(vec4 col) {
     return vec4(col.x * 0.38, col.y * 0.38, col.z * 0.38, 1.00);
 }
@@ -72,13 +95,13 @@ void DrawStatCard(const string &in icon, const string &in label,
     UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(10, 7));
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int flags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
-    if (UI::BeginChild("##stat" + label + icon, vec2(0, 64), UI::ChildFlags::Borders, flags)) {
+    if (UI::BeginChild("##stat" + label + icon, vec2(0, 54), UI::ChildFlags::Borders, flags)) {
         vec2 start = UI::GetCursorPos();
 
         // A button with ButtonTextAlign centres the glyph reliably. Measuring
         // an icon with MeasureString is not dependable across Openplanet fonts.
-        const float boxSize = 36.0f;
-        const float boxTop = 7.0f;   // centre 36 px box in the 50 px content area
+        const float boxSize = 32.0f;
+        const float boxTop = 6.0f;   // centre 32 px box in the 40 px content area
         vec4 boxCol = vec4(accent.x * 0.50f, accent.y * 0.50f, accent.z * 0.50f, 1.00f);
         UI::SetCursorPos(vec2(start.x, start.y + boxTop));
         UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.5f, 0.5f));
@@ -87,18 +110,17 @@ void DrawStatCard(const string &in icon, const string &in label,
         UI::PushStyleColor(UI::Col::ButtonHovered, boxCol);
         UI::PushStyleColor(UI::Col::ButtonActive, boxCol);
         UI::PushStyleColor(UI::Col::Text, accent);
-        UI::PushFontSize(17.0f);
+        UI::PushFontSize(16.0f);
         UI::Button(icon + "##statIcon" + label, vec2(boxSize, boxSize));
         UI::PopFontSize();
         UI::PopStyleColor(4);
         UI::PopStyleVar(2);
 
-        // 14 px clear gap after the box; the two text lines are centred as a
-        // block against the same 50 px content height.
-        float textX = start.x + boxSize + 14.0f;
-        UI::SetCursorPos(vec2(textX, start.y + 9.0f));
+        // Compact gap after the box; both lines fit the 54 px card.
+        float textX = start.x + boxSize + 12.0f;
+        UI::SetCursorPos(vec2(textX, start.y + 7.0f));
         TextTone(TextMuted(), label);
-        UI::SetCursorPos(vec2(textX, start.y + 26.0f));
+        UI::SetCursorPos(vec2(textX, start.y + 23.0f));
         TextTone(TextMain(), value);
     }
     UI::EndChild();
@@ -125,12 +147,13 @@ void PushDashboardStyle() {
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.childBg);
     UI::PushStyleColor(UI::Col::FrameBg, g_palette.innerBg);
     UI::PushStyleColor(UI::Col::Border, g_palette.border);
-    UI::PushStyleColor(UI::Col::TabActive, g_palette.buttonBg);
-    UI::PushStyleColor(UI::Col::TabSelected, g_palette.buttonBg);
-    UI::PushStyleColor(UI::Col::TabHovered, g_palette.buttonHover);
+    vec4 interaction = MixCol(g_palette.buttonHover, g_palette.iceBlue, 0.30f);
+    UI::PushStyleColor(UI::Col::TabActive, MixCol(g_palette.buttonBg, g_palette.iceBlue, 0.20f));
+    UI::PushStyleColor(UI::Col::TabSelected, MixCol(g_palette.buttonBg, g_palette.iceBlue, 0.20f));
+    UI::PushStyleColor(UI::Col::TabHovered, interaction);
     UI::PushStyleColor(UI::Col::TableHeaderBg, g_palette.tableHeaderBg);
     UI::PushStyleColor(UI::Col::Button, g_palette.buttonBg);
-    UI::PushStyleColor(UI::Col::ButtonHovered, g_palette.buttonHover);
+    UI::PushStyleColor(UI::Col::ButtonHovered, interaction);
     UI::PushStyleColor(UI::Col::ButtonActive, g_palette.buttonActive);
     UI::PushStyleColor(UI::Col::Text, g_palette.text);
     UI::PushStyleColor(UI::Col::TextDisabled, TextMuted());
@@ -151,14 +174,14 @@ void RenderTopBar() {
     UI::PushStyleColor(UI::Col::ButtonHovered, Lift(btn));
     UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(btn)));
 
+    // The window title already shows the name; the inner header is only a
+    // subtitle, so it is not repeated twice on screen.
     UI::PushFontSize(16.0f);
     TextTone(IceBlue(), Icons::SnowflakeO);
-    UI::SameLine(0, 8);
-    TextTone(TextMain(), "GoalAdvent 2026");
     UI::PopFontSize();
     UI::SameLine(0, 8);
     UI::PushFontSize(13.0f);
-    UI::TextDisabled("- 25 days of checkpoints, bounties and badges");
+    UI::TextDisabled("25 days of checkpoints, bounties and badges");
     UI::PopFontSize();
 
     // Right-align the three buttons on the SAME row as the title. Deriving the
@@ -233,8 +256,16 @@ void RenderSidebar() {
         SidebarTab(3, Icons::Star, "Grand finale");
         UI::Separator();   // thin divider using the theme border colour
 
-        float remain = UI::GetContentRegionAvail().y - 124.0f;
+        // Mini summary fills the otherwise empty middle of the sidebar.
+        float remain = UI::GetContentRegionAvail().y - 188.0f;
         if (remain > 0) UI::Dummy(vec2(0, remain));
+        UI::TextDisabled("POINTS   " + tostring(TotalPoints()));
+        UI::TextDisabled("BADGES   " + tostring(g_badges.Length));
+        if (g_liveFeed.Length > 0) {
+            string last = Text::StripFormatCodes(g_liveFeed[0]);
+            if (last.Length > 28) last = last.SubStr(0, 28) + "...";
+            UI::TextDisabled("LAST: " + last);
+        }
 
         TextTone(TextMuted(), "PROGRESS   " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT));
         UI::PushStyleColor(UI::Col::FrameBg, g_palette.frameBg);
@@ -320,9 +351,9 @@ string DayTileShort(int day) {
 
 bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
                          const string &in moonLine, vec4 bgCol, vec4 textCol,
-                         vec4 accent, bool isSelected, float tileW, float tileH) {
-    UI::PushStyleVar(UI::StyleVar::FrameBorderSize, isSelected ? 1.5f : 1.0f);
-    UI::PushStyleColor(UI::Col::Border, isSelected ? g_palette.borderStrong : g_palette.borderWeak);
+                         vec4 accent, bool isSelected, bool isToday, float tileW, float tileH) {
+    UI::PushStyleVar(UI::StyleVar::FrameBorderSize, (isSelected || isToday) ? 2.0f : 1.0f);
+    UI::PushStyleColor(UI::Col::Border, (isSelected || isToday) ? IceBlue() : g_palette.borderWeak);
     UI::PushStyleColor(UI::Col::Button, bgCol);
     UI::PushStyleColor(UI::Col::ButtonHovered, Lift(bgCol));
     UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(bgCol)));
@@ -372,28 +403,40 @@ void RenderDayGrid() {
         UI::PopFontSize();
     }
 
-    // Absolute column positions fill the panel edge to edge. SameLine() left a
-    // 20 px unused strip after the fifth column because its spacing stacked
-    // with the fixed 24 px deduction.
+    string countdown = EventCountdown();
+    if (countdown.Length > 0) {
+        UI::PushFontSize(13.0f);
+        TextTone(Gold(), countdown);
+        UI::PopFontSize();
+    }
+
+    // Fill the column height, but keep tiles close to square (max 1.3x wide)
+    // and centre the resulting grid instead of leaving a strip on the right.
     vec2 origin = UI::GetCursorPos();
     vec2 avail = UI::GetContentRegionAvail();
     const float spacing = 6.0f;
-    // Height comes from the column so five rows fill it instead of stopping
-    // halfway down the panel. Clamped so small windows stay readable.
     float tileH = (avail.y - 4.0f * spacing) / 5.0f;
     if (tileH < 60.0f) tileH = 60.0f;
-    if (tileH > 84.0f) tileH = 84.0f;
+    if (tileH > 110.0f) tileH = 110.0f;
     float tileW = (avail.x - 4.0f * spacing) / 5.0f;
     if (tileW < 48.0f) tileW = 48.0f;
+    if (tileW > tileH * 1.3f) tileW = tileH * 1.3f;
+    float gridW = 5.0f * tileW + 4.0f * spacing;
+    float gridX = origin.x + (avail.x - gridW) * 0.5f;
+    int today = CurrentEventDayUtc();
 
     for (int day = 1; day <= DAY_COUNT; day++) {
         int col = (day - 1) % 5;
         int row = (day - 1) / 5;
-        UI::SetCursorPos(vec2(origin.x + col * (tileW + spacing),
+        UI::SetCursorPos(vec2(gridX + col * (tileW + spacing),
                               origin.y + row * (tileH + spacing)));
 
         vec4 textCol = (day == DAY_COUNT || IsPremiereDay(day)) ? Gold() : TextMain();
-        string moonLine = S_ShowMoonPct ? tostring(MoonIlluminationPct(day)) + "%" : "";
+        if (IsOffDay(day) || !DayUnlocked(day)) textCol = MixCol(textCol, TextMuted(), 0.45f);
+        // By default show the percentage only on Pursuit days and the selected
+        // tile; S_ShowMoonPct forces it everywhere. The tooltip always has it.
+        bool showPct = S_ShowMoonPct || IsOffDay(day) || day == g_selectedDay;
+        string moonLine = showPct ? tostring(MoonIlluminationPct(day)) + "%" : "";
         vec4 bg = (day == g_selectedDay) ? TileSelectedBg() : TileBg();
         // A subtle accent wash separates playable / completed days from the
         // locked ones without turning the whole grid into coloured blocks.
@@ -401,7 +444,8 @@ void RenderDayGrid() {
             bg = MixCol(bg, DayAccent(day), 0.15f);
         }
         if (DrawCenteredDayTile(day, DayTileIcon(day), DayTileShort(day), moonLine,
-                                bg, textCol, DayAccent(day), day == g_selectedDay, tileW, tileH)) {
+                                bg, textCol, DayAccent(day), day == g_selectedDay,
+                                day == today && today > 0, tileW, tileH)) {
             g_selectedDay = day;
             g_confirmReset = false;
         }
@@ -423,7 +467,9 @@ void RenderDayDetails() {
 
     bool locked = !IsOffDay(day) && !DayUnlocked(day);
 
+    UI::PushFontSize(16.0f);
     TextTone(TextMain(), "DAY " + tostring(day) + "  -  " + g_titles[day - 1]);
+    UI::PopFontSize();
     string status = "Available";
     vec4 statusCol = Emerald();
     if (locked) {
@@ -468,7 +514,7 @@ void RenderDayDetails() {
         DrawStatCard(Icons::Crosshairs, "BOUNTY RECORD",
                      tostring(g_bountyCp[day - 1]) + " CP  -  " + g_bountyHolder[day - 1], Gold());
         UI::Dummy(vec2(0, 5));
-        DrawStatCard(Icons::Star, "YOUR BADGES", BadgeSummary(), Silver());
+        DrawStatCard(Icons::Star, "YOUR BADGES", BadgeShort(), Silver());
     }
     if (locked) {
         UI::TextDisabled("This gift opens on December " + tostring(day) + ".");
@@ -476,8 +522,6 @@ void RenderDayDetails() {
         UI::TextWrapped(g_hints[day - 1]);
     }
 
-    if (g_confirmReset) TextTone(Crimson(), "Press the trash icon again to reset local progress.");
-    else if (g_status.Length > 0) UI::TextDisabled(g_status);
 }
 
 // Fixed footer of the details panel. It lives outside the scrolling body, so
@@ -487,10 +531,13 @@ void RenderDayAction(int day) {
     bool locked = !IsOffDay(day) && !DayUnlocked(day);
 
     if (locked || IsOffDay(day)) {
-        UI::PushStyleColor(UI::Col::Button, g_palette.buttonBg);
-        UI::PushStyleColor(UI::Col::Text, TextMuted());
+        // Clearly disabled: no hover, low contrast, no CTA styling.
+        UI::BeginDisabled(true);
+        UI::PushStyleColor(UI::Col::Button, MixCol(g_palette.buttonBg, g_palette.text, 0.04f));
+        UI::PushStyleColor(UI::Col::Text, MixCol(TextMuted(), g_palette.text, 0.20f));
         UI::Button(locked ? "AVAILABLE DEC " + tostring(day) : "Pursuit Night - No Race", vec2(-1, rowH));
         UI::PopStyleColor(2);
+        UI::EndDisabled();
         return;
     }
 
@@ -647,7 +694,11 @@ void RenderLeaderboardTab() {
         return;
     }
 
-    int flags = UI::TableFlags::RowBg | UI::TableFlags::BordersInnerH | UI::TableFlags::PadOuterX;
+    // No BordersInnerH: its default ImGui border is blue. Neutral stone rows
+    // keep the scoreboard matte and readable in both themes.
+    int flags = UI::TableFlags::RowBg | UI::TableFlags::PadOuterX;
+    UI::PushStyleColor(UI::Col::TableRowBg, vec4(0.10, 0.10, 0.11, 0.55));
+    UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     if (UI::BeginTable("##goaladventBoardTable", 4, flags)) {
         UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 42);
         UI::TableSetupColumn("Player", UI::TableColumnFlags::WidthStretch);
@@ -683,6 +734,7 @@ void RenderLeaderboardTab() {
         }
         UI::EndTable();
     }
+    UI::PopStyleColor(2);
     UI::BeginDisabled(g_syncing);
     if (UI::Button(Icons::Refresh + " Refresh leaderboard")) SyncNow();
     UI::EndDisabled();
@@ -697,7 +749,10 @@ void RenderFeedTab() {
         UI::EndDisabled();
         return;
     }
-    int flags = UI::TableFlags::RowBg | UI::TableFlags::BordersInnerH | UI::TableFlags::PadOuterX;
+    // Neutral stone rows, no blue ImGui borders.
+    int flags = UI::TableFlags::RowBg | UI::TableFlags::PadOuterX;
+    UI::PushStyleColor(UI::Col::TableRowBg, vec4(0.10, 0.10, 0.11, 0.55));
+    UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     if (UI::BeginTable("##goaladventFeedTable", 2, flags)) {
         UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 42);
         UI::TableSetupColumn("Event", UI::TableColumnFlags::WidthStretch);
@@ -717,6 +772,7 @@ void RenderFeedTab() {
         }
         UI::EndTable();
     }
+    UI::PopStyleColor(2);
     UI::BeginDisabled(g_syncing);
     if (UI::Button(Icons::Refresh + " Refresh feed")) SyncNow();
     UI::EndDisabled();
@@ -732,7 +788,7 @@ void RenderFinaleTab() {
     UI::Dummy(vec2(0, 8));
     DrawStatCard(Icons::Trophy, "RESULT", "Score (best 15) " + tostring(TotalPoints()), Gold());
     UI::Dummy(vec2(0, 5));
-    DrawStatCard(Icons::Crosshairs, "BOUNTIES", tostring(g_bountiesWon) + "   Badges: " + BadgeSummary(), Emerald());
+    DrawStatCard(Icons::Crosshairs, "BOUNTIES", tostring(g_bountiesWon) + "   Badges: " + BadgeShort(), Emerald());
     if (OpenedCount() < DAY_COUNT) {
         UI::TextDisabled("Not every gift was opened - the raffle ticket needs 25/25.");
     } else {
@@ -772,8 +828,8 @@ void RenderFooter() {
     UI::PushFontSize(14.0f);
     TextTone(linkCol, Icons::Circle + "  " + link);
     UI::SameLine(0, 0);
-    string right = "DAY " + tostring(g_selectedDay) + "/25   BEST 15: " +
-                   tostring(ScoreDays()) + " PTS   " +
+    string right = "DAY " + tostring(g_selectedDay) + "/25   TOTAL: " +
+                   tostring(TotalPoints()) + " PTS   " +
                    tostring(OpenedCount()) + "/25 GIFTS";
     float w = UI::MeasureString(right, null, 14.0f, 0.0f).x + 8.0f;
     if (w < 1.0f) w = 320.0f;

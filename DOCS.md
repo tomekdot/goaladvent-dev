@@ -14,7 +14,7 @@ overview see [README.md](README.md); for deployment commands see
 | Folder / repo / package id | `goaladvent-dev` |
 | GitHub | https://github.com/tomekdot/goaladvent-dev |
 | Default branch | `main` |
-| Release tag pattern | `v*` (for example `v0.5.2-dev`) |
+| Release tag pattern | `v*` (for example `v0.5.3-dev`) |
 | Version source | `info.toml` and `PLUGIN_VERSION` in `src/Config.as` |
 | Target game | ManiaPlanet 4 (MP4), Openplanet 1.29.14 |
 | Language | AngelScript + ImGui; all code, comments, UI strings and docs in English |
@@ -114,7 +114,7 @@ Checkpoint count comes from
 
 `ScoreDays()` sorts completed days 1-24 by earned points, takes the top 15 and
 sums them. `TotalPoints()` adds the finale. The worker does the same in
-`scoreFromBests(bests)` so `BEST 15` in the footer equals the leaderboard.
+`scoreFromBests(bests)` so `TOTAL` in the footer equals the leaderboard.
 
 Each day stores `{ cp, ms, pts, b }` in the player's `bests` JSON:
 `pts` is the earned day score, `b` marks that the bounty bonus was already
@@ -264,7 +264,7 @@ clipboard, Log state to Openplanet.log, Run sync now, Clear errors.
 | Auto sync | on | Refresh every 20 s |
 | Sync mode | 0 stored / 2 effective | Offline / folder / worker |
 | Worker URL | baked in | Cloudflare base URL |
-| Event server keyword | empty | Anti-cheat server filter |
+| Event server keyword | pursuit | Anti-cheat server filter |
 | Map UID to day | empty | `UID=day` pairs |
 | Force current map as day | 0 | 1-25 override for testing |
 | Debug overlay | off | Admin diagnostics |
@@ -304,7 +304,7 @@ Get-Content C:\Users\tomekdot\Openplanet4\Openplanet.log -Tail 400 |
 | CP not submitted | Fixed by `SubmitWhenFree()` queue and `g_lastSentCp` on success |
 | Raw `$fff` in feed | Fixed by MP colour parser |
 | Footer shows huge `syncAge` | Fixed: prints `never` when no sync yet |
-| Leaderboard differs from BEST 15 | Fixed by `scoreFromBests()` and legacy migration |
+| Leaderboard differs from TOTAL | Fixed by `scoreFromBests()` and legacy migration |
 
 ---
 
