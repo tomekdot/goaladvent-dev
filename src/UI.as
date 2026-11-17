@@ -1,30 +1,30 @@
-// goalmas 2026 - Obsidian / Carbon Minimal ImGui layer.
+// goalmas 2026 - one ImGui layout, two colour themes.
 // Only APIs verified against OpenplanetCore.json (1.29.14) are used.
-// Game state, persistence and sync live in the other .as files.
+// Theme.as owns every colour and radius; these wrappers read the active one.
 
 bool g_confirmReset = false;
 int g_activeTab = 0;   // 0 Calendar, 1 Leaderboard, 2 Live feed, 3 Grand finale
 bool g_windowSizeApplied = false;
 
 // ---------------------------------------------------------------------------
-// Carbon palette - monochrome base, surgical accents only
+// Palette accessors - the layout calls these, never hard-coded colours
 // ---------------------------------------------------------------------------
-vec4 Gold()      { return vec4(0.93, 0.82, 0.55, 1.00); }
-vec4 Emerald()   { return vec4(0.36, 0.78, 0.52, 1.00); }
-vec4 Crimson()   { return vec4(0.78, 0.32, 0.34, 1.00); }
-vec4 Purple()    { return vec4(0.66, 0.60, 0.88, 1.00); }
-vec4 Navy()      { return vec4(0.20, 0.24, 0.32, 1.00); }
-vec4 CardBg()    { return vec4(0.082, 0.082, 0.102, 1.00); }
-vec4 InnerBg()   { return vec4(0.105, 0.105, 0.130, 1.00); }
-vec4 Silver()    { return vec4(0.72, 0.74, 0.78, 1.00); }
-vec4 Bronze()    { return vec4(0.62, 0.50, 0.38, 1.00); }
-vec4 Teal()      { return vec4(0.45, 0.62, 0.70, 1.00); }
-vec4 DimNavy()   { return vec4(0.095, 0.095, 0.12, 1.00); }
-vec4 TextMain()  { return vec4(0.92, 0.92, 0.95, 1.00); }
-vec4 TextMuted() { return vec4(0.55, 0.55, 0.62, 1.00); }
-vec4 TileBg()    { return vec4(0.095, 0.095, 0.12, 1.00); }
-vec4 TileSelectedBg() { return vec4(0.14, 0.14, 0.18, 1.00); }
-vec4 IceBlue()   { return vec4(0.92, 0.93, 0.96, 1.00); }
+vec4 Gold()      { return g_palette.gold; }
+vec4 Emerald()   { return g_palette.emerald; }
+vec4 Crimson()   { return g_palette.crimson; }
+vec4 Purple()    { return g_palette.purple; }
+vec4 Navy()      { return g_palette.navy; }
+vec4 CardBg()    { return g_palette.childBg; }
+vec4 InnerBg()   { return g_palette.innerBg; }
+vec4 Silver()    { return g_palette.silver; }
+vec4 Bronze()    { return g_palette.bronze; }
+vec4 Teal()      { return g_palette.teal; }
+vec4 DimNavy()   { return g_palette.dimNavy; }
+vec4 TextMain()  { return g_palette.text; }
+vec4 TextMuted() { return g_palette.textMuted; }
+vec4 TileBg()    { return g_palette.tileBg; }
+vec4 TileSelectedBg() { return g_palette.tileSelectedBg; }
+vec4 IceBlue()   { return g_palette.iceBlue; }
 
 vec4 Tone(vec4 col) {
     return vec4(col.x * 0.38, col.y * 0.38, col.z * 0.38, 1.00);
@@ -50,7 +50,7 @@ void DrawSectionHeader(const string &in title) {
     vec2 p = UI::GetCursorScreenPos();
     UI::GetWindowDrawList().AddRectFilled(
         vec4(p.x, p.y + 2.0f, 3.0f, 13.0f),
-        vec4(0.88, 0.88, 0.92, 1.00));
+        g_palette.iceBlue);
     UI::Dummy(vec2(12, 0));
     UI::SameLine(0, 0);
     TextTone(TextMuted(), title);
@@ -102,27 +102,27 @@ void PushDashboardStyle() {
     UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(12, 10));
     UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(8, 5));
     UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(8, 4));
-    UI::PushStyleVar(UI::StyleVar::WindowRounding, 6.0f);
-    UI::PushStyleVar(UI::StyleVar::ChildRounding, 5.0f);
-    UI::PushStyleVar(UI::StyleVar::FrameRounding, 4.0f);
-    UI::PushStyleVar(UI::StyleVar::GrabRounding, 4.0f);
-    UI::PushStyleVar(UI::StyleVar::TabRounding, 4.0f);
+    UI::PushStyleVar(UI::StyleVar::WindowRounding, g_palette.windowRounding);
+    UI::PushStyleVar(UI::StyleVar::ChildRounding, g_palette.childRounding);
+    UI::PushStyleVar(UI::StyleVar::FrameRounding, g_palette.frameRounding);
+    UI::PushStyleVar(UI::StyleVar::GrabRounding, g_palette.frameRounding);
+    UI::PushStyleVar(UI::StyleVar::TabRounding, g_palette.tabRounding);
     UI::PushStyleVar(UI::StyleVar::ChildBorderSize, 1.0f);
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, 1.0f);
 
-    UI::PushStyleColor(UI::Col::WindowBg, vec4(0.055, 0.055, 0.067, 0.98));
-    UI::PushStyleColor(UI::Col::ChildBg, CardBg());
-    UI::PushStyleColor(UI::Col::FrameBg, InnerBg());
-    UI::PushStyleColor(UI::Col::Border, vec4(0.16, 0.16, 0.20, 1.00));
-    UI::PushStyleColor(UI::Col::TabActive, vec4(0.13, 0.13, 0.16, 1.00));
-    UI::PushStyleColor(UI::Col::TabSelected, vec4(0.13, 0.13, 0.16, 1.00));
-    UI::PushStyleColor(UI::Col::TabHovered, vec4(0.17, 0.17, 0.21, 1.00));
-    UI::PushStyleColor(UI::Col::TableHeaderBg, InnerBg());
-    UI::PushStyleColor(UI::Col::Button, vec4(0.11, 0.11, 0.14, 1.00));
-    UI::PushStyleColor(UI::Col::ButtonHovered, vec4(0.17, 0.17, 0.21, 1.00));
-    UI::PushStyleColor(UI::Col::ButtonActive, vec4(0.21, 0.21, 0.26, 1.00));
-    UI::PushStyleColor(UI::Col::Text, TextMain());
-    UI::PushStyleColor(UI::Col::TextDisabled, TextMuted());
+    UI::PushStyleColor(UI::Col::WindowBg, g_palette.windowBg);
+    UI::PushStyleColor(UI::Col::ChildBg, g_palette.childBg);
+    UI::PushStyleColor(UI::Col::FrameBg, g_palette.innerBg);
+    UI::PushStyleColor(UI::Col::Border, g_palette.border);
+    UI::PushStyleColor(UI::Col::TabActive, g_palette.buttonBg);
+    UI::PushStyleColor(UI::Col::TabSelected, g_palette.buttonBg);
+    UI::PushStyleColor(UI::Col::TabHovered, g_palette.buttonHover);
+    UI::PushStyleColor(UI::Col::TableHeaderBg, g_palette.tableHeaderBg);
+    UI::PushStyleColor(UI::Col::Button, g_palette.buttonBg);
+    UI::PushStyleColor(UI::Col::ButtonHovered, g_palette.buttonHover);
+    UI::PushStyleColor(UI::Col::ButtonActive, g_palette.buttonActive);
+    UI::PushStyleColor(UI::Col::Text, g_palette.text);
+    UI::PushStyleColor(UI::Col::TextDisabled, g_palette.textMuted);
 }
 
 void PopDashboardStyle() {
@@ -152,7 +152,7 @@ void RenderTopBar() {
     }
     UI::SetItemTooltip("Save progress to this PC.");
     UI::SameLine(0, 10);
-    UI::PushStyleColor(UI::Col::ButtonHovered, vec4(0.38, 0.12, 0.14, 1.00));
+    UI::PushStyleColor(UI::Col::ButtonHovered, Crimson());
     if (UI::Button(Icons::Trash, vec2(28, 24))) {
         if (g_confirmReset) {
             ResetProgress();
@@ -177,12 +177,12 @@ void RenderTopBar() {
 // ---------------------------------------------------------------------------
 void SidebarTab(int id, const string &in icon, const string &in label) {
     bool active = (g_activeTab == id);
-    UI::PushStyleColor(UI::Col::Button, active ? vec4(0.13, 0.13, 0.16, 1.00) : vec4(0, 0, 0, 0));
-    UI::PushStyleColor(UI::Col::ButtonHovered, vec4(0.15, 0.15, 0.19, 1.00));
-    UI::PushStyleColor(UI::Col::ButtonActive, vec4(0.19, 0.19, 0.23, 1.00));
+    UI::PushStyleColor(UI::Col::Button, active ? g_palette.buttonBg : vec4(0, 0, 0, 0));
+    UI::PushStyleColor(UI::Col::ButtonHovered, g_palette.buttonHover);
+    UI::PushStyleColor(UI::Col::ButtonActive, g_palette.buttonActive);
     UI::PushStyleColor(UI::Col::Text, active ? TextMain() : TextMuted());
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, active ? 1.0f : 0.0f);
-    UI::PushStyleColor(UI::Col::Border, active ? vec4(0.30, 0.30, 0.36, 1.00) : vec4(0, 0, 0, 0));
+    UI::PushStyleColor(UI::Col::Border, active ? g_palette.borderStrong : vec4(0, 0, 0, 0));
     // Left-aligned menu: icons and labels start at the same x on every row.
     UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.0f, 0.5f));
     UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(12.0f, 4.0f));
@@ -208,8 +208,8 @@ void RenderSidebar() {
         if (remain > 0) UI::Dummy(vec2(0, remain));
 
         TextTone(TextMuted(), "PROGRESS   " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT));
-        UI::PushStyleColor(UI::Col::FrameBg, vec4(0.13, 0.13, 0.16, 1.00));
-        UI::PushStyleColor(UI::Col::PlotHistogram, vec4(0.90, 0.90, 0.94, 1.00));
+        UI::PushStyleColor(UI::Col::FrameBg, g_palette.frameBg);
+        UI::PushStyleColor(UI::Col::PlotHistogram, g_palette.text);
         UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 4), "");
         UI::PopStyleColor(2);
         UI::Dummy(vec2(0, 6));
@@ -237,7 +237,7 @@ vec4 DayAccent(int day) {
     if (IsPremiereDay(day)) return Crimson();
     if (g_opened[day - 1]) return Emerald();
     if (DayPlayableNow(day)) return Teal();
-    return vec4(0.30, 0.30, 0.36, 1.00);
+    return g_palette.textMuted;
 }
 
 string DayTileIcon(int day) {
@@ -251,7 +251,11 @@ string DayTileIcon(int day) {
 
 vec4 MoonTint(int pct) {
     float t = float(pct) / 100.0f;
-    return vec4(0.42 + 0.50 * t, 0.44 + 0.46 * t, 0.52 + 0.38 * t, 1.00);
+    vec4 a = g_palette.purple;      // new moon
+    vec4 b = g_palette.iceBlue;     // full moon
+    return vec4(a.x + (b.x - a.x) * t,
+                a.y + (b.y - a.y) * t,
+                a.z + (b.z - a.z) * t, 1.00);
 }
 
 string OffDaysText() {
@@ -278,7 +282,7 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
                          const string &in moonLine, vec4 bgCol, vec4 textCol,
                          vec4 accent, bool isSelected, float tileW) {
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, isSelected ? 1.5f : 1.0f);
-    UI::PushStyleColor(UI::Col::Border, isSelected ? IceBlue() : vec4(0.16, 0.16, 0.20, 1.00));
+    UI::PushStyleColor(UI::Col::Border, isSelected ? g_palette.borderStrong : g_palette.borderWeak);
     UI::PushStyleColor(UI::Col::Button, bgCol);
     UI::PushStyleColor(UI::Col::ButtonHovered, Lift(bgCol));
     UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(bgCol)));
@@ -332,7 +336,7 @@ void RenderDayGrid() {
                               origin.y + row * (tileH + spacing)));
 
         vec4 textCol = (day == DAY_COUNT || IsPremiereDay(day)) ? Gold() : TextMain();
-        string moonLine = tostring(MoonIlluminationPct(day)) + "%";
+        string moonLine = S_ShowMoonPct ? tostring(MoonIlluminationPct(day)) + "%" : "";
         vec4 bg = (day == g_selectedDay) ? TileSelectedBg() : TileBg();
         if (DrawCenteredDayTile(day, DayTileIcon(day), DayTileShort(day), moonLine,
                                 bg, textCol, DayAccent(day), day == g_selectedDay, tileW)) {
@@ -412,7 +416,7 @@ void RenderDayDetails() {
     if (targetY > curY) UI::SetCursorPosY(targetY);
 
     if (locked || IsOffDay(day)) {
-        UI::PushStyleColor(UI::Col::Button, vec4(0.11, 0.11, 0.14, 1.00));
+        UI::PushStyleColor(UI::Col::Button, g_palette.buttonBg);
         UI::PushStyleColor(UI::Col::Text, TextMuted());
         UI::Button(locked ? "AVAILABLE DEC " + tostring(day) : "Pursuit Night - No Race", vec2(-1, rowH));
         UI::PopStyleColor(2);
@@ -581,7 +585,7 @@ void RenderFooter() {
 }
 
 void RenderWorkspace() {
-    UI::PushStyleColor(UI::Col::ChildBg, vec4(0.055, 0.055, 0.067, 1.00));
+    UI::PushStyleColor(UI::Col::ChildBg, g_palette.windowBg);
     if (UI::BeginChild("##goalmasWorkspace", vec2(0, -36), UI::ChildFlags::Borders)) {
         if (g_activeTab == 0) RenderCalendarTab();
         else if (g_activeTab == 1) RenderLeaderboardTab();
@@ -606,8 +610,8 @@ void RenderSettingsWindow() {
     if (UI::RadioButton("Obsidian Minimal", g_Theme == UiTheme::ObsidianMinimal)) {
         g_Theme = UiTheme::ObsidianMinimal;
     }
-    if (UI::RadioButton("Pursuit Native", g_Theme == UiTheme::PursuitNative)) {
-        g_Theme = UiTheme::PursuitNative;
+    if (UI::RadioButton("Pursuit Match (Glass)", g_Theme == UiTheme::PursuitMatch)) {
+        g_Theme = UiTheme::PursuitMatch;
     }
     UI::TextDisabled("Switch themes live - no game restart needed.");
 
@@ -624,11 +628,7 @@ void RenderSettingsWindow() {
 }
 
 void RenderDashboard() {
-    if (PursuitTheme()) {
-        RenderPursuitDashboard();
-        RenderSettingsWindow();
-        return;
-    }
+    RefreshPalette();   // one layout, colours chosen by the active theme
 
     // Apply once per plugin load: the saved ImGui size can be taller than a
     // 1024x768 game window and leave the footer off-screen.
@@ -664,7 +664,7 @@ void RenderBanner() {
     int flags = UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize |
                 UI::WindowFlags::AlwaysAutoResize | UI::WindowFlags::NoMove |
                 UI::WindowFlags::NoInputs;
-    UI::PushStyleColor(UI::Col::WindowBg, vec4(0.08, 0.08, 0.10, 0.94));
+    UI::PushStyleColor(UI::Col::WindowBg, g_palette.windowBg);
     if (UI::Begin("##goalmasBanner", flags)) {
         TextTone(Gold(), Icons::SnowflakeO + "  " + g_bannerText);
     }
@@ -677,7 +677,7 @@ void RenderGoalHuntHud() {
     int day = g_activeDay;
     UI::SetNextWindowPos(20, 120, UI::Cond::FirstUseEver);
     int flags = UI::WindowFlags::NoTitleBar | UI::WindowFlags::AlwaysAutoResize;
-    UI::PushStyleColor(UI::Col::WindowBg, vec4(0.055, 0.055, 0.067, 0.90));
+    UI::PushStyleColor(UI::Col::WindowBg, g_palette.windowBg);
     if (UI::Begin("##goalmasGoalHuntHud", flags)) {
         TextTone(TextMain(), Icons::FlagCheckered + " #" + tostring(day) + " GOAL HUNT");
         if (IsPremiereDay(day)) TextTone(Gold(), "PREMIERE - x2 points");

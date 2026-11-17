@@ -51,6 +51,7 @@ void Update(float dt) {
 }
 
 void Render() {
+    RefreshPalette();   // overlays use the same theme colours as the dashboard
     RenderBanner();
     RenderGoalHuntHud();
 }

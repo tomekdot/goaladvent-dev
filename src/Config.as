@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 // Appearance
 // ---------------------------------------------------------------------------
-enum UiTheme { ObsidianMinimal, PursuitNative }
+enum UiTheme { ObsidianMinimal, PursuitMatch }
 
 [Setting category="Appearance" name="UI Theme"]
 UiTheme g_Theme = UiTheme::ObsidianMinimal;
@@ -17,7 +17,7 @@ bool S_ShowMoonPct = true;
 [Setting category="Sync" name="Auto sync"]
 bool S_AutoSync = true;
 
-bool PursuitTheme() { return g_Theme == UiTheme::PursuitNative; }
+bool PursuitTheme() { return g_Theme == UiTheme::PursuitMatch; }
 
 // ---------------------------------------------------------------------------
 // Tuning

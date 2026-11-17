@@ -49,13 +49,13 @@ Nothing is visible at startup; the calendar only opens when you select it.
 
 ## Themes
 
-Two visual styles share the same data and switch live, with no game restart:
+The layout is identical in both themes - only colours, transparency and corner
+radius change. Switching is live, with no game restart:
 
-- **Obsidian Minimal** (default): compact carbon dashboard with a left sidebar,
-  round stat cards and a 5x5 tile grid.
-- **Pursuit Native**: translucent scoreboard inspired by the Pursuit mode in
-  ManiaPlanet - sharp 0 px corners, white column headers, alternating rows,
-  gold stars and a bottom `TOTAL POINTS` bar.
+- **Obsidian Minimal** (default): matte carbon palette, 4-6 px rounding.
+- **Pursuit Match (Glass)**: translucent slate glass, 0 px corners, white
+  semi-transparent borders and the Pursuit HUD accents (gold leader star,
+  blue Pursuit night, green completed).
 
 Switch with the cog button in the plugin window, the `Settings` item in the
 plugin menu, or the `UI Theme` setting in Openplanet -> Settings -> Plugins.
@@ -88,8 +88,8 @@ are ignored.
 | `src/Calendar.as` | 25 day titles/hints/fragments, dates, badges, scoring, JSON save |
 | `src/GoalHunt.as` | Player identity, map detection, checkpoint counting, rewards, upload |
 | `src/Sync.as` | Banner/feed, shared-folder and HTTP transports, `/state` parsing |
-| `src/UI.as` | Obsidian dashboard, tabs, calendar grid, HUD, banner, settings window |
-| `src/UI_Pursuit.as` | Pursuit Native scoreboard theme and its style helper |
+| `src/UI.as` | Single dashboard layout, tabs, calendar grid, HUD, banner, settings |
+| `src/Theme.as` | `ThemePalette` - both colour schemes and their corner radii |
 | `src/Main.as` | Entry points (`Main`, `Update`, `Render`, `RenderInterface`, `RenderMenu`) |
 | `backend/worker.js` | Cloudflare Worker + D1 backend: `/state` and `/submit` |
 | `backend/schema.sql` | D1 tables |
