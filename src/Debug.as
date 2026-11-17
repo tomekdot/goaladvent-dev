@@ -18,7 +18,7 @@ string DebugStateLine() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    return "version=0.4.8-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    return "version=0.4.9-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
            " localDate=" + localDate +
            " eventSeason=" + tostring(eventSeason) +
            " errors=" + tostring(g_debugErrors.Length) +

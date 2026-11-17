@@ -585,13 +585,13 @@ vec4 MpColour(const string &in hex) {
                 float(MpHexDigit(hex, 2)) / 15.0f, 1.0f);
 }
 
-void DrawMpSpan(const string &in text, const vec4 &in colour, bool &inout first) {
-    if (text.Length == 0) return;
+bool DrawMpSpan(const string &in text, const vec4 &in colour, bool first) {
+    if (text.Length == 0) return first;
     if (!first) UI::SameLine(0, 0);
     UI::PushStyleColor(UI::Col::Text, colour);
     UI::Text(text);
     UI::PopStyleColor();
-    first = false;
+    return false;
 }
 
 void DrawMpName(const string &in raw, const vec4 &in fallback) {
@@ -603,11 +603,11 @@ void DrawMpName(const string &in raw, const vec4 &in fallback) {
         if (raw.SubStr(i, 1) != "$") {
             int start = i;
             while (i < len && raw.SubStr(i, 1) != "$") i++;
-            DrawMpSpan(raw.SubStr(start, i - start), colour, first);
+            first = DrawMpSpan(raw.SubStr(start, i - start), colour, first);
             continue;
         }
         if (i + 1 < len && raw.SubStr(i + 1, 1) == "$") {
-            DrawMpSpan("$", colour, first);
+            first = DrawMpSpan("$", colour, first);
             i += 2;
             continue;
         }
