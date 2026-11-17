@@ -3,39 +3,41 @@
 // ---------------------------------------------------------------------------
 // Content
 // ---------------------------------------------------------------------------
+// Rest-day labels are aligned with g_offDays = { 1, 8, 15, 22 }. An earlier
+// version shifted them by two days, so day 3 wrongly showed "Rest Day I".
 array<string> g_titles = {
-    "First Snow", "The Old Garage", "Rest Day I", "Warm Cocoa", "Night Drive",
-    "Frozen Circuit", "Hidden Checkpoint", "Snowman Crew", "Golden Turbo", "Rest Day II",
-    "Winter Radio", "Lantern Trail", "Gift Wrap", "Starlight Lap", "Reindeer Shortcut",
-    "Candlelight Run", "Rest Day III", "Frostbite Drift", "A Little Help", "Silver Bell",
-    "Midnight Map", "Snowball Fight", "The Long Way Home", "Rest Day IV", "THE BIG FINALE"
+    "Rest Day I", "First Snow", "The Old Garage", "Warm Cocoa", "Night Drive",
+    "Frozen Circuit", "Hidden Checkpoint", "Rest Day II", "Snowman Crew", "Golden Turbo",
+    "Winter Radio", "Lantern Trail", "Gift Wrap", "Starlight Lap", "Rest Day III",
+    "Reindeer Shortcut", "Candlelight Run", "Frostbite Drift", "A Little Help", "Silver Bell",
+    "Midnight Map", "Rest Day IV", "Snowball Fight", "The Long Way Home", "THE BIG FINALE"
 };
 
 array<string> g_hints = {
+    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
     "Collect the goals near the spawn, then look up.",
     "Someone left the garage door open - drive through it.",
-    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
     "The warm line is never the direct line.",
     "The dark route holds two extra goals.",
     "Ice changes the racing line - brake early.",
     "One goal is not visible on the minimap.",
+    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
     "Three snowmen point at the hidden goals.",
     "The boost pad is brighter than it looks.",
-    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
     "Turn the radio on and follow the beat.",
     "Follow the lanterns, not the road.",
     "Some goals are wrapped - bump them open.",
     "Count the stars above the finish line.",
+    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
     "There is a shortcut only reindeer use.",
     "Slow down to see the last two goals.",
-    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
     "Drift on the cold side of the road.",
     "A friend is waiting on the roof.",
     "Listen for the bell before the last goal.",
     "The map changes after midnight.",
+    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
     "Aim at the biggest snowball.",
     "The shortcut is the long way around.",
-    "Rest day - no Goal Hunt, Pursuit on ManiaPlanet instead.",
     "Bring all 24 fragments together and chase every goal."
 };
 

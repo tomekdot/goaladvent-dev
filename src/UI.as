@@ -45,12 +45,13 @@ void DrawDot(vec2 pos, float radius, vec4 col) {
 }
 
 // Short white rule before an UPPERCASE section title.
+// Openplanet's AddRectFilled takes (x, y, width, height) - NOT (x1, y1, x2, y2).
 void DrawSectionHeader(const string &in title) {
     vec2 p = UI::GetCursorScreenPos();
     UI::GetWindowDrawList().AddRectFilled(
-        vec4(p.x, p.y + 1.0f, p.x + 2.0f, p.y + 13.0f),
+        vec4(p.x, p.y + 2.0f, 3.0f, 13.0f),
         vec4(0.88, 0.88, 0.92, 1.00));
-    UI::Dummy(vec2(9, 0));
+    UI::Dummy(vec2(12, 0));
     UI::SameLine(0, 0);
     TextTone(TextMuted(), title);
     UI::Dummy(vec2(0, 5));
@@ -60,18 +61,29 @@ void DrawSectionHeader(const string &in title) {
 void DrawStatCard(const string &in icon, const string &in label,
                   const string &in value, vec4 accent) {
     UI::PushStyleColor(UI::Col::ChildBg, InnerBg());
-    if (UI::BeginChild("##stat" + label + icon, vec2(0, 54), UI::ChildFlags::Borders)) {
+    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(10, 7));
+    UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
+    int flags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
+    if (UI::BeginChild("##stat" + label + icon, vec2(0, 64), UI::ChildFlags::Borders, flags)) {
         vec2 p = UI::GetCursorScreenPos();
-        UI::GetWindowDrawList().AddRectFilled(vec4(p.x, p.y, p.x + 34, p.y + 34), Tone(accent));
+        UI::GetWindowDrawList().AddRectFilled(vec4(p.x, p.y, 34.0f, 34.0f), Tone(accent), 3.0f);
+
+        // Centre the glyph inside the 34x34 box, then share the line with the
+        // two text lines to the right. Nothing stacks under the icon box.
+        float startX = UI::GetCursorPos().x;
+        float iconW = UI::MeasureString(icon, null, 17.0f).x;
+        if (iconW < 34.0f) UI::SetCursorPosX(startX + (34.0f - iconW) * 0.5f);
         UI::PushFontSize(17.0f);
         TextTone(accent, icon);
         UI::PopFontSize();
-        UI::Dummy(vec2(34, 0));
-        UI::SameLine(0, 8);
+
+        UI::SameLine(44.0f, 0.0f);
         TextTone(TextMuted(), label);
+        UI::SetCursorPosX(44.0f);
         TextTone(TextMain(), value);
     }
     UI::EndChild();
+    UI::PopStyleVar(2);
     UI::PopStyleColor();
 }
 
@@ -115,9 +127,11 @@ void PopDashboardStyle() {
 // ---------------------------------------------------------------------------
 void RenderTopBar() {
     TextTone(TextMain(), Icons::SnowflakeO + "  Goalmas 2026");
-    float gap = UI::GetContentRegionAvail().x - 108.0f;
-    if (gap > 6.0f) UI::Dummy(vec2(gap, 0));
+
+    // Title and the three small buttons share ONE row. SameLine first, then an
+    // absolute X on that row, otherwise ImGui drops the buttons to a new line.
     UI::SameLine(0, 0);
+    UI::SetCursorPosX(UI::GetWindowSize().x - 106.0f);
 
     UI::BeginDisabled(g_syncing);
     if (UI::Button(Icons::Refresh, vec2(28, 24))) SyncNow();
@@ -165,7 +179,7 @@ void SidebarTab(int id, const string &in icon, const string &in label) {
 
 void RenderSidebar() {
     UI::PushStyleColor(UI::Col::ChildBg, CardBg());
-    if (UI::BeginChild("##GoalmasSidebar", vec2(175, -30), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##GoalmasSidebar", vec2(175, -36), UI::ChildFlags::Borders)) {
         SidebarTab(0, Icons::Calendar, "Calendar");
         SidebarTab(1, Icons::Trophy, "Leaderboard");
         SidebarTab(2, Icons::Rss, "Live feed");
@@ -226,12 +240,15 @@ string OffDaysText() {
     return text;
 }
 
-string DayTileStatus(int day) {
-    if (g_opened[day - 1]) return "DONE";
-    if (IsOffDay(day)) return "MP";
-    if (IsPremiereDay(day)) return "x2";
-    if (DayPlayableNow(day)) return "OPEN";
-    return "WAIT";
+// Short status keeps the tile centred; no repeated "WAIT" on 20 tiles.
+string DayTileShort(int day) {
+    string num = day < 10 ? "0" + tostring(day) : tostring(day);
+    if (day == DAY_COUNT) return num + " FIN";
+    if (IsOffDay(day)) return num + " MP";
+    if (IsPremiereDay(day)) return num + " x2";
+    if (g_opened[day - 1]) return num + " OK";
+    if (DayPlayableNow(day)) return num + " GO";
+    return num;   // locked: the number alone is enough
 }
 
 bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
@@ -246,10 +263,16 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
     UI::PushStyleColor(UI::Col::Text, textCol);
     UI::PushFontSize(13.0f);
 
-    string caption = icon + "\n" + label + "  " + moonLine + "##goalmastile" + tostring(day);
-    bool clicked = UI::Button(caption, vec2(tileW, 52));
+    string caption = icon + "\n" + label + "##goalmastile" + tostring(day);
+    bool clicked = UI::Button(caption, vec2(tileW, 60));
     vec4 r = UI::GetItemRect();
-    DrawDot(vec2(r.x + r.z - 9.0f, r.y + 8.0f), 2.5f, accent);
+
+    // Illumination sits in the top-right corner on its own, so the short status
+    // line can never push the percentage past the right edge of the tile.
+    float pctW = UI::MeasureString(moonLine, null, 11.0f).x;
+    UI::GetWindowDrawList().AddText(vec2(r.x + r.z - pctW - 6.0f, r.y + 4.0f),
+                                    TextMuted(), moonLine, null, 11.0f);
+    DrawDot(vec2(r.x + 7.0f, r.y + 7.0f), 2.5f, accent);
 
     UI::PopFontSize();
     UI::PopStyleColor(4);
@@ -266,12 +289,10 @@ void RenderDayGrid() {
     if (tileW < 48) tileW = 48;
 
     for (int day = 1; day <= DAY_COUNT; day++) {
-        string num = day < 10 ? "0" + tostring(day) : tostring(day);
-        string label = num + " " + DayTileStatus(day);
         vec4 textCol = (day == DAY_COUNT || IsPremiereDay(day)) ? Gold() : TextMain();
-        string moonLine = Icons::MoonO + " " + tostring(MoonIlluminationPct(day)) + "%";
+        string moonLine = tostring(MoonIlluminationPct(day)) + "%";
         vec4 bg = (day == g_selectedDay) ? TileSelectedBg() : TileBg();
-        if (DrawCenteredDayTile(day, DayTileIcon(day), label, moonLine,
+        if (DrawCenteredDayTile(day, DayTileIcon(day), DayTileShort(day), moonLine,
                                 bg, textCol, DayAccent(day), day == g_selectedDay, tileW)) {
             g_selectedDay = day;
             g_confirmReset = false;
@@ -289,10 +310,15 @@ void RenderDayDetails() {
     int day = g_selectedDay;
     if (day < 1 || day > DAY_COUNT) day = 1;
 
+    bool locked = !IsOffDay(day) && !DayUnlocked(day);
+
     TextTone(TextMain(), "DAY " + tostring(day) + "  -  " + g_titles[day - 1]);
     string status = "Available";
     vec4 statusCol = Emerald();
-    if (g_opened[day - 1]) {
+    if (locked) {
+        status = "Locked until Dec " + tostring(day);
+        statusCol = TextMuted();
+    } else if (g_opened[day - 1]) {
         status = "Completed";
     } else if (IsOffDay(day)) {
         status = "Pursuit rest day";
@@ -325,15 +351,19 @@ void RenderDayDetails() {
         UI::Dummy(vec2(0, 5));
         DrawStatCard(Icons::Star, "YOUR BADGES", BadgeSummary(), Silver());
     }
-    UI::TextWrapped(g_hints[day - 1]);
+    if (locked) {
+        UI::TextDisabled("This gift opens on December " + tostring(day) + ".");
+    } else {
+        UI::TextWrapped(g_hints[day - 1]);
+    }
 
     float remain = UI::GetContentRegionAvail().y - 42.0f;
     if (remain > 0) UI::Dummy(vec2(0, remain));
 
-    if (IsOffDay(day)) {
+    if (locked || IsOffDay(day)) {
         UI::PushStyleColor(UI::Col::Button, vec4(0.11, 0.11, 0.14, 1.00));
         UI::PushStyleColor(UI::Col::Text, TextMuted());
-        UI::Button("Pursuit Night - No Race", vec2(-1, 34));
+        UI::Button(locked ? "AVAILABLE DEC " + tostring(day) : "Pursuit Night - No Race", vec2(-1, 34));
         UI::PopStyleColor(2);
         return;
     }
@@ -491,16 +521,18 @@ void RenderFooter() {
     } else {
         TextTone(Emerald(), Icons::Circle + "  SYNCED  |  GOALMAS 2026");
     }
-    float gap = UI::GetContentRegionAvail().x - 210.0f;
-    if (gap > 6.0f) UI::Dummy(vec2(gap, 0));
     UI::SameLine(0, 0);
-    TextTone(TextMuted(), "BEST 15: " + tostring(ScoreDays()) + " PTS  |  " +
-                          tostring(OpenedCount()) + "/25 GIFTS");
+    string right = "BEST 15: " + tostring(ScoreDays()) + " PTS  |  " +
+                   tostring(OpenedCount()) + "/25 GIFTS";
+    float w = UI::MeasureString(right, null, 0.0f, 0.0f).x;
+    if (w < 1.0f) w = 220.0f;
+    UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f);
+    TextTone(TextMuted(), right);
 }
 
 void RenderWorkspace() {
     UI::PushStyleColor(UI::Col::ChildBg, vec4(0.055, 0.055, 0.067, 1.00));
-    if (UI::BeginChild("##GoalmasWorkspace", vec2(0, -30), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##GoalmasWorkspace", vec2(0, -36), UI::ChildFlags::Borders)) {
         if (g_activeTab == 0) RenderCalendarTab();
         else if (g_activeTab == 1) RenderLeaderboardTab();
         else if (g_activeTab == 2) RenderFeedTab();
