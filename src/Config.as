@@ -132,6 +132,9 @@ bool g_lastSyncOk = false;
 int g_lastSyncHttp = 0;
 int g_boardCount = 0;
 string g_selfTestResult = "not run";
+// UID->day pairs learned from the server (shared by all players).
+array<string> g_serverMapUids;
+array<int> g_serverMapDays;
 
 // ---------------------------------------------------------------------------
 // Goal Hunt state

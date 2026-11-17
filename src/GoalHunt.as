@@ -97,19 +97,16 @@ bool OnEventServer() {
     return false;
 }
 
-// Reads "#N" from a map name like "#7 Goal Hunt" / "#7 GoalHunt".
-int ParseDayFromMapName(const string &in rawName) {
+bool IsGoalHuntMapName(const string &in rawName) {
     string name = Text::StripFormatCodes(rawName).ToLower();
-    if (!name.Contains("goal hunt") && !name.Contains("goalhunt") && !name.Contains("goal-hunt")) {
-        return 0;
-    }
+    return name.Contains("goal hunt") || name.Contains("goalhunt") ||
+           name.Contains("goal-hunt") || name.Contains("goal hunt arena");
+}
 
-    int hash = name.IndexOf("#");
-    if (hash < 0) return 0;
-
+int DayDigitsAt(const string &in name, int start) {
     int day = 0;
     int digits = 0;
-    for (int i = hash + 1; i < int(name.Length) && digits < 2; i++) {
+    for (int i = start; i < int(name.Length) && digits < 2; i++) {
         string ch = name.SubStr(i, 1);
         int value = -1;
         for (uint d = 0; d < g_digits.Length; d++) {
@@ -122,14 +119,40 @@ int ParseDayFromMapName(const string &in rawName) {
         day = day * 10 + value;
         digits++;
     }
-
-    if (digits == 0) return 0;
-    if (day < 1 || day > DAY_COUNT) return 0;
+    if (digits == 0 || day < 1 || day > DAY_COUNT) return 0;
     return day;
 }
 
+// Accepts #7, "Day 7", "GH 7", "Goal Hunt 7" and goalhuntarena maps.
+int ParseDayFromMapName(const string &in rawName) {
+    string name = Text::StripFormatCodes(rawName).ToLower();
+    if (!IsGoalHuntMapName(name)) return 0;
+
+    int hash = name.IndexOf("#");
+    if (hash >= 0) {
+        int d = DayDigitsAt(name, hash + 1);
+        if (d > 0) return d;
+    }
+
+    string[] prefixes = { "day ", "gh ", "arena ", "goal hunt - ", "goal hunt ", "goalhunt ", "goal-hunt " };
+    for (uint i = 0; i < prefixes.Length; i++) {
+        int pos = name.IndexOf(prefixes[i]);
+        if (pos < 0) continue;
+        int d = DayDigitsAt(name, pos + int(prefixes[i].Length));
+        if (d > 0) return d;
+    }
+    return 0;   // recognised Goal Hunt map, but no number in the name
+}
+
 int DayFromUidMapping(const string &in uid) {
-    if (uid.Length == 0 || S_MapUidDays.Length == 0) return 0;
+    if (uid.Length == 0) return 0;
+
+    // Mappings learned by the worker from real submits, shared with all players.
+    for (uint i = 0; i < g_serverMapUids.Length; i++) {
+        if (g_serverMapUids[i] == uid) return g_serverMapDays[i];
+    }
+
+    if (S_MapUidDays.Length == 0) return 0;
     string[]@ parts = S_MapUidDays.Split(",");
     for (uint i = 0; i < parts.Length; i++) {
         string part = parts[i].Trim();
@@ -153,7 +176,15 @@ int DetectGoalHuntDay() {
     if (S_MapDayOverride >= 1 && S_MapDayOverride <= DAY_COUNT) return S_MapDayOverride;
     int mapped = DayFromUidMapping(GetCurrentMapUid());
     if (mapped > 0) return mapped;
-    return ParseDayFromMapName(string(app.RootMap.MapInfo.Name));
+
+    string name = string(app.RootMap.MapInfo.Name);
+    int fromName = ParseDayFromMapName(name);
+    if (fromName > 0) return fromName;
+
+    // A brand-new Goal Hunt map with no number in its name: during the event
+    // the day is simply today's UTC date (the worker uses the same clock).
+    if (IsGoalHuntMapName(name)) return CurrentEventDayUtc();
+    return 0;
 }
 
 // Called from the debug panel: remember the current map as the selected day.

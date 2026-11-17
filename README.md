@@ -92,10 +92,13 @@ Maps are detected by name first: `#1 Goal Hunt` ... `#25 Goal Hunt` (also accept
 to part of the event server name/login so results from the editor or other servers
 are ignored.
 
-A map with no `#N` in its name (for example `Goal Hunt - Minesweeper`) needs a
-UID mapping. Use **Assign this map to day N** in the admin debug panel, or fill
-`Map UID to day` with `UID=day` pairs. `Force current map as day` is a quick
-override for testing.
+New maps are learned automatically: the first submit sends the map UID to the
+worker, which stores the UID/day pair and shares it with everyone through
+`/state`. During the event (1-25 December UTC) a Goal Hunt map with no number
+in its name is assigned to today's day. For older setups you can still use
+**Assign this map to day N** in the debug panel, the `Map UID to day` setting,
+or `Force current map as day`. Names like `#7 Goal Hunt`, `Goal Hunt Day 7`,
+`GH 7` and `goalhuntarena` are all accepted.
 
 ## Source layout
 

@@ -206,6 +206,21 @@ void ApplyState(const string &in body) {
         }
     }
 
+    // Server-learned map UIDs: new maps work for everyone after the first run.
+    Json::Value@ mapDays = root["mapDays"];
+    if (mapDays !is null && mapDays.GetType() == Json::Type::Object) {
+        g_serverMapUids.Resize(0);
+        g_serverMapDays.Resize(0);
+        array<string>@ keys = mapDays.GetKeys();
+        for (uint i = 0; i < keys.Length; i++) {
+            int day = int(mapDays[keys[i]]);
+            if (day >= 1 && day <= DAY_COUNT) {
+                g_serverMapUids.InsertLast(keys[i]);
+                g_serverMapDays.InsertLast(day);
+            }
+        }
+    }
+
     g_lastSyncStamp = int(Time::Stamp);
 }
 

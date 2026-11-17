@@ -22,3 +22,11 @@ CREATE TABLE IF NOT EXISTS events (
   msg        TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+
+-- Learned from real submits: a new map UID is bound to the day it was played
+-- on, then shared with every player through /state.
+CREATE TABLE IF NOT EXISTS map_days (
+  uid        TEXT PRIMARY KEY,
+  day        INTEGER NOT NULL,
+  first_seen INTEGER NOT NULL
+);

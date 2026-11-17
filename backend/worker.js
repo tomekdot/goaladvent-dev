@@ -57,6 +57,10 @@ async function ensureSchema(env) {
   if (!(info.results || []).some(col => col.name === "cp")) {
     await env.DB.prepare("ALTER TABLE bounties ADD COLUMN cp INTEGER NOT NULL DEFAULT 0").run();
   }
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS map_days (uid TEXT PRIMARY KEY, day INTEGER NOT NULL, " +
+    "first_seen INTEGER NOT NULL)"
+  ).run();
 }
 
 function normalizeBest(value) {
@@ -167,12 +171,17 @@ export default {
         .bind(MAX_EVENTS)
         .all();
 
+      const mapRows = await env.DB.prepare("SELECT uid, day FROM map_days").all();
+      const mapDays = {};
+      for (const row of (mapRows.results || [])) mapDays[row.uid] = row.day;
+
       return Response.json({
         points: me ? me.points : 0,
         bounties: me ? me.bounties : 0,
         badges: badgesFor(accountId, me ? safeParse(me.badges, []) : []),
         days,
         leaderboard,
+        mapDays,
         events: (events.results || []).map((row) => row.msg)
       });
     }
@@ -185,13 +194,22 @@ export default {
         return new Response("Bad JSON", { status: 400 });
       }
 
-      const { accountId, name, day, cpCount, timeMs = 0 } = body;
+      const { accountId, name, day, cpCount, timeMs = 0, mapUid = "" } = body;
       if (!accountId || !day || !cpCount || cpCount <= 0 || day < 1 || day > DAY_COUNT) {
         return new Response("Bad Request", { status: 400 });
       }
       // Any day may be submitted. Tuesday nights are a Pursuit bonus in the
       // calendar UI, but when a Goal Hunt map is actually played on that day
       // the run must count - rejecting it here produced HTTP 403 in test runs.
+
+      // Learn the UID<->day pair from a real run so new, unknown maps can be
+      // recognised by every player without anyone editing settings by hand.
+      if (mapUid) {
+        await env.DB.prepare(
+          "INSERT INTO map_days (uid, day, first_seen) VALUES (?, ?, ?) " +
+          "ON CONFLICT(uid) DO UPDATE SET day = excluded.day"
+        ).bind(mapUid, day, Date.now()).run();
+      }
 
       const player = await env.DB.prepare("SELECT * FROM players WHERE account_id = ?")
         .bind(accountId)

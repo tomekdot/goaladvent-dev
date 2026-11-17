@@ -12,7 +12,11 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.4.6-dev`.
+- Version in `info.toml`: `0.4.7-dev`.
+- New maps are learned automatically: the plugin sends `mapUid` with every
+  submit, the worker stores it in D1 `map_days` and returns it as `mapDays` in
+  `/state`. Detection order: override -> server mapDays -> local UID setting ->
+  name parser (#N / Day N / GH N / goalhuntarena) -> UTC date during the event.
 - `/submit` must accept runs on every day. The old Tuesday 403 check was
   removed from `backend/worker.js` after a real Goal Hunt map mapped to day 1
   was rejected; redeploy with `wrangler deploy` from `backend/` after edits.

@@ -115,6 +115,15 @@ bool FinaleOpen() {
     return false;
 }
 
+// Event day from the server-side UTC clock, used when a Goal Hunt map has no
+// day number in its name. Returns 0 outside 1-25 December / finale window.
+int CurrentEventDayUtc() {
+    Time::Info now = Time::ParseUTC();
+    if (now.Month == 12 && now.Day >= 1 && now.Day <= DAY_COUNT) return now.Day;
+    if (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS) return DAY_COUNT;
+    return 0;
+}
+
 bool DayUnlocked(int day) {
     if (S_TestMode) return true;
     if (day < 1 || day > DAY_COUNT) return false;
