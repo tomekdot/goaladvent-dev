@@ -17,7 +17,7 @@ void LogDebugState() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    print("[goalmas][DBG] version=0.4.2-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    print("[goalmas][DBG] version=0.4.3-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
           " localDate=" + localDate +
           " eventSeason=" + tostring(eventSeason) +
           " errors=" + tostring(g_debugErrors.Length) +
@@ -81,7 +81,7 @@ void RenderDebugWindow() {
     UI::Separator();
 
     UI::Text("VERSION / VIEW");
-    UI::Text("  version: 0.4.2-dev");
+    UI::Text("  version: 0.4.3-dev");
     UI::Text("  local date: " + localDate + "   event season: " + tostring(eventSeason));
     UI::Text("  theme: " + string(GlassTheme() ? "Transparent Glass" : "Obsidian Minimal"));
     UI::Text("  glass opacity: " + tostring(S_GlassOpacity));

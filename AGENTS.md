@@ -12,7 +12,10 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.4.2-dev`.
+- Version in `info.toml`: `0.4.3-dev`.
+- The day-details panel is split: a scrolling body child plus a fixed 46 px
+  footer (`RenderDayAction`) so the action button is always visible. Never pin
+  the button with `SetCursorPosY()` on the whole panel again.
 - Readiness at a glance: debug panel starts with SERVER ONLINE / NOT CONFIRMED,
   HTTP code, last-sync age, board row count and Goal Hunt map detection. The
   `Test server` button runs `SelfTestServer()` (a coroutine) and prints OK/FAIL.

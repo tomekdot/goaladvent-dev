@@ -464,12 +464,13 @@ void RenderDayDetails() {
 
     if (g_confirmReset) TextTone(Crimson(), "Press the trash icon again to reset local progress.");
     else if (g_status.Length > 0) UI::TextDisabled(g_status);
+}
 
-    // Pin the action row 12 px above the bottom edge of the details card.
+// Fixed footer of the details panel. It lives outside the scrolling body, so
+// the action button can never be pushed below the visible window edge.
+void RenderDayAction(int day) {
     const float rowH = 34.0f;
-    float targetY = UI::GetWindowSize().y - 12.0f - rowH;
-    float curY = UI::GetCursorPos().y;
-    if (targetY > curY) UI::SetCursorPosY(targetY);
+    bool locked = !IsOffDay(day) && !DayUnlocked(day);
 
     if (locked || IsOffDay(day)) {
         UI::PushStyleColor(UI::Col::Button, g_palette.buttonBg);
@@ -522,7 +523,19 @@ void RenderCalendarTab() {
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
     if (UI::BeginChild("##goalmasDayDetailsCard", vec2(rightW, 0), UI::ChildFlags::Borders)) {
         DrawSectionHeader("DAY DETAILS");
-        RenderDayDetails();
+        int day = g_selectedDay;
+        if (day < 1 || day > DAY_COUNT) day = 1;
+
+        // The body may scroll; the action row below it never moves out of view.
+        UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
+        if (UI::BeginChild("##goalmasDayDetailsBody", vec2(0, -46), UI::ChildFlags::None)) {
+            RenderDayDetails();
+        }
+        UI::EndChild();
+        UI::PopStyleColor();
+
+        UI::Separator();
+        RenderDayAction(day);
     }
     UI::EndChild();
     UI::PopStyleColor();
