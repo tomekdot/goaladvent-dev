@@ -1,0 +1,28 @@
+name: Build and publish plugin package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build goalmas-dev.op
+        run: zip -r goalmas-dev.op info.toml README.md src
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" goalmas-dev.op \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Goalmas ${GITHUB_REF_NAME}" \
+            --generate-notes

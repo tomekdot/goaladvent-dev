@@ -12,7 +12,10 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.2.0-dev`.
+- Version in `info.toml`: `0.2.1-dev`.
+- Pushing a `v*` tag runs `.github/workflows/release.yml`, which zips
+  `info.toml`, `README.md` and `src/` into `goalmas-dev.op` and publishes a
+  GitHub release automatically. Do not upload the asset by hand.
 - **Everything in English**: code, comments, identifiers, UI strings, docs.
   Chat with the user may be Polish; source files must contain no non-ASCII text.
 

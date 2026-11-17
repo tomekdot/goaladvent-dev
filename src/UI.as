@@ -143,12 +143,14 @@ void RenderTopBar() {
 
     UI::BeginDisabled(g_syncing);
     if (UI::Button(Icons::Refresh, vec2(28, 24))) SyncNow();
+    UI::SetItemTooltip(g_syncing ? "Sync in progress..." : "Refresh results from the event server.");
     UI::EndDisabled();
     UI::SameLine(0, 4);
     if (UI::Button(Icons::FloppyO, vec2(28, 24))) {
         SaveProgress();
         g_status = "Progress saved locally.";
     }
+    UI::SetItemTooltip("Save progress to this PC.");
     UI::SameLine(0, 10);
     UI::PushStyleColor(UI::Col::ButtonHovered, vec4(0.38, 0.12, 0.14, 1.00));
     if (UI::Button(Icons::Trash, vec2(28, 24))) {
@@ -161,6 +163,8 @@ void RenderTopBar() {
             g_confirmReset = true;
         }
     }
+    UI::SetItemTooltip(g_confirmReset ? "Press again to confirm - this clears local progress."
+                                      : "Reset local progress (press twice).");
     UI::PopStyleColor();
     UI::Separator();
 }
@@ -303,6 +307,10 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
 
 void RenderDayGrid() {
     UI::TextDisabled("Pursuit rest days: " + OffDaysText() + "   |   premiere x2 points");
+    if (S_ShowTips) {
+        UI::TextDisabled("Tip: drive #N Goal Hunt on the event server - " +
+                         tostring(GOAL_CP) + " CP in one run completes a day.");
+    }
 
     // Absolute column positions fill the panel edge to edge. SameLine() left a
     // 20 px unused strip after the fifth column because its spacing stacked
@@ -419,6 +427,8 @@ void RenderDayDetails() {
             g_status = "Join #" + tostring(day) + " Goal Hunt on the event server - CP count automatically.";
         }
     }
+    UI::SetItemTooltip("Join #" + tostring(day) + " Goal Hunt; reach " + tostring(GOAL_CP) +
+                       " CP in one run to complete this day.");
     UI::PopStyleColor(3);
     UI::SameLine(0, 8);
     UI::BeginDisabled(g_syncing);

@@ -28,6 +28,9 @@ bool S_TestMode = false;
 [Setting category="General" name="Show notifications"]
 bool S_Notifications = true;
 
+[Setting category="General" name="Show in-game tips"]
+bool S_ShowTips = true;
+
 [Setting category="General" name="Display name" description="Used only when the game login cannot be read."]
 string S_Nickname = "Player";
 
@@ -57,6 +60,7 @@ const string DEFAULT_API_URL = "";
 // Windows
 // ---------------------------------------------------------------------------
 bool g_showCalendar = false;
+bool g_startupHintShown = false;
 bool g_showDay = false;
 bool g_showFinale = false;
 bool g_showBoard = false;

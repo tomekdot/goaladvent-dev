@@ -18,6 +18,12 @@ void Main() {
 
     startnew(AutoSyncLoop);
 
+    // One in-game hint per session: where to find the dashboard and what to do.
+    if (S_ShowTips && !g_startupHintShown) {
+        g_startupHintShown = true;
+        ShowBanner("Goalmas is ready - open Plugins > Goalmas to begin.");
+    }
+
     print("[Goalmas] Loaded: " + tostring(DAY_COUNT) + " days, goal " +
           tostring(GOAL_CP) + " CP, sync mode " + tostring(S_SyncMode) + ".");
 }
@@ -57,4 +63,5 @@ void RenderMenu() {
     if (UI::MenuItem(Icons::Calendar + " Goalmas", "", g_showCalendar)) {
         g_showCalendar = !g_showCalendar;
     }
+    UI::SetItemTooltip("Open the Goalmas dashboard - calendar, bounties and leaderboard.");
 }
