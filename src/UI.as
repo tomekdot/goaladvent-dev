@@ -3,7 +3,7 @@
 // Theme.as owns every colour and radius; these wrappers read the active one.
 
 bool g_confirmReset = false;
-int g_activeTab = 0;   // 0 Calendar, 1 Leaderboard, 2 Live feed, 3 Grand finale
+int g_activeTab = 0;   // 0 Calendar, 1 Leaderboard, 2 Live feed, 3 Bounties, 4 Finale
 bool g_windowSizeApplied = false;
 
 // ---------------------------------------------------------------------------
@@ -253,11 +253,12 @@ void RenderSidebar() {
         SidebarTab(0, Icons::Calendar, "Calendar");
         SidebarTab(1, Icons::Trophy, "Leaderboard");
         SidebarTab(2, Icons::Rss, "Live feed");
-        SidebarTab(3, Icons::Star, "Grand finale");
+        SidebarTab(3, Icons::Crosshairs, "Bounties");
+        SidebarTab(4, Icons::Star, "Grand finale");
         UI::Separator();   // thin divider using the theme border colour
 
         // Mini summary fills the otherwise empty middle of the sidebar.
-        float remain = UI::GetContentRegionAvail().y - 188.0f;
+        float remain = UI::GetContentRegionAvail().y - 220.0f;
         if (remain > 0) UI::Dummy(vec2(0, remain));
         UI::TextDisabled("POINTS   " + tostring(TotalPoints()));
         UI::TextDisabled("BADGES   " + tostring(g_badges.Length));
@@ -780,6 +781,51 @@ void RenderFeedTab() {
     UI::EndDisabled();
 }
 
+// Every day owns a bounty record, so the board is a 25-row table rather than a
+// single "best player" line. It is read-only; clicking a day on the calendar
+// still opens its details.
+void RenderBountyTab() {
+    DrawSectionHeader("BOUNTY BOARD");
+    UI::TextDisabled("Each day keeps its own record. Beat the holder's CP to steal it (+" +
+                     tostring(BOUNTY_POINTS) + " pts once per day).");
+    UI::Dummy(vec2(0, 4));
+
+    int flags = UI::TableFlags::RowBg | UI::TableFlags::PadOuterX |
+                UI::TableFlags::ScrollY | UI::TableFlags::NoSavedSettings;
+    UI::PushStyleColor(UI::Col::TableRowBg, vec4(0.10, 0.10, 0.11, 0.55));
+    UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
+    if (UI::BeginTable("##goaladventBountyTable", 4, flags, vec2(0, -34))) {
+        UI::TableSetupColumn("Day", UI::TableColumnFlags::WidthFixed, 64);
+        UI::TableSetupColumn("Map", UI::TableColumnFlags::WidthStretch);
+        UI::TableSetupColumn("Record", UI::TableColumnFlags::WidthFixed, 88);
+        UI::TableSetupColumn("Holder", UI::TableColumnFlags::WidthFixed, 150);
+        UI::TableHeadersRow();
+        for (int day = 1; day <= DAY_COUNT; day++) {
+            UI::TableNextRow();
+            if (day == g_selectedDay) {
+                UI::TableSetBgColor(UI::TableBgTarget::RowBg0, Tone(Gold()));
+                UI::TableSetBgColor(UI::TableBgTarget::RowBg1, Tone(Gold()));
+            }
+            UI::TableSetColumnIndex(0);
+            TextTone(IsOffDay(day) ? Purple() : (g_opened[day - 1] ? Emerald() : TextMain()),
+                     "DAY " + tostring(day));
+            UI::TableSetColumnIndex(1);
+            if (IsOffDay(day)) UI::TextDisabled("Pursuit night");
+            else UI::Text(g_titles[day - 1]);
+            UI::TableSetColumnIndex(2);
+            TextTone(Gold(), tostring(g_bountyCp[day - 1]) + " CP");
+            UI::TableSetColumnIndex(3);
+            if (g_bountyHolder[day - 1] == LocalName()) TextTone(Gold(), "you");
+            else UI::Text(g_bountyHolder[day - 1]);
+        }
+        UI::EndTable();
+    }
+    UI::PopStyleColor(2);
+    UI::BeginDisabled(g_syncing);
+    if (UI::Button(Icons::Refresh + " Refresh bounties")) SyncNow();
+    UI::EndDisabled();
+}
+
 void RenderFinaleTab() {
     DrawSectionHeader("GRAND FINALE");
     TextTone(Gold(), Icons::Trophy + "  THE BIG FINALE");
@@ -848,6 +894,7 @@ void RenderWorkspace() {
         if (g_activeTab == 0) RenderCalendarTab();
         else if (g_activeTab == 1) RenderLeaderboardTab();
         else if (g_activeTab == 2) RenderFeedTab();
+        else if (g_activeTab == 3) RenderBountyTab();
         else RenderFinaleTab();
     }
     UI::EndChild();
