@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Build goalmas-dev.op
         run: zip -r goalmas-dev.op info.toml README.md src
@@ -22,7 +24,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          PREV=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          {
+            echo "**goalmas ${GITHUB_REF_NAME}**"
+            echo
+            if [ -n "$PREV" ]; then
+              git log --pretty=format:'- %s' "${PREV}..${GITHUB_REF_NAME}"
+              echo
+              echo
+              echo "Full Changelog: ${PREV}...${GITHUB_REF_NAME}"
+            else
+              git log --pretty=format:'- %s' "${GITHUB_REF_NAME}"
+            fi
+          } > release_notes.md
           gh release create "${GITHUB_REF_NAME}" goalmas-dev.op \
             --repo "${GITHUB_REPOSITORY}" \
             --title "goalmas ${GITHUB_REF_NAME}" \
-            --generate-notes
+            --notes-file release_notes.md

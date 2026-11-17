@@ -46,7 +46,9 @@ editing code. The broader workspace rules also apply:
   reset progress) and badge codes such as `GOALMAS-2026`.
 - Pushing a `v*` tag runs `.github/workflows/release.yml`, which zips
   `info.toml`, `README.md` and `src/` into `goalmas-dev.op` and publishes a
-  GitHub release automatically. Do not upload the asset by hand.
+  GitHub release automatically. Do not upload the asset by hand. Release notes
+  are a short human-readable list of commit subjects since the previous tag,
+  not just the auto-generated Full Changelog.
 - **Everything in English**: code, comments, identifiers, UI strings, docs.
   Chat with the user may be Polish; source files must contain no non-ASCII text.
 
