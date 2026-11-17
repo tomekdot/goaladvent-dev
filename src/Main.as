@@ -1,4 +1,4 @@
-// Goalmas Calendar & Bounty - entry points.
+// goalmas Calendar & Bounty - entry points.
 // Windows stay closed until the player opens them from the Openplanet menu.
 
 void Main() {
@@ -21,10 +21,10 @@ void Main() {
     // One in-game hint per session: where to find the dashboard and what to do.
     if (S_ShowTips && !g_startupHintShown) {
         g_startupHintShown = true;
-        ShowBanner("Goalmas is ready - open Plugins > Goalmas to begin.");
+        ShowBanner("goalmas is ready - open Plugins > goalmas to begin.");
     }
 
-    print("[Goalmas] Loaded: " + tostring(DAY_COUNT) + " days, goal " +
+    print("[goalmas] Loaded: " + tostring(DAY_COUNT) + " days, goal " +
           tostring(GOAL_CP) + " CP, sync mode " + tostring(S_SyncMode) + ".");
 }
 
@@ -60,8 +60,8 @@ void RenderInterface() {
 }
 
 void RenderMenu() {
-    if (UI::MenuItem(Icons::Calendar + " Goalmas", "", g_showCalendar)) {
+    if (UI::MenuItem(Icons::Calendar + " goalmas", "", g_showCalendar)) {
         g_showCalendar = !g_showCalendar;
     }
-    UI::SetItemTooltip("Open the Goalmas dashboard - calendar, bounties and leaderboard.");
+    UI::SetItemTooltip("Open the goalmas dashboard - calendar, bounties and leaderboard.");
 }

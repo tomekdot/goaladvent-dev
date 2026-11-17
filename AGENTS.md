@@ -1,4 +1,4 @@
-# Goalmas dev - agent instructions
+# goalmas dev - agent instructions
 
 Source of truth for any AI agent working in this repository. Read it before
 editing code. The broader workspace rules also apply:
@@ -6,13 +6,16 @@ editing code. The broader workspace rules also apply:
 
 ## 1. Project identity
 
-- **Goalmas** - a 25-day Goal Hunt advent event for **ManiaPlanet 4** with
+- **goalmas** - a 25-day Goal Hunt advent event for **ManiaPlanet 4** with
   **Openplanet 1.29.14**. Dev-only build; never submit to the official
   Openplanet plugin list.
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.2.1-dev`.
+- Version in `info.toml`: `0.2.2-dev`.
+- Display name is lowercase `goalmas` everywhere (menu, window, banner, docs).
+  Keep uppercase identifiers unchanged: `GoalmasAdvent.json` (save file, would
+  reset progress) and badge codes such as `GOALMAS-2026`.
 - Pushing a `v*` tag runs `.github/workflows/release.yml`, which zips
   `info.toml`, `README.md` and `src/` into `goalmas-dev.op` and publishes a
   GitHub release automatically. Do not upload the asset by hand.
@@ -106,7 +109,7 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 
 - `Update(float dt)` receives **milliseconds** (timers are in seconds).
 - Windows are hidden by default (`S_ShowOnStart = false`); the only menu entry
-  is `Icons::Calendar + " Goalmas"` in `RenderMenu()`. Do not add top-bar menus.
+  is `Icons::Calendar + " goalmas"` in `RenderMenu()`. Do not add top-bar menus.
 - Checkpoint count path (same as working chase-mode overlay):
   `app.CurrentPlayground.Players[i]` -> `cast<CTrackManiaPlayer>` ->
   `player.ScriptAPI.CurRace.Checkpoints.Length`.
@@ -132,7 +135,7 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
    ```
    Get-Content ...\Openplanet.log -Tail 400 | Select-String 'goalmas|ERR :|Script compilation failed'
    ```
-   Success = `Loaded plugin 'goalmas-dev'` + `[Goalmas] Loaded: 25 days...`
+   Success = `Loaded plugin 'goalmas-dev'` + `[goalmas] Loaded: 25 days...`
    with no `ERR :`.
 5. Do not declare a task done on static checks alone if a game reload is
    possible - say what still needs visual confirmation.

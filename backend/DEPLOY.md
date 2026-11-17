@@ -43,7 +43,7 @@ Paste the webhook URL when asked.
 
 ## 6. Point the plugin at the worker
 
-In game: Openplanet -> Settings -> Plugins -> Goalmas
+In game: Openplanet -> Settings -> Plugins -> goalmas
 
 - `Worker URL` = the URL from step 4 (no trailing slash)
 - `Sync mode` = `2`

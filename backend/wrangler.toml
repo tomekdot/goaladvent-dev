@@ -1,4 +1,4 @@
-# Cloudflare Worker configuration for the Goalmas backend.
+# Cloudflare Worker configuration for the goalmas backend.
 # Replace database_id with the value printed by: wrangler d1 create goalmas
 
 name = "goalmas"

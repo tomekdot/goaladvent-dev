@@ -1,4 +1,4 @@
--- Goalmas - D1 schema (Cloudflare SQLite).
+-- goalmas - D1 schema (Cloudflare SQLite).
 -- Run once:  npx wrangler d1 execute goalmas --remote --file=schema.sql
 
 CREATE TABLE IF NOT EXISTS players (

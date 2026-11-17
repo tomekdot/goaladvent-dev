@@ -1,4 +1,4 @@
-// Goalmas & Bounty - free Cloudflare Worker backend.
+// goalmas & Bounty - free Cloudflare Worker backend.
 // Free tier: Cloudflare Workers + D1 (SQLite). No paid server, no card needed.
 //
 // SETUP (one time):

@@ -1,4 +1,4 @@
-# Goalmas 2026 (dev build)
+# goalmas 2026 (dev build)
 
 Development build for this ManiaPlanet 4 / Openplanet 1.29 setup. It is not
 submitted to the official Openplanet plugin list - install it from this repo or
@@ -43,7 +43,7 @@ C:\Users\tomekdot\Openplanet4\Plugins\goalmas-dev
 ```
 
 Reload scripts in game (`F3 -> Developer -> Reload Scripts`) or restart the game.
-Open it from the Openplanet plugin menu: **Goalmas**.
+Open it from the Openplanet plugin menu: **goalmas**.
 
 Nothing is visible at startup; the calendar only opens when you select it.
 

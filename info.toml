@@ -1,7 +1,7 @@
 [meta]
-name = "Goalmas"
+name = "goalmas"
 author = "tomekdot"
-version = "0.2.1-dev"
+version = "0.2.2-dev"
 category = "Event"
 
 [script]

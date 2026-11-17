@@ -1,4 +1,4 @@
-// Goalmas 2026 - Obsidian / Carbon Minimal ImGui layer.
+// goalmas 2026 - Obsidian / Carbon Minimal ImGui layer.
 // Only APIs verified against OpenplanetCore.json (1.29.14) are used.
 // Game state, persistence and sync live in the other .as files.
 
@@ -134,7 +134,7 @@ void PopDashboardStyle() {
 // Top bar
 // ---------------------------------------------------------------------------
 void RenderTopBar() {
-    TextTone(TextMain(), Icons::SnowflakeO + "  Goalmas 2026");
+    TextTone(TextMain(), Icons::SnowflakeO + "  goalmas 2026");
 
     // Title and the three small buttons share ONE row. SameLine first, then an
     // absolute X on that row, otherwise ImGui drops the buttons to a new line.
@@ -195,7 +195,7 @@ void SidebarTab(int id, const string &in icon, const string &in label) {
 
 void RenderSidebar() {
     UI::PushStyleColor(UI::Col::ChildBg, CardBg());
-    if (UI::BeginChild("##GoalmasSidebar", vec2(175, -36), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goalmasSidebar", vec2(175, -36), UI::ChildFlags::Borders)) {
         SidebarTab(0, Icons::Calendar, "Calendar");
         SidebarTab(1, Icons::Trophy, "Leaderboard");
         SidebarTab(2, Icons::Rss, "Live feed");
@@ -444,13 +444,13 @@ void RenderCalendarTab() {
     float leftW = width * 0.58f;
     float rightW = width - leftW - 8;
 
-    if (UI::BeginChild("##GoalmasCalendarGrid", vec2(leftW, 0), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goalmasCalendarGrid", vec2(leftW, 0), UI::ChildFlags::Borders)) {
         DrawSectionHeader("ADVENT CALENDAR");
         RenderDayGrid();
     }
     UI::EndChild();
     UI::SameLine(0, 8);
-    if (UI::BeginChild("##GoalmasDayDetailsCard", vec2(rightW, 0), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goalmasDayDetailsCard", vec2(rightW, 0), UI::ChildFlags::Borders)) {
         DrawSectionHeader("DAY DETAILS");
         RenderDayDetails();
     }
@@ -468,7 +468,7 @@ void RenderLeaderboardTab() {
     }
 
     int flags = UI::TableFlags::RowBg | UI::TableFlags::BordersInnerH | UI::TableFlags::PadOuterX;
-    if (UI::BeginTable("##GoalmasBoardTable", 4, flags)) {
+    if (UI::BeginTable("##goalmasBoardTable", 4, flags)) {
         UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 42);
         UI::TableSetupColumn("Player", UI::TableColumnFlags::WidthStretch);
         UI::TableSetupColumn("Points", UI::TableColumnFlags::WidthFixed, 96);
@@ -515,7 +515,7 @@ void RenderFeedTab() {
         return;
     }
     int flags = UI::TableFlags::RowBg | UI::TableFlags::BordersInnerH | UI::TableFlags::PadOuterX;
-    if (UI::BeginTable("##GoalmasFeedTable", 2, flags)) {
+    if (UI::BeginTable("##goalmasFeedTable", 2, flags)) {
         UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 42);
         UI::TableSetupColumn("Event", UI::TableColumnFlags::WidthStretch);
         UI::TableHeadersRow();
@@ -564,7 +564,7 @@ void RenderFooter() {
     // Footer = connection status, sidebar = day mode. No duplicate OFFLINE.
     string link = S_SyncMode == 0 ? "OFFLINE" : "CONNECTED";
     vec4 linkCol = S_SyncMode == 0 ? TextMuted() : Emerald();
-    TextTone(linkCol, Icons::Circle + "  " + link + "  |  GOALMAS 2026");
+    TextTone(linkCol, Icons::Circle + "  " + link + "  |  goalmas 2026");
     UI::SameLine(0, 0);
     string right = "BEST 15: " + tostring(ScoreDays()) + " PTS  |  " +
                    tostring(OpenedCount()) + "/25 GIFTS";
@@ -576,7 +576,7 @@ void RenderFooter() {
 
 void RenderWorkspace() {
     UI::PushStyleColor(UI::Col::ChildBg, vec4(0.055, 0.055, 0.067, 1.00));
-    if (UI::BeginChild("##GoalmasWorkspace", vec2(0, -36), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goalmasWorkspace", vec2(0, -36), UI::ChildFlags::Borders)) {
         if (g_activeTab == 0) RenderCalendarTab();
         else if (g_activeTab == 1) RenderLeaderboardTab();
         else if (g_activeTab == 2) RenderFeedTab();
@@ -594,7 +594,7 @@ void RenderDashboard() {
         UI::SetNextWindowPos(24, 40, UI::Cond::Always);
         g_windowSizeApplied = true;
     }
-    if (!UI::Begin("Goalmas 2026", g_showCalendar)) {
+    if (!UI::Begin("goalmas 2026", g_showCalendar)) {
         UI::End();
         return;
     }
@@ -620,7 +620,7 @@ void RenderBanner() {
                 UI::WindowFlags::AlwaysAutoResize | UI::WindowFlags::NoMove |
                 UI::WindowFlags::NoInputs;
     UI::PushStyleColor(UI::Col::WindowBg, vec4(0.08, 0.08, 0.10, 0.94));
-    if (UI::Begin("##GoalmasBanner", flags)) {
+    if (UI::Begin("##goalmasBanner", flags)) {
         TextTone(Gold(), Icons::SnowflakeO + "  " + g_bannerText);
     }
     UI::End();
@@ -633,7 +633,7 @@ void RenderGoalHuntHud() {
     UI::SetNextWindowPos(20, 120, UI::Cond::FirstUseEver);
     int flags = UI::WindowFlags::NoTitleBar | UI::WindowFlags::AlwaysAutoResize;
     UI::PushStyleColor(UI::Col::WindowBg, vec4(0.055, 0.055, 0.067, 0.90));
-    if (UI::Begin("##GoalmasGoalHuntHud", flags)) {
+    if (UI::Begin("##goalmasGoalHuntHud", flags)) {
         TextTone(TextMain(), Icons::FlagCheckered + " #" + tostring(day) + " GOAL HUNT");
         if (IsPremiereDay(day)) TextTone(Gold(), "PREMIERE - x2 points");
         else UI::TextDisabled("Catch-up - x1 points");

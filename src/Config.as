@@ -1,4 +1,4 @@
-// Goalmas Calendar & Bounty - ManiaPlanet 4 / Openplanet 1.29
+// goalmas Calendar & Bounty - ManiaPlanet 4 / Openplanet 1.29
 // 25 days of Goal Hunt checkpoint hunting, bounties, badges and a free
 // leaderboard (offline, shared folder or a free HTTP worker + D1).
 // Code, comments and UI strings are English by project convention.
