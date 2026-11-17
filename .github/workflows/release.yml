@@ -24,5 +24,5 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" goalmas-dev.op \
             --repo "${GITHUB_REPOSITORY}" \
-            --title "Goalmas ${GITHUB_REF_NAME}" \
+            --title "goalmas ${GITHUB_REF_NAME}" \
             --generate-notes
