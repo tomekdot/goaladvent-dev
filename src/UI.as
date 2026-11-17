@@ -141,6 +141,12 @@ void PopDashboardStyle() {
 // Top bar
 // ---------------------------------------------------------------------------
 void RenderTopBar() {
+    // Brighter icon buttons so they read on both matte and glass backgrounds.
+    vec4 btn = MixCol(g_palette.buttonBg, g_palette.text, 0.12f);
+    UI::PushStyleColor(UI::Col::Button, btn);
+    UI::PushStyleColor(UI::Col::ButtonHovered, Lift(btn));
+    UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(btn)));
+
     TextTone(IceBlue(), Icons::SnowflakeO);
     UI::SameLine(0, 8);
     TextTone(TextMain(), "goalmas 2026");
@@ -150,7 +156,7 @@ void RenderTopBar() {
     // Title and the three small buttons share ONE row. SameLine first, then an
     // absolute X on that row, otherwise ImGui drops the buttons to a new line.
     UI::SameLine(0, 0);
-    UI::SetCursorPosX(UI::GetWindowSize().x - 138.0f);
+    UI::SetCursorPosX(UI::GetWindowSize().x - 106.0f);
 
     UI::BeginDisabled(g_syncing);
     if (UI::Button(Icons::Refresh, vec2(28, 24))) SyncNow();
@@ -177,9 +183,7 @@ void RenderTopBar() {
     UI::SetItemTooltip(g_confirmReset ? "Press again to confirm - this clears local progress."
                                       : "Reset local progress (press twice).");
     UI::PopStyleColor();
-    UI::SameLine(0, 8);
-    if (UI::Button(Icons::Cog, vec2(28, 24))) g_showSettings = !g_showSettings;
-    UI::SetItemTooltip("Open goalmas settings - theme and options.");
+    UI::PopStyleColor(3);
     UI::Separator();
 }
 
@@ -270,15 +274,6 @@ vec4 MoonTint(int pct) {
                 a.z + (b.z - a.z) * t, 1.00);
 }
 
-string OffDaysText() {
-    string text = "";
-    for (uint i = 0; i < g_offDays.Length; i++) {
-        if (i > 0) text += ", ";
-        text += tostring(g_offDays[i]);
-    }
-    return text;
-}
-
 // Short status keeps the tile centred; no repeated "WAIT" on 20 tiles.
 string DayTileShort(int day) {
     string num = day < 10 ? "0" + tostring(day) : tostring(day);
@@ -331,7 +326,6 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
 }
 
 void RenderDayGrid() {
-    UI::TextDisabled("Pursuit rest days: " + OffDaysText() + "   |   premiere x2 points");
     if (S_ShowTips) {
         UI::TextWrapped("Tip: play #" + tostring(g_selectedDay) + " Goal Hunt on the event server (" +
                         tostring(GOAL_CP) + " CP/run).");
@@ -633,41 +627,9 @@ void RenderWorkspace() {
     UI::PopStyleColor();
 }
 
-void RenderSettingsWindow() {
-    if (!g_showSettings) return;
-
-    int flags = UI::WindowFlags::AlwaysAutoResize;
-    if (!UI::Begin(Icons::Cog + " goalmas settings", g_showSettings, flags)) {
-        UI::End();
-        return;
-    }
-
-    TextTone(TextMain(), "APPEARANCE");
-    UI::Separator();
-    if (UI::RadioButton("Obsidian Minimal", g_Theme == UiTheme::ObsidianMinimal)) {
-        g_Theme = UiTheme::ObsidianMinimal;
-    }
-    if (UI::RadioButton("Transparent Glass", g_Theme == UiTheme::TransparentGlass)) {
-        g_Theme = UiTheme::TransparentGlass;
-    }
-    UI::TextDisabled("Switch themes live - no game restart needed.");
-
-    UI::Dummy(vec2(0, 8));
-    TextTone(TextMain(), "OPTIONS");
-    UI::Separator();
-    if (GlassTheme()) {
-        S_GlassOpacity = UI::SliderFloat("Glass Opacity", S_GlassOpacity, 0.15f, 0.80f, "%.2f");
-        UI::TextDisabled("Lower = more of the game visible behind the window.");
-    }
-    S_ShowMoonPct = UI::Checkbox("Show moon phase %", S_ShowMoonPct);
-    S_ShowTips = UI::Checkbox("Show in-game tips", S_ShowTips);
-    S_AutoSync = UI::Checkbox("Auto sync", S_AutoSync);
-
-    UI::Dummy(vec2(0, 8));
-    if (UI::Button("Close")) g_showSettings = false;
-    UI::End();
-}
-
+// All options live in Openplanet -> Settings -> Plugins -> goalmas. There is no
+// separate settings window: the [Setting] declarations in Config.as are the
+// single source of truth and are edited in the Openplanet menu.
 void RenderDashboard() {
     RefreshPalette();   // one layout, colours chosen by the active theme
 
@@ -691,8 +653,6 @@ void RenderDashboard() {
     RenderFooter();
     PopDashboardStyle();
     UI::End();
-
-    RenderSettingsWindow();
 }
 
 // ---------------------------------------------------------------------------

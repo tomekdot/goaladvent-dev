@@ -12,7 +12,10 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.3.2-dev`.
+- Version in `info.toml`: `0.3.3-dev`.
+- There is NO in-plugin settings window. All options are `[Setting]` globals in
+  `Config.as`, edited only in Openplanet -> Settings -> Plugins -> goalmas.
+  `Glass Opacity` uses min/max there; changing it updates the palette next frame.
 - `S_ShowOnStart` defaults to `true` - the dashboard opens by itself. There is
   deliberately no startup banner; banners are only for in-game Goal Hunt events.
 - `[Setting]` entries carry user-facing `description` (and `min`/`max` for

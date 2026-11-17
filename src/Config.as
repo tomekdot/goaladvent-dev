@@ -81,7 +81,6 @@ const string DEFAULT_API_URL = "";
 // Windows
 // ---------------------------------------------------------------------------
 bool g_showCalendar = false;
-bool g_showSettings = false;
 bool g_showDay = false;
 bool g_showFinale = false;
 bool g_showBoard = false;

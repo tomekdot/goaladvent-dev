@@ -63,7 +63,4 @@ void RenderMenu() {
         g_showCalendar = !g_showCalendar;
     }
     UI::SetItemTooltip("Open the goalmas dashboard - calendar, bounties and leaderboard.");
-    if (UI::MenuItem(Icons::Cog + " Settings", "", g_showSettings)) {
-        g_showSettings = !g_showSettings;
-    }
 }
