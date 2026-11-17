@@ -14,7 +14,7 @@ void DebugError(const string &in source, const string &in detail) {
 }
 
 void LogDebugState() {
-    print("[goalmas][DBG] version=0.3.4-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    print("[goalmas][DBG] version=0.3.5-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
           " opacity=" + tostring(S_GlassOpacity) +
           " selected=" + tostring(g_selectedDay) +
           " active=" + tostring(g_activeDay) +
@@ -47,7 +47,7 @@ void RenderDebugWindow() {
     UI::Separator();
 
     UI::Text("VERSION / VIEW");
-    UI::Text("  version: 0.3.4-dev");
+    UI::Text("  version: 0.3.5-dev");
     UI::Text("  theme: " + string(GlassTheme() ? "Transparent Glass" : "Obsidian Minimal"));
     UI::Text("  glass opacity: " + tostring(S_GlassOpacity));
     UI::Text("  dashboard visible: " + tostring(g_showCalendar));

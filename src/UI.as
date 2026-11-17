@@ -76,7 +76,9 @@ void DrawStatCard(const string &in icon, const string &in label,
         // A button with ButtonTextAlign centres the glyph reliably. Measuring
         // an icon with MeasureString is not dependable across Openplanet fonts.
         const float boxSize = 36.0f;
+        const float boxTop = 7.0f;   // centre 36 px box in the 50 px content area
         vec4 boxCol = vec4(accent.x * 0.50f, accent.y * 0.50f, accent.z * 0.50f, 1.00f);
+        UI::SetCursorPos(vec2(start.x, start.y + boxTop));
         UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.5f, 0.5f));
         UI::PushStyleVar(UI::StyleVar::FrameRounding, 4.0f);
         UI::PushStyleColor(UI::Col::Button, boxCol);
