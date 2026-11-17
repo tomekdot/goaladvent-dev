@@ -278,6 +278,11 @@ void Coroutine_SubmitCp() {
     payload["timeMs"] = 0;
 
     Net::HttpRequest@ req = Net::HttpPost(ApiUrl() + "/submit", Json::Write(payload), "application/json");
+    if (req is null) {
+        DebugError("submit", "could not create upload request");
+        g_syncing = false;
+        return;
+    }
     while (!req.Finished()) yield();
 
     int code = req.ResponseCode();
@@ -288,5 +293,6 @@ void Coroutine_SubmitCp() {
         SyncState();
     } else {
         g_status = "Upload failed (HTTP " + tostring(code) + ").";
+        DebugError("submit", "HTTP " + tostring(code));
     }
 }

@@ -3,6 +3,16 @@
 
 bool g_showDebug = false;
 
+// Rolling error history for the admin panel. The player only sees g_status;
+// this keeps the last few real failures readable without opening the log.
+array<string> g_debugErrors;
+
+void DebugError(const string &in source, const string &in detail) {
+    string line = "[" + tostring(int(Time::Stamp)) + "] " + source + ": " + detail;
+    g_debugErrors.InsertLast(line);
+    print("[goalmas][ERR] " + line);
+}
+
 void LogDebugState() {
     print("[goalmas][DBG] version=0.3.4-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
           " opacity=" + tostring(S_GlassOpacity) +
@@ -72,6 +82,17 @@ void RenderDebugWindow() {
              "   board rows: " + tostring(g_boardNames.Length));
 
     UI::TextWrapped("Last event: " + (g_lastTopEvent.Length > 0 ? g_lastTopEvent : "-"));
+
+    UI::Separator();
+    UI::Text("LAST ERRORS (" + tostring(g_debugErrors.Length) + ")");
+    if (g_debugErrors.Length == 0) {
+        UI::Text("  none");
+    } else {
+        uint start = g_debugErrors.Length > 8 ? g_debugErrors.Length - 8 : 0;
+        for (uint i = g_debugErrors.Length; i > start; i--) {
+            UI::TextWrapped("  " + g_debugErrors[i - 1]);
+        }
+    }
 
     UI::Separator();
     if (UI::Button("Log state to Openplanet.log")) LogDebugState();

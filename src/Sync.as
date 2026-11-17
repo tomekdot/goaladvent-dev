@@ -216,6 +216,11 @@ void SyncState() {
     g_syncing = true;
     string url = ApiUrl() + "/state?accountId=" + Net::UrlEncode(AccountId());
     Net::HttpRequest@ req = Net::HttpGet(url);
+    if (req is null) {
+        DebugError("sync", "could not create state request");
+        g_syncing = false;
+        return;
+    }
     while (!req.Finished()) yield();
 
     if (req.ResponseCode() == 200) {
@@ -223,6 +228,7 @@ void SyncState() {
         g_status = "Synced with the event server.";
     } else {
         g_status = "Sync failed (HTTP " + tostring(req.ResponseCode()) + ").";
+        DebugError("sync", "HTTP " + tostring(req.ResponseCode()));
     }
     g_syncing = false;
 }
