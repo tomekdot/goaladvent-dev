@@ -339,7 +339,10 @@ void RenderDayGrid() {
         UI::SetItemTooltip(MoonPhaseName(day) + " - " +
                            tostring(MoonIlluminationPct(day)) + "% illumination");
     }
+    // SetCursorPos() past the last tile extends the child boundary, so ImGui
+    // requires an item afterwards - otherwise EndChild() throws an assertion.
     UI::SetCursorPos(vec2(origin.x, origin.y + 5.0f * (tileH + spacing)));
+    UI::Dummy(vec2(0, 1));
 }
 
 // ---------------------------------------------------------------------------

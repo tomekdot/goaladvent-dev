@@ -12,7 +12,7 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.2.4-dev`.
+- Version in `info.toml`: `0.2.5-dev`.
 - Release workflow pins `ubuntu-24.04` and `actions/checkout@v6` (Node 24).
   Do not revert to `ubuntu-latest` or `checkout@v4` - GitHub warns about both.
 - `main` is the default branch and the source of releases. Merge feature work
@@ -87,6 +87,9 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 - `UI::MeasureString(str, null, size, 0.0f)` returns text size in `vec2`; use it
   for pill widths and right-aligned footer text.
 - `UI::GetCursorPos()` exists; `UI::GetCursorPosX()` does **not** in this build.
+- Every `SetCursorPos()` that moves the cursor past current content must be
+  followed by an item (`UI::Dummy(vec2(0, 1))`) or `EndChild()` throws
+  `UI assertion failed ... Please submit an item e.g. Dummy() afterwards`.
 - Centring: `UI::StyleVar::ButtonTextAlign = vec2(0.5, 0.5)`. Do **not** call
   `SetCursorScreenPos()` inside `BeginChild` - it triggers
   `UI assertion failed ... Please submit an item e.g. Dummy() afterwards`.
