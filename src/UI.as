@@ -1,4 +1,4 @@
-// goalmas 2026 - one ImGui layout, two colour themes.
+// GoalAdvent 2026 - one ImGui layout, two colour themes.
 // Only APIs verified against OpenplanetCore.json (1.29.14) are used.
 // Theme.as owns every colour and radius; these wrappers read the active one.
 
@@ -152,7 +152,7 @@ void RenderTopBar() {
     UI::PushFontSize(16.0f);
     TextTone(IceBlue(), Icons::SnowflakeO);
     UI::SameLine(0, 8);
-    TextTone(TextMain(), "goalmas 2026");
+    TextTone(TextMain(), "GoalAdvent 2026");
     UI::PopFontSize();
     UI::SameLine(0, 8);
     UI::PushFontSize(13.0f);
@@ -224,7 +224,7 @@ void SidebarTab(int id, const string &in icon, const string &in label) {
 
 void RenderSidebar() {
     UI::PushStyleColor(UI::Col::ChildBg, CardBg());
-    if (UI::BeginChild("##goalmasSidebar", vec2(175, -30), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goaladventSidebar", vec2(175, -30), UI::ChildFlags::Borders)) {
         SidebarTab(0, Icons::Calendar, "Calendar");
         SidebarTab(1, Icons::Trophy, "Leaderboard");
         SidebarTab(2, Icons::Rss, "Live feed");
@@ -246,7 +246,7 @@ void RenderSidebar() {
         UI::PushStyleColor(UI::Col::ChildBg, InnerBg());
         UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(8, 6));
         int statusFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
-        if (UI::BeginChild("##goalmasSidebarStatus", vec2(0, 52), UI::ChildFlags::Borders, statusFlags)) {
+        if (UI::BeginChild("##goaladventSidebarStatus", vec2(0, 52), UI::ChildFlags::Borders, statusFlags)) {
             string status;
             string detail;
             vec4 col;
@@ -329,7 +329,7 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
     // The button carries only its ID. Its lines are drawn separately so the
     // short icon stays centred and the percentage never overlaps it.
     float top = (tileH - 60.0f) * 0.5f;
-    bool clicked = UI::Button("##goalmastile" + tostring(day), vec2(tileW, tileH));
+    bool clicked = UI::Button("##goaladventtile" + tostring(day), vec2(tileW, tileH));
     vec4 r = UI::GetItemRect();
     float cx = r.x + r.z * 0.5f;
     float iconW = UI::MeasureString(icon, null, 15.0f).x;
@@ -517,7 +517,7 @@ void RenderCalendarTab() {
 
     // Columns stay fully transparent - only the window and the cards tint.
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
-    if (UI::BeginChild("##goalmasCalendarGrid", vec2(leftW, 0), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goaladventCalendarGrid", vec2(leftW, 0), UI::ChildFlags::Borders)) {
         DrawSectionHeader("ADVENT CALENDAR");
         RenderDayGrid();
     }
@@ -525,14 +525,14 @@ void RenderCalendarTab() {
     UI::PopStyleColor();
     UI::SameLine(0, 8);
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
-    if (UI::BeginChild("##goalmasDayDetailsCard", vec2(rightW, 0), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goaladventDayDetailsCard", vec2(rightW, 0), UI::ChildFlags::Borders)) {
         DrawSectionHeader("DAY DETAILS");
         int day = g_selectedDay;
         if (day < 1 || day > DAY_COUNT) day = 1;
 
         // The body may scroll; the action row below it never moves out of view.
         UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
-        if (UI::BeginChild("##goalmasDayDetailsBody", vec2(0, -46), UI::ChildFlags::None)) {
+        if (UI::BeginChild("##goaladventDayDetailsBody", vec2(0, -46), UI::ChildFlags::None)) {
             RenderDayDetails();
         }
         UI::EndChild();
@@ -638,7 +638,7 @@ void RenderLeaderboardTab() {
     }
 
     int flags = UI::TableFlags::RowBg | UI::TableFlags::BordersInnerH | UI::TableFlags::PadOuterX;
-    if (UI::BeginTable("##goalmasBoardTable", 4, flags)) {
+    if (UI::BeginTable("##goaladventBoardTable", 4, flags)) {
         UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 42);
         UI::TableSetupColumn("Player", UI::TableColumnFlags::WidthStretch);
         UI::TableSetupColumn("Points", UI::TableColumnFlags::WidthFixed, 96);
@@ -688,7 +688,7 @@ void RenderFeedTab() {
         return;
     }
     int flags = UI::TableFlags::RowBg | UI::TableFlags::BordersInnerH | UI::TableFlags::PadOuterX;
-    if (UI::BeginTable("##goalmasFeedTable", 2, flags)) {
+    if (UI::BeginTable("##goaladventFeedTable", 2, flags)) {
         UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 42);
         UI::TableSetupColumn("Event", UI::TableColumnFlags::WidthStretch);
         UI::TableHeadersRow();
@@ -701,7 +701,9 @@ void RenderFeedTab() {
             UI::TableSetColumnIndex(0);
             UI::Text(tostring(int(i) + 1));
             UI::TableSetColumnIndex(1);
-            UI::TextWrapped(g_liveFeed[i]);
+            // Feed lines arrive with ManiaPlanet format codes ($fff, $f04,
+            // $z ...). Render them instead of printing raw escape sequences.
+            DrawMpName(g_liveFeed[i], TextMain());
         }
         UI::EndTable();
     }
@@ -774,7 +776,7 @@ void RenderWorkspace() {
     // No extra background layer here: stacking translucent panels would turn
     // the glass into an opaque wall.
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
-    if (UI::BeginChild("##goalmasWorkspace", vec2(0, -30), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goaladventWorkspace", vec2(0, -30), UI::ChildFlags::Borders)) {
         if (g_activeTab == 0) RenderCalendarTab();
         else if (g_activeTab == 1) RenderLeaderboardTab();
         else if (g_activeTab == 2) RenderFeedTab();
@@ -784,7 +786,7 @@ void RenderWorkspace() {
     UI::PopStyleColor();
 }
 
-// All options live in Openplanet -> Settings -> Plugins -> goalmas. There is no
+// All options live in Openplanet -> Settings -> Plugins -> goaladvent. There is no
 // separate settings window: the [Setting] declarations in Config.as are the
 // single source of truth and are edited in the Openplanet menu.
 void RenderDashboard() {
@@ -797,7 +799,7 @@ void RenderDashboard() {
         UI::SetNextWindowPos(24, 40, UI::Cond::Always);
         g_windowSizeApplied = true;
     }
-    if (!UI::Begin("goalmas 2026", g_showCalendar)) {
+    if (!UI::Begin("GoalAdvent 2026", g_showCalendar)) {
         UI::End();
         return;
     }
@@ -823,7 +825,7 @@ void RenderBanner() {
                 UI::WindowFlags::AlwaysAutoResize | UI::WindowFlags::NoMove |
                 UI::WindowFlags::NoInputs;
     UI::PushStyleColor(UI::Col::WindowBg, g_palette.windowBg);
-    if (UI::Begin("##goalmasBanner", flags)) {
+    if (UI::Begin("##goaladventBanner", flags)) {
         TextTone(Gold(), Icons::SnowflakeO + "  " + g_bannerText);
     }
     UI::End();
@@ -836,7 +838,7 @@ void RenderGoalHuntHud() {
     UI::SetNextWindowPos(20, 120, UI::Cond::FirstUseEver);
     int flags = UI::WindowFlags::NoTitleBar | UI::WindowFlags::AlwaysAutoResize;
     UI::PushStyleColor(UI::Col::WindowBg, g_palette.windowBg);
-    if (UI::Begin("##goalmasGoalHuntHud", flags)) {
+    if (UI::Begin("##goaladventGoalHuntHud", flags)) {
         TextTone(TextMain(), Icons::FlagCheckered + " #" + tostring(day) + " GOAL HUNT");
         if (IsPremiereDay(day)) TextTone(Gold(), "PREMIERE - x2 points");
         else UI::TextDisabled("Catch-up - x1 points");

@@ -1,4 +1,4 @@
-// goalmas Calendar & Bounty - ManiaPlanet 4 / Openplanet 1.29
+// goaladvent Calendar & Bounty - ManiaPlanet 4 / Openplanet 1.29
 // 25 days of Goal Hunt checkpoint hunting, bounties, badges and a free
 // leaderboard (offline, shared folder or a free HTTP worker + D1).
 // Code, comments and UI strings are English by project convention.
@@ -49,7 +49,7 @@ const int FINALE_GRACE_DAYS = 5;   // finale / catch-up window after Christmas
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
-[Setting category="General" name="Show dashboard on start" description="Open the goalmas window when the game starts. Turn off to hide it until selected from the menu."]
+[Setting category="General" name="Show dashboard on start" description="Open the GoalAdvent window when the game starts. Turn off to hide it until selected from the menu."]
 bool S_ShowOnStart = true;
 
 [Setting category="General" name="Test mode (unlock every day)" description="Unlock all 25 days for testing. Not intended for the real event."]
@@ -67,7 +67,7 @@ string S_Nickname = "Player";
 [Setting category="Sync" name="Sync mode: 0 = offline, 1 = shared folder, 2 = HTTP worker"]
 int S_SyncMode = 0;
 
-[Setting category="Sync" name="Worker URL" description="Cloudflare Workers + D1 base URL, e.g. https://goalmas.example.workers.dev (no trailing slash)."]
+[Setting category="Sync" name="Worker URL" description="Cloudflare Workers + D1 base URL, e.g. https://goaladvent.example.workers.dev (no trailing slash)."]
 string S_ApiBaseUrl = "";
 
 [Setting category="Sync" name="Shared folder" description="SMB / OneDrive / Dropbox folder shared by all players."]
@@ -80,7 +80,7 @@ string S_EventServerKeyword = "";
 // Storage
 // ---------------------------------------------------------------------------
 const string SAVE_FILE = IO::FromStorageFolder("GoalmasAdvent.json");
-const string SYNC_SUBFOLDER = "goalmas";
+const string SYNC_SUBFOLDER = "GoalAdvent";
 
 // Deployed worker URL. Paste it here once and every player syncs with no setup:
 // the plugin switches to HTTP mode automatically when this is not empty.

@@ -11,14 +11,14 @@ array<string> g_debugErrors;
 void DebugError(const string &in source, const string &in detail) {
     string line = "[" + tostring(int(Time::Stamp)) + "] " + source + ": " + detail;
     g_debugErrors.InsertLast(line);
-    print("[goalmas][ERR] " + line);
+    print("[goaladvent][ERR] " + line);
 }
 
 string DebugStateLine() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    return "version=0.4.9-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    return "version=0.5.0-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
            " localDate=" + localDate +
            " eventSeason=" + tostring(eventSeason) +
            " errors=" + tostring(g_debugErrors.Length) +
@@ -48,16 +48,16 @@ string DebugStateLine() {
 }
 
 void LogDebugState() {
-    print("[goalmas][DBG] " + DebugStateLine());
+    print("[goaladvent][DBG] " + DebugStateLine());
 }
 
 // Everything a support report needs, as one pasteable block.
 void CopyDebugLog() {
-    string text = "[goalmas][DBG] " + DebugStateLine() + "\n";
-    text += "[goalmas][LOG] status: " + g_status + "\n";
-    text += "[goalmas][LOG] server test: " + g_selfTestResult + "\n";
+    string text = "[goaladvent][DBG] " + DebugStateLine() + "\n";
+    text += "[goaladvent][LOG] status: " + g_status + "\n";
+    text += "[goaladvent][LOG] server test: " + g_selfTestResult + "\n";
     for (uint i = 0; i < g_debugErrors.Length; i++) {
-        text += "[goalmas][ERR] " + g_debugErrors[i] + "\n";
+        text += "[goaladvent][ERR] " + g_debugErrors[i] + "\n";
     }
     IO::SetClipboard(text);
     g_copyStatus = "Copied " + tostring(g_debugErrors.Length) + " error line(s) to clipboard.";
@@ -68,7 +68,7 @@ void RenderDebugWindow() {
 
     RefreshPalette();
     int flags = UI::WindowFlags::AlwaysAutoResize;
-    if (!UI::Begin(Icons::Info + " goalmas debug", g_showDebug, flags)) {
+    if (!UI::Begin(Icons::Info + " GoalAdvent debug", g_showDebug, flags)) {
         UI::End();
         return;
     }

@@ -1,4 +1,4 @@
-// goalmas Calendar & Bounty - entry points.
+// goaladvent Calendar & Bounty - entry points.
 // Windows stay closed until the player opens them from the Openplanet menu.
 
 void Main() {
@@ -21,7 +21,7 @@ void Main() {
     // No startup banner: the window opens itself when S_ShowOnStart is on.
     // Banners are reserved for in-game events (completed day, bounty taken).
 
-    print("[goalmas] Loaded: " + tostring(DAY_COUNT) + " days, goal " +
+    print("[goaladvent] Loaded: " + tostring(DAY_COUNT) + " days, goal " +
           tostring(GOAL_CP) + " CP, sync mode " + tostring(S_SyncMode) + ".");
     if (S_Debug) LogDebugState();
 }
@@ -61,10 +61,10 @@ void RenderInterface() {
 }
 
 void RenderMenu() {
-    if (UI::MenuItem(Icons::Calendar + " goalmas", "", g_showCalendar)) {
+    if (UI::MenuItem(Icons::Calendar + " GoalAdvent", "", g_showCalendar)) {
         g_showCalendar = !g_showCalendar;
     }
-    UI::SetItemTooltip("Open the goalmas dashboard - calendar, bounties and leaderboard.");
+    UI::SetItemTooltip("Open the GoalAdvent dashboard - calendar, bounties and leaderboard.");
     if (S_Debug && UI::MenuItem(Icons::Info + " Debug", "", g_showDebug)) {
         g_showDebug = !g_showDebug;
     }

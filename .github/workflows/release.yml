@@ -17,8 +17,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build goalmas-dev.op
-        run: zip -r goalmas-dev.op info.toml README.md src
+      - name: Build goaladvent-dev.op
+        run: zip -r goaladvent-dev.op info.toml README.md src
 
       - name: Publish release
         env:
@@ -26,7 +26,7 @@ jobs:
         run: |
           PREV=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
           {
-            echo "**goalmas ${GITHUB_REF_NAME}**"
+            echo "**goaladvent ${GITHUB_REF_NAME}**"
             echo
             if [ -n "$PREV" ]; then
               git log --pretty=format:'- %s' "${PREV}..${GITHUB_REF_NAME}"
@@ -37,7 +37,7 @@ jobs:
               git log --pretty=format:'- %s' "${GITHUB_REF_NAME}"
             fi
           } > release_notes.md
-          gh release create "${GITHUB_REF_NAME}" goalmas-dev.op \
+          gh release create "${GITHUB_REF_NAME}" goaladvent-dev.op \
             --repo "${GITHUB_REPOSITORY}" \
-            --title "goalmas ${GITHUB_REF_NAME}" \
+            --title "goaladvent ${GITHUB_REF_NAME}" \
             --notes-file release_notes.md

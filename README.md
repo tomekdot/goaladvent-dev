@@ -1,8 +1,8 @@
-# goalmas 2026 (dev build)
+# GoalAdvent 2026 (dev build)
 
 Development build for this ManiaPlanet 4 / Openplanet 1.29 setup. It is not
 submitted to the official Openplanet plugin list - install it from this repo or
-from the attached `goalmas-dev.op` package only.
+from the attached `goaladvent-dev.op` package only.
 
 A 25-day Christmas **Goal Hunt** advent event for **ManiaPlanet 4** (Openplanet 1.29).
 Players collect checkpoints on maps named `#N Goal Hunt`, fight over a daily checkpoint
@@ -39,11 +39,11 @@ English is used for all code, comments, UI strings and documentation.
 Copy this folder to:
 
 ```
-C:\Users\tomekdot\Openplanet4\Plugins\goalmas-dev
+C:\Users\tomekdot\Openplanet4\Plugins\goaladvent-dev
 ```
 
 Reload scripts in game (`F3 -> Developer -> Reload Scripts`) or restart the game.
-Open it from the Openplanet plugin menu: **goalmas**.
+Open it from the Openplanet plugin menu: **goaladvent**.
 
 Nothing is visible at startup; the calendar only opens when you select it.
 
@@ -68,7 +68,7 @@ phase percent`, `Show in-game tips` and `Auto sync`.
 Enable **Settings -> Advanced -> Debug overlay** in Openplanet. This adds a
 `Debug` item to the plugin menu with a live state window (selected/active day,
 CP counters, submit queue, sync mode, API URL, event-server check, map UID).
-The **Log state** button writes one readable `[goalmas][DBG]` line to
+The **Log state** button writes one readable `[goaladvent][DBG]` line to
 `Openplanet.log`; the same line is written automatically on plugin load while
 the option is on. A **Run sync now** button is available for testing.
 

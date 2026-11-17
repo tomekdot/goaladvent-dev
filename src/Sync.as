@@ -7,7 +7,7 @@ void ShowBanner(const string &in text) {
     g_bannerText = text;
     g_bannerTimer = 6.0f;
     if (S_Notifications) {
-        UI::ShowNotification("goalmas", text, 5000);
+        UI::ShowNotification("GoalAdvent", text, 5000);
     }
 }
 

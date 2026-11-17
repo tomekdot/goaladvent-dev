@@ -303,7 +303,7 @@ void TrackGoalHunt(float dt) {
             ShowBanner("Day " + tostring(g_activeDay) + " Goal Hunt detected - hunt checkpoints!");
         }
         if (S_Debug) {
-            print("[goalmas][DBG] Map '" + CurrentMapName() + "' -> day " +
+            print("[goaladvent][DBG] Map '" + CurrentMapName() + "' -> day " +
                   tostring(g_activeDay) + " (event server: " + tostring(OnEventServer()) + ")");
         }
     }

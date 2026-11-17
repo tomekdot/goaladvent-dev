@@ -1,4 +1,4 @@
-# goalmas dev - agent instructions
+# GoalAdvent dev - agent instructions
 
 Source of truth for any AI agent working in this repository. Read it before
 editing code. The broader workspace rules also apply:
@@ -6,13 +6,17 @@ editing code. The broader workspace rules also apply:
 
 ## 1. Project identity
 
-- **goalmas** - a 25-day Goal Hunt advent event for **ManiaPlanet 4** with
+- **GoalAdvent** - a 25-day Goal Hunt advent event for **ManiaPlanet 4** with
   **Openplanet 1.29.14**. Dev-only build; never submit to the official
   Openplanet plugin list.
-- Folder / repo / package: `goalmas-dev`.
-  Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
+- Folder / repo / package: `goaladvent-dev`.
+  Remote: `https://github.com/tomekdot/goaladvent-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.4.9-dev`.
+- Version in `info.toml`: `0.5.0-dev`.
+- Renamed: folder / repo / package are `goaladvent-dev`, display name is
+  `GoalAdvent`. Deliberately unchanged: Cloudflare worker + D1 name `goalmas`,
+  API URL, save file `GoalmasAdvent.json` and badge codes `GOALMAS-*` - changing
+  those would break live data and saved progress.
 - AngelScript 1.29 rejects `&inout` on primitives (e.g. `bool`); use plain
   `bool&` for an in/out reference parameter. This broke the whole compile in
   `DrawMpSpan()` once.
@@ -50,15 +54,15 @@ editing code. The broader workspace rules also apply:
 - Map detection is name-based only: `ParseDayFromMapName(app.RootMap.MapInfo.Name)`
   looks for `#N` plus `Goal Hunt` / `GoalHunt` / `Goal-Hunt`, then gates on
   `OnEventServer()`. `CurrentMapName()` and the live `detected day` are shown
-  in the debug panel; a `[goalmas][DBG] Map ... -> day ...` line is logged on
+  in the debug panel; a `[goaladvent][DBG] Map ... -> day ...` line is logged on
   every map change when `S_Debug` is on.
 - Sidebar day state lives in its own 52 px status field (locked / Goal Hunt /
   Pursuit bonus). Keep the footer short - long sentences get clipped.
 - Admin debug: `S_Debug` (Settings -> Advanced -> Debug overlay) adds a `Debug`
-  menu item and writes one `[goalmas][DBG]` line on load. `LogDebugState()` is
+  menu item and writes one `[goaladvent][DBG]` line on load. `LogDebugState()` is
   the single place to extend when adding a new diagnostic field.
 - There is NO in-plugin settings window. All options are `[Setting]` globals in
-  `Config.as`, edited only in Openplanet -> Settings -> Plugins -> goalmas.
+  `Config.as`, edited only in Openplanet -> Settings -> Plugins -> goaladvent.
   `Glass Opacity` uses min/max there; changing it updates the palette next frame.
 - `S_ShowOnStart` defaults to `true` - the dashboard opens by itself. There is
   deliberately no startup banner; banners are only for in-game Goal Hunt events.
@@ -85,11 +89,11 @@ editing code. The broader workspace rules also apply:
   Do not revert to `ubuntu-latest` or `checkout@v4` - GitHub warns about both.
 - `main` is the default branch and the source of releases. Merge feature work
   there first, then push a `v*` tag from `main`.
-- Display name is lowercase `goalmas` everywhere (menu, window, banner, docs).
+- Display name is lowercase `goaladvent` everywhere (menu, window, banner, docs).
   Keep uppercase identifiers unchanged: `GoalmasAdvent.json` (save file, would
   reset progress) and badge codes such as `GOALMAS-2026`.
 - Pushing a `v*` tag runs `.github/workflows/release.yml`, which zips
-  `info.toml`, `README.md` and `src/` into `goalmas-dev.op` and publishes a
+  `info.toml`, `README.md` and `src/` into `goaladvent-dev.op` and publishes a
   GitHub release automatically. Do not upload the asset by hand. Release notes
   are a short human-readable list of commit subjects since the previous tag,
   not just the auto-generated Full Changelog.
@@ -106,14 +110,14 @@ editing code. The broader workspace rules also apply:
 | `src/Sync.as` | Banner/feed, shared-folder + HTTP transports, `/state` parsing |
 | `src/UI.as` | Single dashboard layout, tabs, tile grid, HUD, banner, settings |
 | `src/Theme.as` | `ThemePalette` - colours, alpha and radii for both themes |
-| `src/Debug.as` | Admin diagnostics window + `[goalmas][DBG]` log line |
+| `src/Debug.as` | Admin diagnostics window + `[goaladvent][DBG]` log line |
 | `src/Main.as` | Entry points: `Main`, `Update`, `Render`, `RenderInterface`, `RenderMenu` |
 | `backend/worker.js` | Cloudflare Worker + D1: `/state`, `/submit` |
 | `backend/schema.sql` | D1 tables (`players`, `bounties`, `events`) |
 | `backend/wrangler.toml` | Worker/D1 config (fill in `database_id`) |
 | `backend/DEPLOY.md` | Free-tier deployment guide |
 | `README.md` | Player-facing overview and install steps |
-| `goalmas-dev.op` | Built package - **not** tracked in git; rebuild after changes |
+| `goaladvent-dev.op` | Built package - **not** tracked in git; rebuild after changes |
 
 Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
 
@@ -188,7 +192,7 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 
 - `Update(float dt)` receives **milliseconds** (timers are in seconds).
 - Windows are hidden by default (`S_ShowOnStart = false`); the only menu entry
-  is `Icons::Calendar + " goalmas"` in `RenderMenu()`. Do not add top-bar menus.
+  is `Icons::Calendar + " GoalAdvent"` in `RenderMenu()`. Do not add top-bar menus.
 - Checkpoint count path (same as working chase-mode overlay):
   `app.CurrentPlayground.Players[i]` -> `cast<CTrackManiaPlayer>` ->
   `player.ScriptAPI.CurRace.Checkpoints.Length`.
@@ -202,7 +206,7 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 1. Edit only what the task needs; keep changes consistent with surrounding code.
 2. Run the static checker:
    ```
-   node C:\Users\tomekdot\AppData\Local\Temp\opencode\goalmas_check.js
+   node C:\Users\tomekdot\AppData\Local\Temp\opencode\goaladvent_check.js
    ```
    It verifies braces, UI API names/enums against `OpenplanetCore.json`,
    reserved keywords, duplicate function signatures, icons, worker syntax and
@@ -212,9 +216,9 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
    balance, rest-day alignment).
 4. After the user reloads the plugin, grep `C:\Users\tomekdot\Openplanet4\Openplanet.log`:
    ```
-   Get-Content ...\Openplanet.log -Tail 400 | Select-String 'goalmas|ERR :|Script compilation failed'
+   Get-Content ...\Openplanet.log -Tail 400 | Select-String 'goaladvent|ERR :|Script compilation failed'
    ```
-   Success = `Loaded plugin 'goalmas-dev'` + `[goalmas] Loaded: 25 days...`
+   Success = `Loaded plugin 'goaladvent-dev'` + `[goaladvent] Loaded: 25 days...`
    with no `ERR :`.
 5. Do not declare a task done on static checks alone if a game reload is
    possible - say what still needs visual confirmation.
@@ -222,7 +226,7 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 ## 5. Git workflow
 
 - One clean commit per change. Conventional Commits **with scope**:
-  `feat(goalmas): ...`, `fix(goalmas): ...`, `style(goalmas): ...`.
+  `feat(goaladvent): ...`, `fix(goaladvent): ...`, `style(goaladvent): ...`.
 - Author identity: `tomekdot <73403480+tomekdot@users.noreply.github.com>`
   (the GitHub ID + noreply address, identical to the global git config and all
   other repos). Never use the plain `tomekdot@users.noreply.github.com` form.
@@ -231,5 +235,5 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 - Another agent may rebase/rewrite this branch concurrently. If a push is
   rejected, `git fetch` + inspect `git log --graph --all` and `.git/rebase-merge`
   **before** force-pushing. Never clobber a rebase in progress.
-- After code changes, rebuild `goalmas-dev.op` (`info.toml` + `README.md` at
+- After code changes, rebuild `goaladvent-dev.op` (`info.toml` + `README.md` at
   root, code in `src/`) and refresh the `v0.2.0-dev` release only when asked.
