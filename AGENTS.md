@@ -12,7 +12,11 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.3.0-dev`.
+- Version in `info.toml`: `0.3.1-dev`.
+- Stat-card icons are centred with a borderless `Button` + `ButtonTextAlign`;
+  do not go back to manual `MeasureString()` offsets for icon glyphs.
+- Progress bars thinner than ~20 px must not carry overlay text; put the label
+  on its own line.
 - Calendar tile height is derived from available column height (60-84 px);
   moon percentage sits on its own centred line below the status, never in the
   top-right corner where it collided with the tile icon.

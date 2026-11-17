@@ -72,22 +72,22 @@ void DrawStatCard(const string &in icon, const string &in label,
     int flags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
     if (UI::BeginChild("##stat" + label + icon, vec2(0, 64), UI::ChildFlags::Borders, flags)) {
         vec2 start = UI::GetCursorPos();
-        vec2 screen = UI::GetCursorScreenPos();
 
-        // The card is 64 px tall with 7 px vertical padding, leaving 50 px of
-        // content. A 36 px box centred in it starts 7 px below the content top.
+        // A button with ButtonTextAlign centres the glyph reliably. Measuring
+        // an icon with MeasureString is not dependable across Openplanet fonts.
         const float boxSize = 36.0f;
-        const float boxTop = 7.0f;
-        UI::GetWindowDrawList().AddRectFilled(
-            vec4(screen.x, screen.y + boxTop, boxSize, boxSize),
-            vec4(accent.x * 0.50f, accent.y * 0.50f, accent.z * 0.50f, 1.00f), 4.0f);
-
-        float iconW = UI::MeasureString(icon, null, 17.0f).x;
-        UI::SetCursorPos(vec2(start.x + (boxSize - iconW) * 0.5f,
-                              start.y + boxTop + (boxSize - 17.0f) * 0.5f));
+        vec4 boxCol = vec4(accent.x * 0.50f, accent.y * 0.50f, accent.z * 0.50f, 1.00f);
+        UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.5f, 0.5f));
+        UI::PushStyleVar(UI::StyleVar::FrameRounding, 4.0f);
+        UI::PushStyleColor(UI::Col::Button, boxCol);
+        UI::PushStyleColor(UI::Col::ButtonHovered, boxCol);
+        UI::PushStyleColor(UI::Col::ButtonActive, boxCol);
+        UI::PushStyleColor(UI::Col::Text, accent);
         UI::PushFontSize(17.0f);
-        TextTone(accent, icon);
+        UI::Button(icon + "##statIcon" + label, vec2(boxSize, boxSize));
         UI::PopFontSize();
+        UI::PopStyleColor(4);
+        UI::PopStyleVar(2);
 
         // 14 px clear gap after the box; the two text lines are centred as a
         // block against the same 50 px content height.
@@ -144,6 +144,8 @@ void RenderTopBar() {
     TextTone(IceBlue(), Icons::SnowflakeO);
     UI::SameLine(0, 8);
     TextTone(TextMain(), "goalmas 2026");
+    UI::SameLine(0, 8);
+    UI::TextDisabled("- 25 days of checkpoints, bounties and badges");
 
     // Title and the three small buttons share ONE row. SameLine first, then an
     // absolute X on that row, otherwise ImGui drops the buttons to a new line.
@@ -581,8 +583,9 @@ void RenderFinaleTab() {
     DrawSectionHeader("GRAND FINALE");
     TextTone(Gold(), Icons::Trophy + "  THE BIG FINALE");
     UI::TextWrapped("Final code: " + FinalCode());
-    UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 10),
-                    tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " Gifts");
+    // A 10 px bar cannot fit overlay text - keep the label on its own line.
+    UI::TextDisabled("Gifts " + tostring(OpenedCount()) + " / " + tostring(DAY_COUNT));
+    UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 12), "");
     UI::Dummy(vec2(0, 8));
     DrawStatCard(Icons::Trophy, "RESULT", "Score (best 15) " + tostring(TotalPoints()), Gold());
     UI::Dummy(vec2(0, 5));
@@ -602,16 +605,18 @@ void RenderFinaleTab() {
 void RenderFooter() {
     UI::Separator();
     // Footer = connection status, sidebar = day mode. No duplicate OFFLINE.
-    string link = S_SyncMode == 0 ? "OFFLINE" : "CONNECTED";
+    string link = S_SyncMode == 0 ? "Offline - progress saved on this PC"
+                                  : "Connected to the event server";
     vec4 linkCol = S_SyncMode == 0 ? TextMuted() : Emerald();
     TextTone(linkCol, Icons::Circle + "  " + link);
     UI::SameLine(0, 0);
-    string right = "BEST 15: " + tostring(ScoreDays()) + " PTS  |  " +
+    string right = "DAY " + tostring(g_selectedDay) + "/25   BEST 15: " +
+                   tostring(ScoreDays()) + " PTS   " +
                    tostring(OpenedCount()) + "/25 GIFTS";
-    float w = UI::MeasureString(right, null, 0.0f, 0.0f).x;
-    if (w < 1.0f) w = 220.0f;
+    float w = UI::MeasureString(right, null, 13.0f, 0.0f).x + 8.0f;
+    if (w < 1.0f) w = 300.0f;
     UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f);
-    TextTone(TextMuted(), right);
+    TextTone(MixCol(TextMuted(), TextMain(), 0.50f), right);
 }
 
 void RenderWorkspace() {
