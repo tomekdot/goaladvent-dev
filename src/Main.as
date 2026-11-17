@@ -45,12 +45,20 @@ void AutoSyncLoop() {
 
 void Update(float dt) {
     if (g_bannerTimer > 0.0f) g_bannerTimer -= dt / 1000.0f;
+    if (g_openAnimActive) {
+        g_openAnimTimer -= dt / 1000.0f;
+        if (g_openAnimTimer <= 0.0f) {
+            g_openAnimTimer = 0.0f;
+            g_openAnimActive = false;
+        }
+    }
     TrackGoalHunt(dt);
 }
 
 void Render() {
     RefreshPalette();   // overlays use the same theme colours as the dashboard
     RenderBanner();
+    RenderOpenAnimation();
     RenderGoalHuntHud();
     if (S_Debug) RenderDebugWindow();
 }

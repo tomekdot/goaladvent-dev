@@ -14,7 +14,7 @@ overview see [README.md](README.md); for deployment commands see
 | Folder / repo / package id | `goaladvent-dev` |
 | GitHub | https://github.com/tomekdot/goaladvent-dev |
 | Default branch | `main` |
-| Release tag pattern | `v*` (for example `v0.5.3-dev`) |
+| Release tag pattern | `v*` (for example `v0.5.4-dev`) |
 | Version source | `info.toml` and `PLUGIN_VERSION` in `src/Config.as` |
 | Target game | ManiaPlanet 4 (MP4), Openplanet 1.29.14 |
 | Language | AngelScript + ImGui; all code, comments, UI strings and docs in English |
@@ -219,6 +219,31 @@ wrangler d1 execute goalmas --remote --file=schema.sql
 wrangler deploy
 ```
 
+### Discord announcements
+
+The worker can mirror the live feed into Discord. Set one secret and every
+bounty takeover and first day completion is posted as an embed:
+
+```
+cd backend
+wrangler secret put DISCORD_WEBHOOK_URL
+```
+
+Paste a channel webhook URL (Discord: Channel Settings -> Integrations ->
+Webhooks -> New Webhook -> Copy URL). Without the secret the worker simply
+skips Discord, so nothing breaks; the `/admin` page shows
+`Discord webhook: configured / not set` so you can confirm it after deploying.
+
+Announcement rules:
+
+- bounty takeover (holder changes) -> gold embed "Bounty taken - day N" with
+  player, checkpoints and the bonus points;
+- first completion of a day -> blue embed "Day N completed";
+- repeated submits with no new points stay silent, so the channel is not
+  flooded.
+
+The same lines are stored in `events` and appear in the plugin's Live feed tab.
+
 ---
 
 ## 8. UI and themes
@@ -239,6 +264,13 @@ Font scale: title 16 px, tagline 13 px, section headers 15 px, calendar tip
 Panels: sidebar (tabs + progress + day status field), workspace (calendar,
 leaderboard, live feed, finale), fixed footer with live health, admin debug
 window, HUD and banner overlays.
+
+Completing a day (or stealing a bounty) plays a short gift-opening card drawn
+on the foreground draw list: the box pops in, the lid lifts, a gold ring
+expands and the result line shows points, checkpoints and the current bounty
+holder. It takes no input, so it cannot block driving, and it fades out after
+`OPEN_ANIM_SEC` (4.2 s). `S_OpenAnimation` turns it off; when it is off the
+plain text banner is used instead.
 
 The leaderboard and feed use a ManiaPlanet format-code parser (`MpColour`,
 `DrawMpSpan`, `DrawMpName`) so `$fff`, `$f04`, `$z` etc. render as colours
@@ -261,6 +293,7 @@ clipboard, Log state to Openplanet.log, Run sync now, Clear errors.
 | Show moon phase percent | on | Illumination on tiles |
 | Show in-game tips | on | Hint in calendar tab |
 | Show notifications | on | Event banners |
+| Opening animation | on | Gift card on day completion / bounty |
 | Auto sync | on | Refresh every 20 s |
 | Sync mode | 0 stored / 2 effective | Offline / folder / worker |
 | Worker URL | baked in | Cloudflare base URL |

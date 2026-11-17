@@ -279,7 +279,8 @@ void CompleteDay(int day, int cp) {
 
     string msg = LocalName() + " finished day " + tostring(day) + " with " + tostring(cp) +
                  " CP (+" + tostring(points) + " pts)";
-    ShowBanner("Day " + tostring(day) + " completed: " + tostring(cp) + " CP, +" + tostring(points) + " pts");
+    if (S_OpenAnimation) StartOpenAnimation(day, points, cp, false);
+    else ShowBanner("Day " + tostring(day) + " completed: " + tostring(cp) + " CP, +" + tostring(points) + " pts");
     PushFeed(msg);
     SaveProgress();
 }
@@ -305,8 +306,12 @@ void ClaimBounty(int day, int cp) {
     string msg = LocalName() + " stole the day " + tostring(day) + " bounty with " +
                  tostring(cp) + " CP";
     if (points > 0) {
-        ShowBanner("BOUNTY TAKEN: " + tostring(cp) + " CP, +" + tostring(points) + " pts");
+        if (S_OpenAnimation) StartOpenAnimation(day, points, cp, true);
+        else ShowBanner("BOUNTY TAKEN: " + tostring(cp) + " CP, +" + tostring(points) + " pts");
         PushFeed(msg);
+    } else if (S_OpenAnimation && g_openAnimActive && g_openAnimDay == day) {
+        // The day-completion card is already on screen; only upgrade its badge.
+        g_openAnimBounty = true;
     }
     SaveProgress();
 }

@@ -12,7 +12,7 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goaladvent-dev`.
   Remote: `https://github.com/tomekdot/goaladvent-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.5.3-dev`.
+- Version in `info.toml`: `0.5.4-dev`.
 - Leaderboard points come from `scoreFromBests(bests)`: best 15 of days 1-24
   plus finale. Each day stores `pts` and a one-time bounty flag `b` in `bests`.
   Verified with 3x100 CP submits -> 300 points in `/state`.
@@ -72,6 +72,14 @@ editing code. The broader workspace rules also apply:
   `Glass Opacity` uses min/max there; changing it updates the palette next frame.
 - `S_ShowOnStart` defaults to `true` - the dashboard opens by itself. There is
   deliberately no startup banner; banners are only for in-game Goal Hunt events.
+- Reward feedback: `StartOpenAnimation()` / `RenderOpenAnimation()` in `UI.as`
+  draw a gift-opening card on the foreground draw list (no window, no input,
+  4.2 s). `CompleteDay()` and `ClaimBounty()` call it instead of `ShowBanner()`
+  when `S_OpenAnimation` is on; a run that both completes the day and steals the
+  bounty merges into one card. Never make this overlay take mouse input.
+- Discord mirror: worker secret `DISCORD_WEBHOOK_URL` posts an embed for every
+  bounty takeover (holder change) and first day completion. Repeated +0 submits
+  stay silent. `/admin` shows `Discord webhook: configured / not set`.
 - The worker has a read-only `/admin?token=<ADMIN_TOKEN>` HTML page (secret is
   never committed) and D1 can be browsed in the Cloudflare dashboard.
 - `[Setting]` entries carry user-facing `description` (and `min`/`max` for

@@ -29,6 +29,10 @@ technical reference see [DOCS.md](DOCS.md).
   `ELF-VETERAN`, `GOALMAS-24`, `FINALIST`, plus `PURSUIT` and `MP-GALAXY`.
 - 🖥️ **Dashboard**: left sidebar, 5x5 colour-coded calendar, day details,
   leaderboard, live feed, finale tab, HUD and banner.
+- 🎁 **Gift opening**: finishing a day (or stealing a bounty) pops a short
+  animation with the points, checkpoints and current bounty holder.
+- 💬 **Discord feed**: the worker mirrors bounty takeovers and first clears to a
+  channel webhook, so `#goalmas-leaderboard` updates by itself.
 - 🌗 **Two colour themes** with one shared layout (see below).
 
 ---
@@ -100,6 +104,7 @@ window).
 | `Show moon phase percent` | on | Show illumination on tiles |
 | `Show in-game tips` | on | Short hint in the calendar tab |
 | `Show notifications` | on | Banners for completed days and bounties |
+| `Opening animation` | on | Gift card on day completion / bounty |
 | `Auto sync` | on | Refresh results every 20 seconds |
 | `Sync mode` | 0 (effective 2) | 0 offline, 1 shared folder, 2 HTTP worker |
 | `Worker URL` | baked in | Cloudflare Worker base URL |

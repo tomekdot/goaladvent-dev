@@ -450,7 +450,9 @@ void RenderDayGrid() {
             g_confirmReset = false;
         }
         UI::SetItemTooltip(MoonPhaseName(day) + " - " +
-                           tostring(MoonIlluminationPct(day)) + "% illumination");
+                           tostring(MoonIlluminationPct(day)) + "% illumination\n" +
+                           "Bounty: " + tostring(g_bountyCp[day - 1]) + " CP by " +
+                           g_bountyHolder[day - 1]);
     }
     // SetCursorPos() past the last tile extends the child boundary, so ImGui
     // requires an item afterwards - otherwise EndChild() throws an assertion.
@@ -878,6 +880,121 @@ void RenderDashboard() {
     RenderFooter();
     PopDashboardStyle();
     UI::End();
+}
+
+// ---------------------------------------------------------------------------
+// Advent gift-opening animation
+// ---------------------------------------------------------------------------
+// Shown after a day is completed (or a bounty is stolen). It is drawn on the
+// foreground draw list, so it does not create a window, does not capture the
+// mouse and cannot get in the way while driving.
+float Clamp01(float v) {
+    if (v < 0.0f) return 0.0f;
+    if (v > 1.0f) return 1.0f;
+    return v;
+}
+
+float EaseOutCubic(float t) {
+    t = Clamp01(t);
+    float inv = 1.0f - t;
+    return 1.0f - inv * inv * inv;
+}
+
+vec4 FadeCol(vec4 col, float a) {
+    return vec4(col.x, col.y, col.z, col.w * Clamp01(a));
+}
+
+void StartOpenAnimation(int day, int points, int cp, bool bounty) {
+    if (!S_OpenAnimation) return;
+    if (day < 1 || day > DAY_COUNT) return;
+    // A single run can both complete the day and steal the bounty. Keep one
+    // card, merge the points and upgrade it to the bounty variant.
+    bool same = g_openAnimActive && g_openAnimDay == day;
+    g_openAnimActive = true;
+    g_openAnimTimer = OPEN_ANIM_SEC;
+    g_openAnimDay = day;
+    g_openAnimPoints = (same ? g_openAnimPoints : 0) + points;
+    g_openAnimCp = same && g_openAnimCp > cp ? g_openAnimCp : cp;
+    g_openAnimBounty = (same && g_openAnimBounty) || bounty;
+    g_openAnimTitle = g_titles[day - 1];
+}
+
+void RenderOpenAnimation() {
+    if (!g_openAnimActive) return;
+    float t = Clamp01(1.0f - g_openAnimTimer / OPEN_ANIM_SEC);
+    float alpha = Clamp01(t / 0.10f) * (1.0f - EaseOutCubic((t - 0.84f) / 0.16f));
+    if (alpha <= 0.001f) return;
+
+    vec4 accent = g_openAnimBounty ? Gold() : IceBlue();
+    vec4 bg = g_palette.windowBg;
+    DrawList@ dl = UI::GetForegroundDrawList();
+
+    const float cardW = 360.0f;
+    const float cardH = 150.0f;
+    float x = (Display::GetWidth() - cardW) * 0.5f;
+    float y = 42.0f;
+
+    dl.AddRectFilled(vec4(x, y, cardW, cardH),
+                     FadeCol(vec4(bg.x, bg.y, bg.z, 0.95f), alpha), 10.0f);
+    dl.AddRect(vec4(x, y, cardW, cardH), FadeCol(accent, alpha * 0.85f), 10.0f, 1.5f);
+
+    // Gift geometry: the box pops in, then the lid lifts and the halo expands.
+    float pop = EaseOutCubic(t / 0.16f);
+    float open = EaseOutCubic((t - 0.18f) / 0.32f);
+    float cx = x + 76.0f;
+    float cy = y + 88.0f;
+    float bw = 58.0f * (0.55f + 0.45f * pop);
+    float bh = 46.0f * (0.55f + 0.45f * pop);
+    float bodyTop = cy - bh * 0.5f;
+    float bodyLeft = cx - bw * 0.5f;
+
+    float ring = EaseOutCubic((t - 0.26f) / 0.58f);
+    if (ring > 0.01f && ring < 0.99f) {
+        dl.AddCircle(vec2(cx, bodyTop), 16.0f + 56.0f * ring,
+                     FadeCol(accent, alpha * (0.55f - ring * 0.50f)), 32, 2.0f);
+    }
+
+    // Sparkles around the opening box.
+    float tw = 0.55f + 0.45f * open;
+    dl.AddCircleFilled(vec2(cx - 46.0f, bodyTop - 12.0f), 2.0f * tw, FadeCol(Gold(), alpha * open));
+    dl.AddCircleFilled(vec2(cx + 44.0f, bodyTop - 6.0f), 2.4f * tw, FadeCol(Gold(), alpha * open));
+    dl.AddCircleFilled(vec2(cx - 34.0f, bodyTop - 34.0f), 1.6f * tw, FadeCol(accent, alpha * open));
+    dl.AddCircleFilled(vec2(cx + 34.0f, bodyTop - 30.0f), 1.6f * tw, FadeCol(accent, alpha * open));
+
+    // Box body and ribbon.
+    dl.AddRectFilled(vec4(bodyLeft, bodyTop, bw, bh),
+                     FadeCol(vec4(accent.x * 0.32f, accent.y * 0.32f, accent.z * 0.32f, 1.0f), alpha), 3.0f);
+    dl.AddRectFilled(vec4(cx - 4.0f, bodyTop, 8.0f, bh), FadeCol(accent, alpha), 1.0f);
+    dl.AddRectFilled(vec4(bodyLeft, cy - 4.0f, bw, 8.0f), FadeCol(accent, alpha), 1.0f);
+
+    // Lid rises and takes the bow with it.
+    float lidLift = open * 26.0f;
+    float lidH = 14.0f * (0.60f + 0.40f * pop);
+    float lidW = bw + 10.0f;
+    float lidY = bodyTop - lidH - lidLift;
+    dl.AddRectFilled(vec4(cx - lidW * 0.5f, lidY, lidW, lidH), FadeCol(accent, alpha), 3.0f);
+    dl.AddCircleFilled(vec2(cx - 7.0f, lidY - 5.0f), 6.0f, FadeCol(accent, alpha), 12);
+    dl.AddCircleFilled(vec2(cx + 7.0f, lidY - 5.0f), 6.0f, FadeCol(accent, alpha), 12);
+    dl.AddCircleFilled(vec2(cx, lidY - 5.0f), 3.5f, FadeCol(Gold(), alpha), 10);
+
+    // Result text.
+    float tx = x + 128.0f;
+    float ty = y + 18.0f;
+    string head = g_openAnimBounty
+        ? "BOUNTY TAKEN"
+        : ("DAY " + tostring(g_openAnimDay) + " OPENED");
+    dl.AddText(vec2(tx, ty), FadeCol(accent, alpha), head, null, 16.0f);
+    dl.AddText(vec2(tx, ty + 24.0f), FadeCol(TextMain(), alpha), g_openAnimTitle, null, 13.0f);
+    dl.AddText(vec2(tx, ty + 44.0f), FadeCol(TextMain(), alpha),
+               "+" + tostring(g_openAnimPoints) + " PTS   -   " + tostring(g_openAnimCp) + " CP",
+               null, 13.0f);
+    int idx = g_openAnimDay - 1;
+    dl.AddText(vec2(tx, ty + 66.0f), FadeCol(TextMuted(), alpha),
+               "Bounty: " + tostring(g_bountyCp[idx]) + " CP by " + g_bountyHolder[idx],
+               null, 12.0f);
+    dl.AddText(vec2(tx, ty + 88.0f), FadeCol(TextMuted(), alpha),
+               tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " gifts open",
+               null, 12.0f);
 }
 
 // ---------------------------------------------------------------------------

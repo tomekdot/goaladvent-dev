@@ -127,7 +127,7 @@ function badgesFor(id, stored) {
   return Array.from(new Set([STARTER_BADGE, ...owned, ...extra]));
 }
 
-async function pushEvent(env, msg) {
+async function pushEvent(env, msg, extra) {
   await env.DB.prepare("INSERT INTO events (msg, created_at) VALUES (?, ?)")
     .bind(msg, Date.now())
     .run();
@@ -140,10 +140,30 @@ async function pushEvent(env, msg) {
   const hook = env.DISCORD_WEBHOOK_URL;
   if (!hook) return;
   try {
+    // A Discord embed reads better than a wall of bold text and lets the
+    // bounty takeovers stand out in #goalmas-leaderboard.
+    const embed = extra
+      ? {
+          title: extra.bounty
+            ? "\uD83C\uDFAF Bounty taken - day " + extra.day
+            : "\uD83C\uDF81 Day " + extra.day + " completed",
+          description: msg,
+          color: extra.bounty ? 0xd9a441 : 0x4fa3d1,
+          fields: [
+            { name: "Player", value: String(extra.name || "Player"), inline: true },
+            { name: "Checkpoints", value: String(extra.cp || 0), inline: true },
+            { name: "Points", value: "+" + String(extra.gained || 0), inline: true }
+          ],
+          footer: { text: "GoalAdvent 2026" },
+          timestamp: new Date().toISOString()
+        }
+      : null;
     await fetch(hook, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: "\uD83C\uDF84 **" + msg + "**" })
+      body: JSON.stringify(embed
+        ? { embeds: [embed] }
+        : { content: "\uD83C\uDF84 **" + msg + "**" })
     });
   } catch (e) {
     // Discord is optional - never fail a result because of it.
@@ -186,6 +206,7 @@ th{background:#242733}tr:nth-child(even){background:#1b1d24}a{color:#9ecbff}</st
 <h1>GoalAdvent / goalmas D1 - live data</h1>
 <p><a href="/admin?token=${encodeURIComponent(env.ADMIN_TOKEN)}">Refresh</a> &middot;
 <a href="https://dash.cloudflare.com/2975602b6ae7dc883884858d1b5ce4bf/database/d1">Cloudflare D1 dashboard</a></p>
+<p>Discord webhook: <strong>${env.DISCORD_WEBHOOK_URL ? "configured" : "not set"}</strong></p>
 <h2>Players (${(players.results || []).length} of ${(players.results || []).length})</h2>
 <table><tr><th>account</th><th>name</th><th>pts</th><th>bounties</th><th>badges</th><th>bests</th></tr>
 ${rows(players, ["account_id", "name", "points", "bounties", "badges", "bests"])}</table>
@@ -323,6 +344,7 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         .first();
       const currentCp = bountyRow ? bountyRow.cp || BASE_BOUNTY_CP : BASE_BOUNTY_CP;
       const currentMs = bountyRow ? bountyRow.ms || 0 : 0;
+      const previousHolder = bountyRow ? bountyRow.holder || "GrinchBot" : "GrinchBot";
       const beatsBounty =
         cpCount > currentCp ||
         (cpCount === currentCp && timeMs > 0 && (!currentMs || timeMs < currentMs));
@@ -390,15 +412,28 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
 
       // Repeated +0 submits must not flood the 15-line feed or Discord.
       const timeInfo = timeMs > 0 ? " (" + (timeMs / 1000).toFixed(3) + "s)" : "";
-      if (bountyWon) {
+      // Announce every takeover, not only the first bonus: the holder changes
+      // several times per day and #goalmas-leaderboard should follow it.
+      const bountyChanged = beatsBounty && (name || "Player") !== previousHolder;
+      if (bountyChanged) {
         await pushEvent(
           env,
-          (name || "Player") + " stole the day " + day + " bounty with " + cpCount + " CP" + timeInfo + "!"
+          (name || "Player") + " stole the day " + day + " bounty from " +
+            previousHolder + " with " + cpCount + " CP" + timeInfo +
+            (bountyWon ? " (+" + BASE_BOUNTY_POINTS * mult + " pts)" : ""),
+          {
+            bounty: true,
+            day,
+            name: name || "Player",
+            cp: cpCount,
+            gained: bountyWon ? BASE_BOUNTY_POINTS * mult : 0
+          }
         );
       } else if (gained > 0) {
         await pushEvent(
           env,
-          (name || "Player") + " reached " + cpCount + " CP on day " + day + " (+" + gained + " pts)"
+          (name || "Player") + " reached " + cpCount + " CP on day " + day + " (+" + gained + " pts)",
+          { bounty: false, day, name: name || "Player", cp: cpCount, gained }
         );
       }
 

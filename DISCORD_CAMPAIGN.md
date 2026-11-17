@@ -120,8 +120,12 @@ Titles and hints are in `src/Calendar.as` (`g_titles`, `g_hints`).
 - Weekly recap every Sunday: top 3 of the leaderboard, most bounties.
 - One small weekly contest (for example best screenshot of the day). Only
   announce a prize if one actually exists - put it in `[prize]`.
-- Automated leaderboard posts through a Discord webhook are possible but not
-  implemented in the worker yet; that is a separate small task.
+- The worker already mirrors bounty takeovers and first day clears to a
+  Discord webhook (`DISCORD_WEBHOOK_URL` secret). Set it once and
+  `#goalmas-leaderboard` fills itself; the `/admin` page confirms
+  `Discord webhook: configured`.
+- Every completed day plays a short gift-opening animation in game, so the
+  daily post can simply say "open today's gift".
 
 ---
 
