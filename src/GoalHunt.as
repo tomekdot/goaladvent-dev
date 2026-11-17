@@ -83,6 +83,12 @@ string GetCurrentMapUid() {
     return app.RootMap.MapInfo.MapUid;
 }
 
+string CurrentMapName() {
+    auto app = cast<CGameManiaPlanet>(GetApp());
+    if (app is null || app.RootMap is null || app.RootMap.MapInfo is null) return "";
+    return string(app.RootMap.MapInfo.Name);
+}
+
 bool OnEventServer() {
     string keyword = S_EventServerKeyword.Trim().ToLower();
     if (keyword.Length == 0) return true;
@@ -219,6 +225,10 @@ void TrackGoalHunt(float dt) {
         if (g_activeDay > 0) {
             g_selectedDay = g_activeDay;
             ShowBanner("Day " + tostring(g_activeDay) + " Goal Hunt detected - hunt checkpoints!");
+        }
+        if (S_Debug) {
+            print("[goalmas][DBG] Map '" + CurrentMapName() + "' -> day " +
+                  tostring(g_activeDay) + " (event server: " + tostring(OnEventServer()) + ")");
         }
     }
 

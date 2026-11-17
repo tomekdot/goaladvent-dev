@@ -17,7 +17,7 @@ void LogDebugState() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    print("[goalmas][DBG] version=0.3.7-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    print("[goalmas][DBG] version=0.3.8-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
           " localDate=" + localDate +
           " eventSeason=" + tostring(eventSeason) +
           " errors=" + tostring(g_debugErrors.Length) +
@@ -35,6 +35,8 @@ void LogDebugState() {
           " syncing=" + tostring(g_syncing) +
           " api=" + ApiUrl() +
           " map=" + GetCurrentMapUid() +
+          " mapName=" + CurrentMapName() +
+          " detected=" + tostring(DetectGoalHuntDay()) +
           " server=" + CurrentServerName() +
           " eventServer=" + tostring(OnEventServer()));
 }
@@ -57,7 +59,7 @@ void RenderDebugWindow() {
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
 
     UI::Text("VERSION / VIEW");
-    UI::Text("  version: 0.3.7-dev");
+    UI::Text("  version: 0.3.8-dev");
     UI::Text("  local date: " + localDate + "   event season: " + tostring(eventSeason));
     UI::Text("  theme: " + string(GlassTheme() ? "Transparent Glass" : "Obsidian Minimal"));
     UI::Text("  glass opacity: " + tostring(S_GlassOpacity));
@@ -88,7 +90,10 @@ void RenderDebugWindow() {
     UI::Text("  login: " + LocalLogin());
     UI::Text("  name: " + LocalName());
     UI::Text("  server: " + CurrentServerName());
+    UI::Text("  map name: " + CurrentMapName());
     UI::Text("  map UID: " + GetCurrentMapUid());
+    UI::Text("  detected day now: " + tostring(DetectGoalHuntDay()) +
+             "   (name parse: " + tostring(ParseDayFromMapName(CurrentMapName())) + ")");
     UI::Text("  feed rows: " + tostring(g_liveFeed.Length) +
              "   board rows: " + tostring(g_boardNames.Length));
 

@@ -12,7 +12,12 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.3.7-dev`.
+- Version in `info.toml`: `0.3.8-dev`.
+- Map detection is name-based only: `ParseDayFromMapName(app.RootMap.MapInfo.Name)`
+  looks for `#N` plus `Goal Hunt` / `GoalHunt` / `Goal-Hunt`, then gates on
+  `OnEventServer()`. `CurrentMapName()` and the live `detected day` are shown
+  in the debug panel; a `[goalmas][DBG] Map ... -> day ...` line is logged on
+  every map change when `S_Debug` is on.
 - Sidebar day state lives in its own 52 px status field (locked / Goal Hunt /
   Pursuit bonus). Keep the footer short - long sentences get clipped.
 - Admin debug: `S_Debug` (Settings -> Advanced -> Debug overlay) adds a `Debug`
