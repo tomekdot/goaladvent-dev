@@ -12,7 +12,9 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.3.5-dev`.
+- Version in `info.toml`: `0.3.6-dev`.
+- Sidebar day state lives in its own 52 px status field (locked / Goal Hunt /
+  Pursuit bonus). Keep the footer short - long sentences get clipped.
 - Admin debug: `S_Debug` (Settings -> Advanced -> Debug overlay) adds a `Debug`
   menu item and writes one `[goalmas][DBG]` line on load. `LogDebugState()` is
   the single place to extend when adding a new diagnostic field.

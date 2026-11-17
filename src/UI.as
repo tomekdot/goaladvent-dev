@@ -227,7 +227,7 @@ void RenderSidebar() {
         SidebarTab(3, Icons::Star, "Grand finale");
         UI::Separator();   // thin divider using the theme border colour
 
-        float remain = UI::GetContentRegionAvail().y - 78.0f;
+        float remain = UI::GetContentRegionAvail().y - 116.0f;
         if (remain > 0) UI::Dummy(vec2(0, remain));
 
         TextTone(TextMuted(), "PROGRESS   " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT));
@@ -236,15 +236,35 @@ void RenderSidebar() {
         UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 4), "");
         UI::PopStyleColor(2);
         UI::Dummy(vec2(0, 6));
-        // The sidebar describes the selected day; connection status belongs in
-        // the footer only. Green is reserved for a playable Goal Hunt day.
-        if (IsOffDay(g_selectedDay)) {
-            TextTone(Purple(), Icons::Circle + "  PURSUIT NIGHT");
-        } else if (!DayUnlocked(g_selectedDay)) {
-            TextTone(TextMuted(), Icons::Circle + "  LOCKED DAY");
-        } else {
-            TextTone(Emerald(), Icons::Circle + "  GOAL HUNT DAY");
+
+        // Dedicated status field: the selected day gets a real box with a
+        // short explanation instead of a bare dot and a truncated label.
+        UI::PushStyleColor(UI::Col::ChildBg, InnerBg());
+        UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(8, 6));
+        int statusFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
+        if (UI::BeginChild("##goalmasSidebarStatus", vec2(0, 52), UI::ChildFlags::Borders, statusFlags)) {
+            string status;
+            string detail;
+            vec4 col;
+            if (IsOffDay(g_selectedDay)) {
+                status = "PURSUIT NIGHT";
+                detail = "Bonus 20:00 CET";
+                col = Purple();
+            } else if (!DayUnlocked(g_selectedDay)) {
+                status = "LOCKED - DAY " + tostring(g_selectedDay);
+                detail = "Opens Dec " + tostring(g_selectedDay);
+                col = TextMuted();
+            } else {
+                status = "GOAL HUNT OPEN";
+                detail = "Catch " + tostring(GOAL_CP) + " CP / run";
+                col = Emerald();
+            }
+            TextTone(col, Icons::Circle + "  " + status);
+            UI::TextDisabled(detail);
         }
+        UI::EndChild();
+        UI::PopStyleVar();
+        UI::PopStyleColor();
     }
     UI::EndChild();
     UI::PopStyleColor();
@@ -606,8 +626,8 @@ void RenderFinaleTab() {
 void RenderFooter() {
     UI::Separator();
     // Footer = connection status, sidebar = day mode. No duplicate OFFLINE.
-    string link = S_SyncMode == 0 ? "Offline - progress saved on this PC"
-                                  : "Connected to the event server";
+    string link = S_SyncMode == 0 ? "Offline - saved locally"
+                                  : "Connected - live results";
     vec4 linkCol = S_SyncMode == 0 ? TextMuted() : Emerald();
     TextTone(linkCol, Icons::Circle + "  " + link);
     UI::SameLine(0, 0);
