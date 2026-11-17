@@ -12,7 +12,9 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.2.3-dev`.
+- Version in `info.toml`: `0.2.4-dev`.
+- Release workflow pins `ubuntu-24.04` and `actions/checkout@v6` (Node 24).
+  Do not revert to `ubuntu-latest` or `checkout@v4` - GitHub warns about both.
 - `main` is the default branch and the source of releases. Merge feature work
   there first, then push a `v*` tag from `main`.
 - Display name is lowercase `goalmas` everywhere (menu, window, banner, docs).

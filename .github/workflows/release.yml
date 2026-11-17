@@ -10,10 +10,10 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build goalmas-dev.op
         run: zip -r goalmas-dev.op info.toml README.md src
