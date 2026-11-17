@@ -69,7 +69,7 @@ completed days, and FINALIST for all 25.
    C:\Users\tomekdot\Openplanet4\Plugins\goaladvent-dev
    ```
 2. Reload scripts in game (`F3 -> Developer -> Reload Scripts`) or restart.
-3. Open the plugin from the Openplanet menu: **GoalAdvent**.
+3. Open the plugin from the Openplanet menu: **GoalAdvent 2026**.
 
 The dashboard opens automatically on start (`Show dashboard on start = true`).
 Turn that setting off if you want to open it manually from the menu.
@@ -87,7 +87,7 @@ radius change. Switching is instant and is saved in Openplanet settings.
   `Glass Opacity` slider (15-80%) adjusts the window tint live; intermediate
   containers stay fully transparent so layers do not stack into a wall.
 
-Switch with `UI Theme` in Openplanet -> Settings -> Plugins -> GoalAdvent.
+Switch with `UI Theme` in Openplanet -> Settings -> Plugins -> GoalAdvent 2026.
 
 ---
 

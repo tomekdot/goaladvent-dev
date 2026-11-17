@@ -335,7 +335,7 @@ void TrackGoalHunt(float dt) {
         CheckCommunityBadges();
         if (g_activeDay > 0) {
             g_selectedDay = g_activeDay;
-            ShowBanner("Day " + tostring(g_activeDay) + " Goal Hunt detected - hunt checkpoints!");
+            ShowBanner("Day " + tostring(g_activeDay) + " Goal Hunt detected | hunt checkpoints!");
         }
         if (S_Debug) {
             print("[goaladvent][DBG] Map '" + CurrentMapName() + "' -> day " +
@@ -428,7 +428,7 @@ void Coroutine_SubmitCp() {
         g_status = "Sent " + tostring(cp) + " CP to the event server.";
         SyncState();
     } else {
-        g_status = "Upload failed (HTTP " + tostring(code) + ") - retrying.";
+        g_status = "Upload failed (HTTP " + tostring(code) + ") | retrying.";
         DebugError("submit", "HTTP " + tostring(code));
         QueueSubmitRetry();
     }

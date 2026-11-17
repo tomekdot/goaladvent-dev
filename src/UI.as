@@ -41,7 +41,7 @@ string EventCountdown() {
     if (now.Month == 11) days = 31 - now.Day;
     else if (now.Month < 11) days = (11 - now.Month) * 30 + (31 - now.Day);
     if (days <= 0) return "";
-    return "Starts in " + tostring(days) + " days - Dec 1";
+    return "Event starts Dec 1 (in " + tostring(days) + " days)";
 }
 
 // Keep the badges field on one line: show at most three, then a +N counter.
@@ -82,7 +82,7 @@ void DrawSectionHeader(const string &in title) {
         g_palette.iceBlue);
     UI::Dummy(vec2(12, 0));
     UI::SameLine(0, 0);
-    UI::PushFontSize(15.0f);
+    UI::PushFontSize(13.0f);
     TextTone(MixCol(TextMuted(), TextMain(), 0.65f), title);
     UI::PopFontSize();
     UI::Dummy(vec2(0, 5));
@@ -119,9 +119,13 @@ void DrawStatCard(const string &in icon, const string &in label,
         // Compact gap after the box; both lines fit the 54 px card.
         float textX = start.x + boxSize + 12.0f;
         UI::SetCursorPos(vec2(textX, start.y + 7.0f));
+        UI::PushFontSize(11.0f);
         TextTone(TextMuted(), label);
-        UI::SetCursorPos(vec2(textX, start.y + 23.0f));
+        UI::PopFontSize();
+        UI::SetCursorPos(vec2(textX, start.y + 24.0f));
+        UI::PushFontSize(13.0f);
         TextTone(TextMain(), value);
+        UI::PopFontSize();
     }
     UI::EndChild();
     UI::PopStyleVar(2);
@@ -216,7 +220,7 @@ void RenderTopBar() {
             g_confirmReset = true;
         }
     }
-    UI::SetItemTooltip(g_confirmReset ? "Press again to confirm - this clears local progress."
+    UI::SetItemTooltip(g_confirmReset ? "Press again to confirm | this clears local progress."
                                       : "Reset local progress (press twice).");
     UI::PopStyleColor();
     UI::PopStyleColor(3);
@@ -258,17 +262,39 @@ void RenderSidebar() {
         UI::Separator();   // thin divider using the theme border colour
 
         // Mini summary fills the otherwise empty middle of the sidebar.
-        float remain = UI::GetContentRegionAvail().y - 220.0f;
+        float remain = UI::GetContentRegionAvail().y - 250.0f;
         if (remain > 0) UI::Dummy(vec2(0, remain));
-        UI::TextDisabled("POINTS   " + tostring(TotalPoints()));
-        UI::TextDisabled("BADGES   " + tostring(g_badges.Length));
+
+        UI::PushFontSize(11.0f);
+        UI::TextDisabled("POINTS");
+        UI::PopFontSize();
+        UI::PushFontSize(13.0f);
+        UI::Text(tostring(TotalPoints()) + " pts");
+        UI::PopFontSize();
+        UI::PushFontSize(11.0f);
+        UI::TextDisabled("BADGES");
+        UI::PopFontSize();
+        UI::PushFontSize(13.0f);
+        UI::Text(tostring(g_badges.Length));
+        UI::PopFontSize();
         if (g_liveFeed.Length > 0) {
             string last = Text::StripFormatCodes(g_liveFeed[0]);
-            if (last.Length > 28) last = last.SubStr(0, 28) + "...";
-            UI::TextDisabled("LAST: " + last);
+            UI::PushFontSize(11.0f);
+            UI::TextDisabled("LATEST");
+            UI::PopFontSize();
+            UI::PushStyleColor(UI::Col::Text, TextMuted());
+            UI::PushFontSize(13.0f);
+            UI::TextWrapped(last);
+            UI::PopFontSize();
+            UI::PopStyleColor();
         }
 
-        TextTone(TextMuted(), "PROGRESS   " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT));
+        UI::PushFontSize(11.0f);
+        UI::TextDisabled("PROGRESS");
+        UI::PopFontSize();
+        UI::PushFontSize(13.0f);
+        UI::Text(tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " days");
+        UI::PopFontSize();
         UI::PushStyleColor(UI::Col::FrameBg, g_palette.frameBg);
         UI::PushStyleColor(UI::Col::PlotHistogram, Emerald());
         UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 12), "");
@@ -286,19 +312,21 @@ void RenderSidebar() {
             vec4 col;
             if (IsOffDay(g_selectedDay)) {
                 status = "PURSUIT NIGHT";
-                detail = "Bonus 20:00 CET";
+                detail = "Bonus 20:00 CET (19:00 UTC)";
                 col = Purple();
             } else if (!DayUnlocked(g_selectedDay)) {
-                status = "LOCKED - DAY " + tostring(g_selectedDay);
+                status = "LOCKED | DAY " + tostring(g_selectedDay);
                 detail = "Opens Dec " + tostring(g_selectedDay);
                 col = TextMuted();
             } else {
                 status = "GOAL HUNT OPEN";
-                detail = "Catch " + tostring(GOAL_CP) + " CP / run";
+                detail = "Catch " + tostring(GOAL_CP) + " CP per run";
                 col = Emerald();
             }
             TextTone(col, Icons::Circle + "  " + status);
+            UI::PushFontSize(11.0f);
             UI::TextDisabled(detail);
+            UI::PopFontSize();
         }
         UI::EndChild();
         UI::PopStyleVar();
@@ -339,15 +367,28 @@ vec4 MoonTint(int pct) {
                 a.z + (b.z - a.z) * t, 1.00);
 }
 
-// Short status keeps the tile centred; no repeated "WAIT" on 20 tiles.
+// Next playable Goal Hunt day after `from`, skipping the Pursuit nights.
+int NextGoalHuntDay(int from) {
+    for (int d = from + 1; d <= DAY_COUNT; d++) {
+        if (!IsOffDay(d)) return d;
+    }
+    return DAY_COUNT;
+}
+
+// The tile label is only the day number. REST / FINAL sit on the line below,
+// so a wide word can never overflow the narrowest (48 px) tile.
 string DayTileShort(int day) {
-    string num = day < 10 ? "0" + tostring(day) : tostring(day);
-    if (day == DAY_COUNT) return num + " FIN";
-    if (IsOffDay(day)) return num + " MP";
-    if (IsPremiereDay(day)) return num + " x2";
-    if (g_opened[day - 1]) return num + " OK";
-    if (DayPlayableNow(day)) return num + " GO";
-    return num;   // locked: the number alone is enough
+    return day < 10 ? "0" + tostring(day) : tostring(day);
+}
+
+// Second tile line: the mode word on Pursuit and finale days, moon otherwise.
+string DayTileStatus(int day, bool showPct, float tileW) {
+    if (day == DAY_COUNT) return "FINAL";
+    if (IsOffDay(day)) return "REST";
+    if (IsPremiereDay(day)) return "x2";
+    if (!showPct) return "";
+    string pct = tostring(MoonIlluminationPct(day)) + "%";
+    return tileW >= 62.0f ? pct + " lit" : pct;
 }
 
 bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
@@ -398,9 +439,20 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
 
 void RenderDayGrid() {
     if (S_ShowTips) {
-        UI::PushFontSize(14.0f);
-        UI::TextWrapped("Tip: play #" + tostring(g_selectedDay) + " Goal Hunt on the event server (" +
-                        tostring(GOAL_CP) + " CP/run).");
+        UI::PushFontSize(13.0f);
+        if (IsOffDay(g_selectedDay)) {
+            int next = NextGoalHuntDay(g_selectedDay);
+            UI::TextWrapped("Pursuit night | next Goal Hunt: #" + tostring(next) +
+                            " on Dec " + tostring(next));
+        } else if (!DayUnlocked(g_selectedDay)) {
+            UI::TextWrapped("Day " + tostring(g_selectedDay) + " opens Dec " +
+                            tostring(g_selectedDay) + " | " + tostring(GOAL_CP) +
+                            " CP in one run");
+        } else {
+            UI::TextWrapped("Play #" + tostring(g_selectedDay) +
+                            " Goal Hunt on the event server | " + tostring(GOAL_CP) +
+                            " CP in one run");
+        }
         UI::PopFontSize();
     }
 
@@ -410,6 +462,10 @@ void RenderDayGrid() {
         TextTone(Gold(), countdown);
         UI::PopFontSize();
     }
+
+    UI::PushFontSize(11.0f);
+    UI::TextDisabled("REST = Pursuit night, no Goal Hunt | FINAL = day 25 finale");
+    UI::PopFontSize();
 
     // Fill the column height, but keep tiles close to square (max 1.3x wide)
     // and centre the resulting grid instead of leaving a strip on the right.
@@ -437,7 +493,7 @@ void RenderDayGrid() {
         // By default show the percentage only on Pursuit days and the selected
         // tile; S_ShowMoonPct forces it everywhere. The tooltip always has it.
         bool showPct = S_ShowMoonPct || IsOffDay(day) || day == g_selectedDay;
-        string moonLine = showPct ? tostring(MoonIlluminationPct(day)) + "%" : "";
+        string moonLine = DayTileStatus(day, showPct, tileW);
         vec4 bg = (day == g_selectedDay) ? TileSelectedBg() : TileBg();
         // A subtle accent wash separates playable / completed days from the
         // locked ones without turning the whole grid into coloured blocks.
@@ -450,9 +506,9 @@ void RenderDayGrid() {
             g_selectedDay = day;
             g_confirmReset = false;
         }
-        UI::SetItemTooltip(MoonPhaseName(day) + " - " +
-                           tostring(MoonIlluminationPct(day)) + "% illumination\n" +
-                           "Bounty: " + tostring(g_bountyCp[day - 1]) + " CP by " +
+        UI::SetItemTooltip(MoonPhaseName(day) + " | " +
+                           tostring(MoonIlluminationPct(day)) + "% lit\n" +
+                           "Bounty: " + tostring(g_bountyCp[day - 1]) + " CP | " +
                            g_bountyHolder[day - 1]);
     }
     // SetCursorPos() past the last tile extends the child boundary, so ImGui
@@ -471,7 +527,7 @@ void RenderDayDetails() {
     bool locked = !IsOffDay(day) && !DayUnlocked(day);
 
     UI::PushFontSize(16.0f);
-    TextTone(TextMain(), "DAY " + tostring(day) + "  -  " + g_titles[day - 1]);
+    TextTone(TextMain(), "DAY " + tostring(day) + " | " + g_titles[day - 1]);
     UI::PopFontSize();
     string status = "Available";
     vec4 statusCol = Emerald();
@@ -481,41 +537,43 @@ void RenderDayDetails() {
     } else if (g_opened[day - 1]) {
         status = "Completed";
     } else if (IsOffDay(day)) {
-        status = "Pursuit rest day";
+        status = "Pursuit night";
         statusCol = Purple();
     } else if (IsPremiereDay(day)) {
-        status = "Premiere - double points";
+        status = "Premiere | double points";
         statusCol = Gold();
     } else if (!DayPlayableNow(day)) {
         status = "Waiting for the event";
         statusCol = TextMuted();
     }
+    UI::PushFontSize(13.0f);
     TextTone(statusCol, status);
+    UI::PopFontSize();
     UI::Dummy(vec2(0, 4));
 
     // Always-visible proof that the local server / map detection path works.
     int detectedDay = DetectGoalHuntDay();
     DrawStatCard(detectedDay > 0 ? Icons::FlagCheckered : Icons::Crosshairs,
                  "GOAL HUNT MAP",
-                 detectedDay > 0 ? ("#" + tostring(detectedDay) + " detected") : "not detected",
+                 detectedDay > 0 ? ("#" + tostring(detectedDay) + " detected") : "No Goal Hunt map detected",
                  detectedDay > 0 ? Emerald() : TextMuted());
     UI::Dummy(vec2(0, 5));
 
     DrawStatCard(Icons::MoonO, "MOON PHASE",
-                 MoonPhaseName(day) + "  " + tostring(MoonIlluminationPct(day)) + "%",
+                 MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "% lit",
                  MoonTint(MoonIlluminationPct(day)));
     UI::Dummy(vec2(0, 5));
 
     if (IsOffDay(day)) {
-        DrawStatCard(Icons::MoonO, "DAY MODE", "Pursuit Night (ManiaPlanet)", Purple());
+        DrawStatCard(Icons::MoonO, "DAY MODE", "Pursuit night | no Goal Hunt", Purple());
         UI::Dummy(vec2(0, 5));
-        DrawStatCard(Icons::CheckCircle, "STREAK STATUS", "Protected - No Race", Emerald());
+        DrawStatCard(Icons::CheckCircle, "STREAK STATUS", "Streak protected", Emerald());
     } else {
         DrawStatCard(Icons::FlagCheckered, "GOAL TARGET",
-                     "Catch " + tostring(GOAL_CP) + " CP   Best " + tostring(g_bests[day - 1]), Teal());
+                     "Catch " + tostring(GOAL_CP) + " CP | best " + tostring(g_bests[day - 1]), Teal());
         UI::Dummy(vec2(0, 5));
         DrawStatCard(Icons::Crosshairs, "BOUNTY RECORD",
-                     tostring(g_bountyCp[day - 1]) + " CP  -  " + g_bountyHolder[day - 1], Gold());
+                     tostring(g_bountyCp[day - 1]) + " CP | " + g_bountyHolder[day - 1], Gold());
         UI::Dummy(vec2(0, 5));
         DrawStatCard(Icons::Star, "YOUR BADGES", BadgeShort(), Silver());
     }
@@ -538,7 +596,12 @@ void RenderDayAction(int day) {
         UI::BeginDisabled(true);
         UI::PushStyleColor(UI::Col::Button, MixCol(g_palette.buttonBg, g_palette.text, 0.04f));
         UI::PushStyleColor(UI::Col::Text, MixCol(TextMuted(), g_palette.text, 0.20f));
-        UI::Button(locked ? "AVAILABLE DEC " + tostring(day) : "Pursuit Night - No Race", vec2(-1, rowH));
+        if (locked) {
+            UI::Button("AVAILABLE DEC " + tostring(day), vec2(-1, rowH));
+        } else {
+            UI::Button("No race | next Goal Hunt: Dec " + tostring(NextGoalHuntDay(day)),
+                       vec2(-1, rowH));
+        }
         UI::PopStyleColor(2);
         UI::EndDisabled();
         return;
@@ -555,10 +618,10 @@ void RenderDayAction(int day) {
             RequestCpSubmit(day, 12);
             g_status = "Test CP submitted for day " + tostring(day) + ".";
         } else {
-            g_status = "Join #" + tostring(day) + " Goal Hunt on the event server - CP count automatically.";
+            g_status = "Join #" + tostring(day) + " Goal Hunt on the event server | CP count automatically.";
         }
     }
-    UI::SetItemTooltip("Join #" + tostring(day) + " Goal Hunt; reach " + tostring(GOAL_CP) +
+    UI::SetItemTooltip("Join #" + tostring(day) + " Goal Hunt | reach " + tostring(GOAL_CP) +
                        " CP in one run to complete this day.");
     UI::PopStyleColor(3);
     UI::SameLine(0, 8);
@@ -704,9 +767,9 @@ void RenderLeaderboardTab() {
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     if (UI::BeginTable("##goaladventBoardTable", 4, flags)) {
         UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 42);
-        UI::TableSetupColumn("Player", UI::TableColumnFlags::WidthStretch);
-        UI::TableSetupColumn("Points", UI::TableColumnFlags::WidthFixed, 96);
-        UI::TableSetupColumn("Bounties", UI::TableColumnFlags::WidthFixed, 96);
+        UI::TableSetupColumn("PLAYER", UI::TableColumnFlags::WidthStretch);
+        UI::TableSetupColumn("POINTS", UI::TableColumnFlags::WidthFixed, 96);
+        UI::TableSetupColumn("BOUNTIES", UI::TableColumnFlags::WidthFixed, 96);
         UI::TableHeadersRow();
         for (uint i = 0; i < g_boardNames.Length; i++) {
             UI::TableNextRow();
@@ -746,7 +809,7 @@ void RenderLeaderboardTab() {
 void RenderFeedTab() {
     DrawSectionHeader("LIVE FEED");
     if (g_liveFeed.Length == 0) {
-        UI::TextDisabled("Nothing here yet - complete a day or take a bounty.");
+        UI::TextDisabled("Nothing here yet | complete a day or take a bounty.");
         UI::BeginDisabled(g_syncing);
         if (UI::Button(Icons::Refresh + " Refresh")) SyncNow();
         UI::EndDisabled();
@@ -758,7 +821,7 @@ void RenderFeedTab() {
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     if (UI::BeginTable("##goaladventFeedTable", 2, flags)) {
         UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 42);
-        UI::TableSetupColumn("Event", UI::TableColumnFlags::WidthStretch);
+        UI::TableSetupColumn("EVENT", UI::TableColumnFlags::WidthStretch);
         UI::TableHeadersRow();
         for (uint i = 0; i < g_liveFeed.Length; i++) {
             UI::TableNextRow();
@@ -795,10 +858,10 @@ void RenderBountyTab() {
     UI::PushStyleColor(UI::Col::TableRowBg, vec4(0.10, 0.10, 0.11, 0.55));
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     if (UI::BeginTable("##goaladventBountyTable", 4, flags, vec2(0, -34))) {
-        UI::TableSetupColumn("Day", UI::TableColumnFlags::WidthFixed, 64);
-        UI::TableSetupColumn("Map", UI::TableColumnFlags::WidthStretch);
-        UI::TableSetupColumn("Record", UI::TableColumnFlags::WidthFixed, 88);
-        UI::TableSetupColumn("Holder", UI::TableColumnFlags::WidthFixed, 150);
+        UI::TableSetupColumn("DAY", UI::TableColumnFlags::WidthFixed, 64);
+        UI::TableSetupColumn("MAP", UI::TableColumnFlags::WidthStretch);
+        UI::TableSetupColumn("RECORD", UI::TableColumnFlags::WidthFixed, 88);
+        UI::TableSetupColumn("HOLDER", UI::TableColumnFlags::WidthFixed, 150);
         UI::TableHeadersRow();
         for (int day = 1; day <= DAY_COUNT; day++) {
             UI::TableNextRow();
@@ -831,14 +894,14 @@ void RenderFinaleTab() {
     TextTone(Gold(), Icons::Trophy + "  THE BIG FINALE");
     UI::TextWrapped("Final code: " + FinalCode());
     // A 10 px bar cannot fit overlay text - keep the label on its own line.
-    UI::TextDisabled("Gifts " + tostring(OpenedCount()) + " / " + tostring(DAY_COUNT));
+    UI::TextDisabled("GIFTS | " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " opened");
     UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 12), "");
     UI::Dummy(vec2(0, 8));
-    DrawStatCard(Icons::Trophy, "RESULT", "Score (best 15) " + tostring(TotalPoints()), Gold());
+    DrawStatCard(Icons::Trophy, "RESULT", "Score | " + tostring(TotalPoints()) + " pts", Gold());
     UI::Dummy(vec2(0, 5));
-    DrawStatCard(Icons::Crosshairs, "BOUNTIES", tostring(g_bountiesWon) + "   Badges: " + BadgeShort(), Emerald());
+    DrawStatCard(Icons::Crosshairs, "BOUNTIES", tostring(g_bountiesWon) + " won | " + BadgeShort(), Emerald());
     if (OpenedCount() < DAY_COUNT) {
-        UI::TextDisabled("Not every gift was opened - the raffle ticket needs 25/25.");
+        UI::TextDisabled("Not every gift was opened | the raffle ticket needs 25/25.");
     } else {
         TextTone(Emerald(), Icons::CheckCircle + "  Raffle ticket earned.");
     }
@@ -857,29 +920,29 @@ void RenderFooter() {
     string link;
     vec4 linkCol;
     if (S_SyncMode == 0) {
-        link = "Offline - saved locally";
+        link = "Offline | saved locally";
         linkCol = TextMuted();
     } else if (g_syncing) {
         link = "Syncing results...";
         linkCol = IceBlue();
     } else if (g_debugErrors.Length > 0 || g_status.Contains("failed")) {
-        link = "Results error - open Debug";
+        link = "Results error | open Debug";
         linkCol = Crimson();
     } else if (g_lastSyncStamp > 0) {
-        link = "Connected - " + tostring(g_boardCount) + " players - synced " +
+        link = "Connected | " + tostring(g_boardCount) + " players | synced " +
                tostring(int(Time::Stamp) - g_lastSyncStamp) + "s ago";
         linkCol = Emerald();
     } else {
         link = "Connecting to results...";
         linkCol = TextMuted();
     }
-    UI::PushFontSize(14.0f);
+    UI::PushFontSize(11.0f);
     TextTone(linkCol, Icons::Circle + "  " + link);
     UI::SameLine(0, 0);
-    string right = "DAY " + tostring(g_selectedDay) + "/25   TOTAL: " +
-                   tostring(TotalPoints()) + " PTS   " +
-                   tostring(OpenedCount()) + "/25 GIFTS";
-    float w = UI::MeasureString(right, null, 14.0f, 0.0f).x + 8.0f;
+    string right = "DAY " + tostring(g_selectedDay) + "/25 | TOTAL " +
+                   tostring(TotalPoints()) + " pts | " +
+                   tostring(OpenedCount()) + "/25 gifts";
+    float w = UI::MeasureString(right, null, 11.0f, 0.0f).x + 8.0f;
     if (w < 1.0f) w = 320.0f;
     UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f);
     TextTone(MixCol(TextMuted(), TextMain(), 0.50f), right);
@@ -901,7 +964,7 @@ void RenderWorkspace() {
     UI::PopStyleColor();
 }
 
-// All options live in Openplanet -> Settings -> Plugins -> goaladvent. There is no
+// All options live in Openplanet -> Settings -> Plugins -> GoalAdvent 2026. There is no
 // separate settings window: the [Setting] declarations in Config.as are the
 // single source of truth and are edited in the Openplanet menu.
 void RenderDashboard() {
@@ -974,7 +1037,7 @@ void RenderOpenAnimation() {
 
     vec4 accent = g_openAnimBounty ? Gold() : IceBlue();
     vec4 bg = g_palette.windowBg;
-    DrawList@ dl = UI::GetForegroundDrawList();
+    UI::DrawList@ dl = UI::GetForegroundDrawList();
 
     const float cardW = 360.0f;
     const float cardH = 150.0f;
@@ -1033,15 +1096,15 @@ void RenderOpenAnimation() {
     dl.AddText(vec2(tx, ty), FadeCol(accent, alpha), head, null, 16.0f);
     dl.AddText(vec2(tx, ty + 24.0f), FadeCol(TextMain(), alpha), g_openAnimTitle, null, 13.0f);
     dl.AddText(vec2(tx, ty + 44.0f), FadeCol(TextMain(), alpha),
-               "+" + tostring(g_openAnimPoints) + " PTS   -   " + tostring(g_openAnimCp) + " CP",
+               "+" + tostring(g_openAnimPoints) + " pts | " + tostring(g_openAnimCp) + " CP",
                null, 13.0f);
     int idx = g_openAnimDay - 1;
     dl.AddText(vec2(tx, ty + 66.0f), FadeCol(TextMuted(), alpha),
                "Bounty: " + tostring(g_bountyCp[idx]) + " CP by " + g_bountyHolder[idx],
-               null, 12.0f);
+               null, 11.0f);
     dl.AddText(vec2(tx, ty + 88.0f), FadeCol(TextMuted(), alpha),
                tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " gifts open",
-               null, 12.0f);
+               null, 11.0f);
 }
 
 // ---------------------------------------------------------------------------
@@ -1070,11 +1133,11 @@ void RenderGoalHuntHud() {
     UI::PushStyleColor(UI::Col::WindowBg, g_palette.windowBg);
     if (UI::Begin("##goaladventGoalHuntHud", flags)) {
         TextTone(TextMain(), Icons::FlagCheckered + " #" + tostring(day) + " GOAL HUNT");
-        if (IsPremiereDay(day)) TextTone(Gold(), "PREMIERE - x2 points");
-        else UI::TextDisabled("Catch-up - x1 points");
-        UI::Text("Goal " + tostring(GOAL_CP) + " CP   Session " + tostring(g_sessionCp) + " CP");
-        UI::Text("Bounty " + tostring(g_bountyCp[day - 1]) + " CP (" + g_bountyHolder[day - 1] + ")");
-        UI::Text("Your best " + tostring(g_bests[day - 1]) + " CP");
+        if (IsPremiereDay(day)) TextTone(Gold(), "Premiere | x2 points");
+        else UI::TextDisabled("Catch-up | x1 points");
+        UI::Text("Goal " + tostring(GOAL_CP) + " CP | session " + tostring(g_sessionCp) + " CP");
+        UI::Text("Bounty " + tostring(g_bountyCp[day - 1]) + " CP | " + g_bountyHolder[day - 1]);
+        UI::Text("Best | " + tostring(g_bests[day - 1]) + " CP");
     }
     UI::End();
     UI::PopStyleColor();

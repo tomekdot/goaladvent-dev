@@ -6,7 +6,7 @@ editing code. The broader workspace rules also apply:
 
 ## 1. Project identity
 
-- **GoalAdvent** - a 25-day Goal Hunt advent event for **ManiaPlanet 4** with
+- **GoalAdvent 2026** - a 25-day Goal Hunt advent event for **ManiaPlanet 4** with
   **Openplanet 1.29.14**. Dev-only build; never submit to the official
   Openplanet plugin list.
 - Folder / repo / package: `goaladvent-dev`.
@@ -17,7 +17,7 @@ editing code. The broader workspace rules also apply:
   plus finale. Each day stores `pts` and a one-time bounty flag `b` in `bests`.
   Verified with 3x100 CP submits -> 300 points in `/state`.
 - Renamed: folder / repo / package are `goaladvent-dev`, display name is
-  `GoalAdvent`. Deliberately unchanged: Cloudflare worker + D1 name `goalmas`,
+  `GoalAdvent 2026`. Deliberately unchanged: Cloudflare worker + D1 name `goalmas`,
   API URL, save file `GoalmasAdvent.json` and badge codes `GOALMAS-*` - changing
   those would break live data and saved progress.
 - AngelScript 1.29 rejects `&inout` on primitives (e.g. `bool`); use plain
@@ -68,7 +68,7 @@ editing code. The broader workspace rules also apply:
   menu item and writes one `[goaladvent][DBG]` line on load. `LogDebugState()` is
   the single place to extend when adding a new diagnostic field.
 - There is NO in-plugin settings window. All options are `[Setting]` globals in
-  `Config.as`, edited only in Openplanet -> Settings -> Plugins -> goaladvent.
+  `Config.as`, edited only in Openplanet -> Settings -> Plugins -> GoalAdvent 2026.
   `Glass Opacity` uses min/max there; changing it updates the palette next frame.
 - `S_ShowOnStart` defaults to `true` - the dashboard opens by itself. There is
   deliberately no startup banner; banners are only for in-game Goal Hunt events.
@@ -105,7 +105,7 @@ editing code. The broader workspace rules also apply:
   Do not revert to `ubuntu-latest` or `checkout@v4` - GitHub warns about both.
 - `main` is the default branch and the source of releases. Merge feature work
   there first, then push a `v*` tag from `main`.
-- Display name is `GoalAdvent` in the README and UI; folder/repo/package id is
+- Display name is `GoalAdvent 2026` in the README and UI; folder/repo/package id is
   lowercase `goaladvent-dev`. Keep uppercase data identifiers unchanged:
   `GoalmasAdvent.json` (save file, would reset progress) and badge codes such as
   `GOALMAS-2026`.
@@ -134,7 +134,8 @@ editing code. The broader workspace rules also apply:
 | `backend/schema.sql` | D1 tables (`players`, `bounties`, `events`) |
 | `backend/wrangler.toml` | Worker/D1 config (fill in `database_id`) |
 | `backend/DEPLOY.md` | Free-tier deployment guide |
-| `README.md` | Player-facing overview and install steps |\n| `DOCS.md` | Full technical reference (rules, architecture, troubleshooting) |
+| `README.md` | Player-facing overview and install steps |
+| `DOCS.md` | Full technical reference (rules, architecture, troubleshooting) |
 | `goaladvent-dev.op` | Built package - **not** tracked in git; rebuild after changes |
 
 Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
@@ -207,11 +208,26 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 - Sidebar menu is left-aligned (`ButtonTextAlign = (0, 0.5)`, FramePadding.x=12).
   Sidebar shows the day mode; the footer alone shows connection status.
 
+### UI text and typography
+
+- Font scale: 11 px for labels and the footer, 13 px for body text and values,
+  16 px for the day title and the app name. Nothing below 11 px; do not add
+  extra sizes.
+- Section headers and card labels are UPPERCASE; navigation, values and
+  sentences are sentence case.
+- Separators are ` | ` or `:` - never ` - `. Source files stay ASCII, so no
+  middle dots or other non-ASCII punctuation.
+- Stat card = muted 11 px label above a 13 px value in the main text colour.
+- Spell out units: `Last quarter | 56% lit`, `TOTAL 240 pts`.
+- Times carry UTC next to local time: `Bonus 20:00 CET (19:00 UTC)`.
+- Tone: short, factual, plain English, no exclamation marks. It should read
+  like a tool, not a gadget.
+
 ### Runtime integration
 
 - `Update(float dt)` receives **milliseconds** (timers are in seconds).
 - The dashboard opens on start (`S_ShowOnStart = true`); the only menu entry
-  is `Icons::Calendar + " GoalAdvent"` in `RenderMenu()`. Do not add top-bar menus.
+  is `Icons::Calendar + " GoalAdvent 2026"` in `RenderMenu()`. Do not add top-bar menus.
 - Checkpoint count path (same as working chase-mode overlay):
   `app.CurrentPlayground.Players[i]` -> `cast<CTrackManiaPlayer>` ->
   `player.ScriptAPI.CurRace.Checkpoints.Length`.

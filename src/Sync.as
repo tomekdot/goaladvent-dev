@@ -7,7 +7,7 @@ void ShowBanner(const string &in text) {
     g_bannerText = text;
     g_bannerTimer = 6.0f;
     if (S_Notifications) {
-        UI::ShowNotification("GoalAdvent", text, 5000);
+        UI::ShowNotification("GoalAdvent 2026", text, 5000);
     }
 }
 
@@ -270,12 +270,12 @@ void SyncState() {
 void SelfTestServer() {
     g_selfTestResult = "running...";
     if (ApiUrl().Length == 0) {
-        g_selfTestResult = "FAIL - no API URL";
+        g_selfTestResult = "FAIL | no API URL";
         return;
     }
     Net::HttpRequest@ req = Net::HttpGet(ApiUrl() + "/");
     if (req is null) {
-        g_selfTestResult = "FAIL - request not created";
+        g_selfTestResult = "FAIL | request not created";
         return;
     }
     while (!req.Finished()) yield();
@@ -298,6 +298,6 @@ void SyncNow() {
         g_status = "Asking the event server for the latest results.";
     } else {
         SaveProgress();
-        g_status = "Offline mode - progress saved on this PC.";
+        g_status = "Offline mode | progress saved on this PC.";
     }
 }

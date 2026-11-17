@@ -69,12 +69,12 @@ void RenderDebugWindow() {
 
     RefreshPalette();
     int flags = UI::WindowFlags::AlwaysAutoResize;
-    if (!UI::Begin(Icons::Info + " GoalAdvent debug", g_showDebug, flags)) {
+    if (!UI::Begin(Icons::Info + " GoalAdvent 2026 debug", g_showDebug, flags)) {
         UI::End();
         return;
     }
 
-    UI::TextDisabled("Admin diagnostics - state is read only");
+    UI::TextDisabled("Admin diagnostics | state is read only");
     UI::Separator();
 
     Time::Info now = Time::Parse();
@@ -87,46 +87,46 @@ void RenderDebugWindow() {
     int syncAge = int(Time::Stamp) - g_lastSyncStamp;
     TextTone(serverOk ? Emerald() : Crimson(),
              serverOk ? Icons::CheckCircle + "  SERVER ONLINE" : Icons::Info + "  SERVER NOT CONFIRMED");
-    UI::Text("  HTTP " + tostring(g_lastSyncHttp) + "   last sync " +
+    UI::Text("  HTTP " + tostring(g_lastSyncHttp) + " | last sync " +
              (g_lastSyncStamp > 0 ? tostring(syncAge) + "s ago" : "never") +
-             "   board rows " + tostring(g_boardCount));
+             " | board rows " + tostring(g_boardCount));
     TextTone(detectedNow > 0 ? Emerald() : TextMuted(),
              detectedNow > 0 ? Icons::CheckCircle + "  GOAL HUNT MAP: DAY " + tostring(detectedNow)
                              : Icons::Info + "  NO GOAL HUNT MAP DETECTED");
     UI::Text("  event server: " + tostring(OnEventServer()) +
-             "   playable now: " + tostring(detectedNow > 0 ? DayPlayableNow(detectedNow) : false));
+             " | playable now: " + tostring(detectedNow > 0 ? DayPlayableNow(detectedNow) : false));
     UI::Text("  server test: " + g_selfTestResult);
     UI::Separator();
 
-    UI::Text("VERSION / VIEW");
+    UI::Text("VERSION | VIEW");
     UI::Text("  version: " + PLUGIN_VERSION);
-    UI::Text("  local date: " + localDate + "   event season: " + tostring(eventSeason));
+    UI::Text("  local date: " + localDate + " | event season: " + tostring(eventSeason));
     UI::Text("  theme: " + string(GlassTheme() ? "Transparent Glass" : "Obsidian Minimal"));
     UI::Text("  glass opacity: " + tostring(S_GlassOpacity));
     UI::Text("  dashboard visible: " + tostring(g_showCalendar));
 
-    UI::Text("DAY / SCORING");
-    UI::Text("  selected: " + tostring(g_selectedDay) + "   active: " + tostring(g_activeDay));
+    UI::Text("DAY | SCORING");
+    UI::Text("  selected: " + tostring(g_selectedDay) + " | active: " + tostring(g_activeDay));
     UI::Text("  unlocked: " + tostring(DayUnlocked(g_selectedDay)) +
-             "   playable: " + tostring(DayPlayableNow(g_selectedDay)));
+             " | playable: " + tostring(DayPlayableNow(g_selectedDay)));
     UI::Text("  opened: " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) +
-             "   score: " + tostring(ScoreDays()) + "   total: " + tostring(TotalPoints()));
+             " | score: " + tostring(ScoreDays()) + " | total: " + tostring(TotalPoints()));
     UI::Text("  session CP: " + tostring(g_sessionCp) + "/" + tostring(GOAL_CP) +
-             "   last sent: " + tostring(g_lastSentCp));
+             " | last sent: " + tostring(g_lastSentCp));
 
     UI::Text("SUBMIT QUEUE");
     UI::Text("  pending: " + tostring(g_submitPending) +
-             "   day: " + tostring(g_pendingDay) + "   cp: " + tostring(g_pendingCp));
+             " | day: " + tostring(g_pendingDay) + " | cp: " + tostring(g_pendingCp));
     UI::Text("  debounce timer: " + tostring(g_submitTimer));
 
-    UI::Text("SYNC / SERVER");
-    UI::Text("  mode: " + tostring(S_SyncMode) + "   busy: " + tostring(g_syncing));
+    UI::Text("SYNC | SERVER");
+    UI::Text("  mode: " + tostring(S_SyncMode) + " | busy: " + tostring(g_syncing));
     UI::Text("  api: " + ApiUrl());
     UI::Text("  event keyword: " + S_EventServerKeyword +
-             "   on event server: " + tostring(OnEventServer()));
+             " | on event server: " + tostring(OnEventServer()));
     UI::Text("  status: " + g_status);
 
-    UI::Text("IDENTITY / MAP");
+    UI::Text("IDENTITY | MAP");
     UI::Text("  login: " + LocalLogin());
     UI::Text("  name: " + LocalName());
     UI::Text("  server: " + CurrentServerName());
@@ -134,9 +134,9 @@ void RenderDebugWindow() {
     UI::Text("  map type: " + CurrentMapType());
     UI::Text("  map UID: " + GetCurrentMapUid());
     UI::Text("  detected day now: " + tostring(DetectGoalHuntDay()) +
-             "   (name parse: " + tostring(ParseDayFromMapName(CurrentMapName())) + ")");
+             " | (name parse: " + tostring(ParseDayFromMapName(CurrentMapName())) + ")");
     UI::Text("  feed rows: " + tostring(g_liveFeed.Length) +
-             "   board rows: " + tostring(g_boardNames.Length));
+             " | board rows: " + tostring(g_boardNames.Length));
 
     UI::TextWrapped("Last event: " + (g_lastTopEvent.Length > 0 ? g_lastTopEvent : "-"));
 
