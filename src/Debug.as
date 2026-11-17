@@ -2,6 +2,7 @@
 // Everything here is English on purpose: log lines must be searchable.
 
 bool g_showDebug = false;
+string g_copyStatus = "";
 
 // Rolling error history for the admin panel. The player only sees g_status;
 // this keeps the last few real failures readable without opening the log.
@@ -13,37 +14,53 @@ void DebugError(const string &in source, const string &in detail) {
     print("[goalmas][ERR] " + line);
 }
 
-void LogDebugState() {
+string DebugStateLine() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    print("[goalmas][DBG] version=0.4.3-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
-          " localDate=" + localDate +
-          " eventSeason=" + tostring(eventSeason) +
-          " errors=" + tostring(g_debugErrors.Length) +
-          " opacity=" + tostring(S_GlassOpacity) +
-          " selected=" + tostring(g_selectedDay) +
-          " active=" + tostring(g_activeDay) +
-          " sessionCp=" + tostring(g_sessionCp) +
-          " sentCp=" + tostring(g_lastSentCp) +
-          " pending=" + tostring(g_submitPending) +
-          " unlocked=" + tostring(DayUnlocked(g_selectedDay)) +
-          " playable=" + tostring(DayPlayableNow(g_selectedDay)) +
-          " opens=" + tostring(OpenedCount()) +
-          " score=" + tostring(ScoreDays()) +
-          " syncMode=" + tostring(S_SyncMode) +
-          " syncing=" + tostring(g_syncing) +
-          " lastSyncOk=" + tostring(g_lastSyncOk) +
-          " lastHttp=" + tostring(g_lastSyncHttp) +
-          " syncAge=" + tostring(int(Time::Stamp) - g_lastSyncStamp) + "s" +
-          " boardRows=" + tostring(g_boardCount) +
-          " selfTest=" + g_selfTestResult +
-          " api=" + ApiUrl() +
-          " map=" + GetCurrentMapUid() +
-          " mapName=" + CurrentMapName() +
-          " detected=" + tostring(DetectGoalHuntDay()) +
-          " server=" + CurrentServerName() +
-          " eventServer=" + tostring(OnEventServer()));
+    return "version=0.4.4-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+           " localDate=" + localDate +
+           " eventSeason=" + tostring(eventSeason) +
+           " errors=" + tostring(g_debugErrors.Length) +
+           " opacity=" + tostring(S_GlassOpacity) +
+           " selected=" + tostring(g_selectedDay) +
+           " active=" + tostring(g_activeDay) +
+           " sessionCp=" + tostring(g_sessionCp) +
+           " sentCp=" + tostring(g_lastSentCp) +
+           " pending=" + tostring(g_submitPending) +
+           " unlocked=" + tostring(DayUnlocked(g_selectedDay)) +
+           " playable=" + tostring(DayPlayableNow(g_selectedDay)) +
+           " opens=" + tostring(OpenedCount()) +
+           " score=" + tostring(ScoreDays()) +
+           " syncMode=" + tostring(S_SyncMode) +
+           " syncing=" + tostring(g_syncing) +
+           " lastSyncOk=" + tostring(g_lastSyncOk) +
+           " lastHttp=" + tostring(g_lastSyncHttp) +
+           " syncAge=" + tostring(int(Time::Stamp) - g_lastSyncStamp) + "s" +
+           " boardRows=" + tostring(g_boardCount) +
+           " selfTest=" + g_selfTestResult +
+           " api=" + ApiUrl() +
+           " map=" + GetCurrentMapUid() +
+           " mapName=" + CurrentMapName() +
+           " detected=" + tostring(DetectGoalHuntDay()) +
+           " server=" + CurrentServerName() +
+           " eventServer=" + tostring(OnEventServer());
+}
+
+void LogDebugState() {
+    print("[goalmas][DBG] " + DebugStateLine());
+}
+
+// Everything a support report needs, as one pasteable block.
+void CopyDebugLog() {
+    string text = "[goalmas][DBG] " + DebugStateLine() + "\n";
+    text += "[goalmas][LOG] status: " + g_status + "\n";
+    text += "[goalmas][LOG] server test: " + g_selfTestResult + "\n";
+    for (uint i = 0; i < g_debugErrors.Length; i++) {
+        text += "[goalmas][ERR] " + g_debugErrors[i] + "\n";
+    }
+    IO::SetClipboard(text);
+    g_copyStatus = "Copied " + tostring(g_debugErrors.Length) + " error line(s) to clipboard.";
 }
 
 void RenderDebugWindow() {
@@ -133,6 +150,10 @@ void RenderDebugWindow() {
     }
 
     UI::Separator();
+    if (UI::Button("Copy log to clipboard")) CopyDebugLog();
+    UI::SetItemTooltip("Copies state, status, server test and all error lines as one pasteable block.");
+    if (g_copyStatus.Length > 0) UI::TextDisabled(g_copyStatus);
+    UI::SameLine(0, 6);
     if (UI::Button("Test server")) startnew(SelfTestServer);
     UI::SetItemTooltip("Sends one GET to the worker root and shows OK/FAIL above.");
     UI::SameLine(0, 6);

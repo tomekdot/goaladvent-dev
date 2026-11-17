@@ -12,7 +12,10 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.4.3-dev`.
+- Version in `info.toml`: `0.4.4-dev`.
+- Debug panel has `Copy log to clipboard` (`IO::SetClipboard`), which pastes
+  the full state line, status, server-test result and all collected errors as
+  one block. Keep `DebugStateLine()` as the single source for log and clipboard.
 - The day-details panel is split: a scrolling body child plus a fixed 46 px
   footer (`RenderDayAction`) so the action button is always visible. Never pin
   the button with `SetCursorPosY()` on the whole panel again.
