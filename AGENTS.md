@@ -12,7 +12,11 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.4.0-dev`.
+- Version in `info.toml`: `0.4.1-dev`.
+- `SyncState()` yields on HTTP and **must** be launched with `startnew()` from
+  any UI path (`SyncNow()`, buttons). Direct calls are only valid inside
+  coroutines (`AutoSyncLoop`, `Coroutine_SubmitCp`). Calling it from `Render()`
+  throws `Attempted to suspend in script context that does not support suspension`.
 - Backend is live at `https://goalmas.tomekdot-goalmas.workers.dev` and baked
   into `DEFAULT_API_URL` in `Config.as`, so sync mode 2 is automatic for every
   player. D1 `goalmas` ID is in `backend/wrangler.toml`; redeploy with

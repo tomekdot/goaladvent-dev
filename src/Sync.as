@@ -240,7 +240,10 @@ void SyncNow() {
         WriteFolderFile();
         RefreshFolderBoard();
     } else if (S_SyncMode == 2) {
-        SyncState();
+        // SyncState() yields on the HTTP request. It must run in a coroutine:
+        // calling it from Render()/UI throws "Attempted to suspend in script
+        // context that does not support suspension".
+        startnew(SyncState);
         g_status = "Asking the event server for the latest results.";
     } else {
         SaveProgress();
