@@ -12,7 +12,11 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.3.1-dev`.
+- Version in `info.toml`: `0.3.2-dev`.
+- `S_ShowOnStart` defaults to `true` - the dashboard opens by itself. There is
+  deliberately no startup banner; banners are only for in-game Goal Hunt events.
+- `[Setting]` entries carry user-facing `description` (and `min`/`max` for
+  numbers), following the style of `event-calendar-dev`.
 - Stat-card icons are centred with a borderless `Button` + `ButtonTextAlign`;
   do not go back to manual `MeasureString()` offsets for icon glyphs.
 - Progress bars thinner than ~20 px must not carry overlay text; put the label

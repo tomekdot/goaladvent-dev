@@ -8,18 +8,18 @@
 // ---------------------------------------------------------------------------
 enum UiTheme { ObsidianMinimal, TransparentGlass }
 
-[Setting category="Appearance" name="UI Theme"]
+[Setting category="Appearance" name="UI Theme" description="Obsidian Minimal is matte carbon; Transparent Glass is neutral smoke with white frosted cards."]
 UiTheme g_Theme = UiTheme::ObsidianMinimal;
 
-[Setting category="Appearance" name="Glass Opacity"]
+[Setting category="Appearance" name="Glass Opacity" description="Window tint strength. Lower values let more of the game show through." min=0.15 max=0.80]
 float S_GlassOpacity = 0.55f;
 
 bool GlassTheme() { return g_Theme == UiTheme::TransparentGlass; }
 
-[Setting category="Appearance" name="Show moon phase percent"]
+[Setting category="Appearance" name="Show moon phase percent" description="Show the illumination percentage on each calendar tile."]
 bool S_ShowMoonPct = true;
 
-[Setting category="Sync" name="Auto sync"]
+[Setting category="Sync" name="Auto sync" description="Refresh the leaderboard every 20 seconds in the background."]
 bool S_AutoSync = true;
 
 
@@ -40,16 +40,16 @@ const int FINALE_GRACE_DAYS = 5;   // finale / catch-up window after Christmas
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
-[Setting category="General" name="Show calendar on start"]
-bool S_ShowOnStart = false;
+[Setting category="General" name="Show dashboard on start" description="Open the goalmas window when the game starts. Turn off to hide it until selected from the menu."]
+bool S_ShowOnStart = true;
 
-[Setting category="General" name="Test mode (unlock every day)"]
+[Setting category="General" name="Test mode (unlock every day)" description="Unlock all 25 days for testing. Not intended for the real event."]
 bool S_TestMode = false;
 
-[Setting category="General" name="Show notifications"]
+[Setting category="General" name="Show notifications" description="Enable in-game banners for completed days and bounties."]
 bool S_Notifications = true;
 
-[Setting category="General" name="Show in-game tips"]
+[Setting category="General" name="Show in-game tips" description="Show the short how-to-play hint inside the calendar tab."]
 bool S_ShowTips = true;
 
 [Setting category="General" name="Display name" description="Used only when the game login cannot be read."]
@@ -82,7 +82,6 @@ const string DEFAULT_API_URL = "";
 // ---------------------------------------------------------------------------
 bool g_showCalendar = false;
 bool g_showSettings = false;
-bool g_startupHintShown = false;
 bool g_showDay = false;
 bool g_showFinale = false;
 bool g_showBoard = false;

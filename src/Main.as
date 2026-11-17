@@ -18,11 +18,8 @@ void Main() {
 
     startnew(AutoSyncLoop);
 
-    // One in-game hint per session: where to find the dashboard and what to do.
-    if (S_ShowTips && !g_startupHintShown) {
-        g_startupHintShown = true;
-        ShowBanner("goalmas is ready - open Plugins > goalmas to begin.");
-    }
+    // No startup banner: the window opens itself when S_ShowOnStart is on.
+    // Banners are reserved for in-game events (completed day, bounty taken).
 
     print("[goalmas] Loaded: " + tostring(DAY_COUNT) + " days, goal " +
           tostring(GOAL_CP) + " CP, sync mode " + tostring(S_SyncMode) + ".");
