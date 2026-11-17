@@ -47,6 +47,21 @@ Open it from the Openplanet plugin menu: **goalmas**.
 
 Nothing is visible at startup; the calendar only opens when you select it.
 
+## Themes
+
+Two visual styles share the same data and switch live, with no game restart:
+
+- **Obsidian Minimal** (default): compact carbon dashboard with a left sidebar,
+  round stat cards and a 5x5 tile grid.
+- **Pursuit Native**: translucent scoreboard inspired by the Pursuit mode in
+  ManiaPlanet - sharp 0 px corners, white column headers, alternating rows,
+  gold stars and a bottom `TOTAL POINTS` bar.
+
+Switch with the cog button in the plugin window, the `Settings` item in the
+plugin menu, or the `UI Theme` setting in Openplanet -> Settings -> Plugins.
+The choice is saved between game sessions. Settings also expose `Show moon
+phase percent`, `Show in-game tips` and `Auto sync`.
+
 ## Sync modes
 
 | Mode | Transport | What you need |
@@ -73,7 +88,8 @@ are ignored.
 | `src/Calendar.as` | 25 day titles/hints/fragments, dates, badges, scoring, JSON save |
 | `src/GoalHunt.as` | Player identity, map detection, checkpoint counting, rewards, upload |
 | `src/Sync.as` | Banner/feed, shared-folder and HTTP transports, `/state` parsing |
-| `src/UI.as` | Dashboard, tabs, calendar grid, HUD and banner |
+| `src/UI.as` | Obsidian dashboard, tabs, calendar grid, HUD, banner, settings window |
+| `src/UI_Pursuit.as` | Pursuit Native scoreboard theme and its style helper |
 | `src/Main.as` | Entry points (`Main`, `Update`, `Render`, `RenderInterface`, `RenderMenu`) |
 | `backend/worker.js` | Cloudflare Worker + D1 backend: `/state` and `/submit` |
 | `backend/schema.sql` | D1 tables |

@@ -4,6 +4,22 @@
 // Code, comments and UI strings are English by project convention.
 
 // ---------------------------------------------------------------------------
+// Appearance
+// ---------------------------------------------------------------------------
+enum UiTheme { ObsidianMinimal, PursuitNative }
+
+[Setting category="Appearance" name="UI Theme"]
+UiTheme g_Theme = UiTheme::ObsidianMinimal;
+
+[Setting category="Appearance" name="Show moon phase percent"]
+bool S_ShowMoonPct = true;
+
+[Setting category="Sync" name="Auto sync"]
+bool S_AutoSync = true;
+
+bool PursuitTheme() { return g_Theme == UiTheme::PursuitNative; }
+
+// ---------------------------------------------------------------------------
 // Tuning
 // ---------------------------------------------------------------------------
 const int DAY_COUNT = 25;
@@ -60,6 +76,7 @@ const string DEFAULT_API_URL = "";
 // Windows
 // ---------------------------------------------------------------------------
 bool g_showCalendar = false;
+bool g_showSettings = false;
 bool g_startupHintShown = false;
 bool g_showDay = false;
 bool g_showFinale = false;

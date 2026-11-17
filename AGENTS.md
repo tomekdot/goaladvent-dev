@@ -12,7 +12,11 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.2.5-dev`.
+- Version in `info.toml`: `0.2.6-dev`.
+- Two themes share all data. `UiTheme` + `g_Theme` are persisted `[Setting]`s in
+  `Config.as`; `RenderDashboard()` dispatches to `RenderPursuitDashboard()` when
+  `PursuitTheme()` is true. Keep theme-specific style in its own file and match
+  every push with a pop (`PushPursuitStyle` 13 colours / 10 vars).
 - Release workflow pins `ubuntu-24.04` and `actions/checkout@v6` (Node 24).
   Do not revert to `ubuntu-latest` or `checkout@v4` - GitHub warns about both.
 - `main` is the default branch and the source of releases. Merge feature work
@@ -34,7 +38,8 @@ editing code. The broader workspace rules also apply:
 | `src/Calendar.as` | Day titles/hints/fragments, `g_offDays`, dates, scoring, save/load |
 | `src/GoalHunt.as` | Identity, `#N Goal Hunt` detection, checkpoint counting, submission |
 | `src/Sync.as` | Banner/feed, shared-folder + HTTP transports, `/state` parsing |
-| `src/UI.as` | ImGui dashboard, tabs, tile grid, stat cards, HUD, banner |
+| `src/UI.as` | Obsidian dashboard, tabs, tile grid, stat cards, HUD, banner, settings |
+| `src/UI_Pursuit.as` | Pursuit Native scoreboard theme (style + layout only) |
 | `src/Main.as` | Entry points: `Main`, `Update`, `Render`, `RenderInterface`, `RenderMenu` |
 | `backend/worker.js` | Cloudflare Worker + D1: `/state`, `/submit` |
 | `backend/schema.sql` | D1 tables (`players`, `bounties`, `events`) |

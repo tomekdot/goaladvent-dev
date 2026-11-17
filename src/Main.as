@@ -36,6 +36,7 @@ void OnDisabled() {
 void AutoSyncLoop() {
     while (true) {
         sleep(uint64(SYNC_INTERVAL_SEC) * 1000);
+        if (!S_AutoSync) continue;
         if (S_SyncMode == 1) {
             RefreshFolderBoard();
         } else if (S_SyncMode == 2) {
@@ -64,4 +65,7 @@ void RenderMenu() {
         g_showCalendar = !g_showCalendar;
     }
     UI::SetItemTooltip("Open the goalmas dashboard - calendar, bounties and leaderboard.");
+    if (UI::MenuItem(Icons::Cog + " Settings", "", g_showSettings)) {
+        g_showSettings = !g_showSettings;
+    }
 }
