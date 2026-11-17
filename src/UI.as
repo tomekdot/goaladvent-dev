@@ -227,13 +227,13 @@ void RenderSidebar() {
         SidebarTab(3, Icons::Star, "Grand finale");
         UI::Separator();   // thin divider using the theme border colour
 
-        float remain = UI::GetContentRegionAvail().y - 116.0f;
+        float remain = UI::GetContentRegionAvail().y - 124.0f;
         if (remain > 0) UI::Dummy(vec2(0, remain));
 
         TextTone(TextMuted(), "PROGRESS   " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT));
         UI::PushStyleColor(UI::Col::FrameBg, g_palette.frameBg);
-        UI::PushStyleColor(UI::Col::PlotHistogram, g_palette.text);
-        UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 4), "");
+        UI::PushStyleColor(UI::Col::PlotHistogram, Emerald());
+        UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 12), "");
         UI::PopStyleColor(2);
         UI::Dummy(vec2(0, 6));
 
