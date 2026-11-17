@@ -25,6 +25,12 @@ bool S_ShowMoonPct = true;
 [Setting category="Sync" name="Auto sync" description="Refresh the leaderboard every 20 seconds in the background."]
 bool S_AutoSync = true;
 
+[Setting category="Event" name="Map UID to day" description="Comma-separated UID=day pairs for maps whose name has no #N, e.g. P_abc=3,P_def=7. The debug panel can add the current map."]
+string S_MapUidDays = "";
+
+[Setting category="Event" name="Force current map as day" description="0 = auto-detect. Set 1-25 to treat the current map as that day (useful for testing)."]
+int S_MapDayOverride = 0;
+
 
 
 // ---------------------------------------------------------------------------

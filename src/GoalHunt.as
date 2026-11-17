@@ -128,12 +128,57 @@ int ParseDayFromMapName(const string &in rawName) {
     return day;
 }
 
-// Detects the event day from the running map, without knowing the map UID.
+int DayFromUidMapping(const string &in uid) {
+    if (uid.Length == 0 || S_MapUidDays.Length == 0) return 0;
+    string[]@ parts = S_MapUidDays.Split(",");
+    for (uint i = 0; i < parts.Length; i++) {
+        string part = parts[i].Trim();
+        int eq = part.IndexOf("=");
+        if (eq <= 0) continue;
+        if (part.SubStr(0, eq).Trim() != uid) continue;
+        int day = Text::ParseInt(part.SubStr(eq + 1).Trim());
+        if (day >= 1 && day <= DAY_COUNT) return day;
+    }
+    return 0;
+}
+
+// Detects the event day: explicit override, then UID mapping, then the
+// original #N Goal Hunt name parser. UID mapping exists for maps such as
+// "Goal Hunt - Minesweeper" that carry no day number in the name.
 int DetectGoalHuntDay() {
     auto app = cast<CGameManiaPlanet>(GetApp());
     if (app is null || app.RootMap is null || app.RootMap.MapInfo is null) return 0;
     if (!OnEventServer()) return 0;
+
+    if (S_MapDayOverride >= 1 && S_MapDayOverride <= DAY_COUNT) return S_MapDayOverride;
+    int mapped = DayFromUidMapping(GetCurrentMapUid());
+    if (mapped > 0) return mapped;
     return ParseDayFromMapName(string(app.RootMap.MapInfo.Name));
+}
+
+// Called from the debug panel: remember the current map as the selected day.
+void AssignCurrentMapToDay(int day) {
+    string uid = GetCurrentMapUid();
+    if (uid.Length == 0 || day < 1 || day > DAY_COUNT) return;
+
+    string result = "";
+    string[]@ parts = S_MapUidDays.Split(",");
+    for (uint i = 0; i < parts.Length; i++) {
+        string part = parts[i].Trim();
+        if (part.Length == 0) continue;
+        int eq = part.IndexOf("=");
+        if (eq > 0 && part.SubStr(0, eq).Trim() == uid) continue;   // replace old entry
+        if (result.Length > 0) result += ",";
+        result += part;
+    }
+    if (result.Length > 0) result += ",";
+    result += uid + "=" + tostring(day);
+    S_MapUidDays = result;
+
+    // Apply immediately - the player is already on this map, so waiting for a
+    // UID change would leave the debug panel showing "not detected".
+    g_activeDay = day;
+    g_selectedDay = day;
 }
 
 // ---------------------------------------------------------------------------

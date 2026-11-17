@@ -12,7 +12,11 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.4.4-dev`.
+- Version in `info.toml`: `0.4.5-dev`.
+- Detection order: `S_MapDayOverride` -> `S_MapUidDays` (UID=day pairs) ->
+  `#N Goal Hunt` name parser. Maps like "Goal Hunt - Minesweeper" have no
+  number, so they need a UID mapping; the debug button adds the current map to
+  the selected day immediately.
 - Debug panel has `Copy log to clipboard` (`IO::SetClipboard`), which pastes
   the full state line, status, server-test result and all collected errors as
   one block. Keep `DebugStateLine()` as the single source for log and clipboard.

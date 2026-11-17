@@ -18,7 +18,7 @@ string DebugStateLine() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    return "version=0.4.4-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    return "version=0.4.5-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
            " localDate=" + localDate +
            " eventSeason=" + tostring(eventSeason) +
            " errors=" + tostring(g_debugErrors.Length) +
@@ -156,6 +156,12 @@ void RenderDebugWindow() {
     UI::SameLine(0, 6);
     if (UI::Button("Test server")) startnew(SelfTestServer);
     UI::SetItemTooltip("Sends one GET to the worker root and shows OK/FAIL above.");
+    UI::SameLine(0, 6);
+    if (UI::Button("Assign this map to day " + tostring(g_selectedDay))) {
+        AssignCurrentMapToDay(g_selectedDay);
+        g_copyStatus = "Map saved as day " + tostring(g_selectedDay) + ".";
+    }
+    UI::SetItemTooltip("Maps without #N in the name need a UID mapping to be detected.");
     UI::SameLine(0, 6);
     if (UI::Button("Log state to Openplanet.log")) LogDebugState();
     UI::SameLine(0, 6);

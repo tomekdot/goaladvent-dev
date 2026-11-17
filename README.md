@@ -87,10 +87,15 @@ nothing. Set it to `0` in settings if you want to force offline mode.
 
 ## Event server
 
-Maps are detected by name only: `#1 Goal Hunt` ... `#25 Goal Hunt` (also accepts
+Maps are detected by name first: `#1 Goal Hunt` ... `#25 Goal Hunt` (also accepts
 `GoalHunt` and `Goal-Hunt`, with or without format codes). Set `Event server keyword`
 to part of the event server name/login so results from the editor or other servers
 are ignored.
+
+A map with no `#N` in its name (for example `Goal Hunt - Minesweeper`) needs a
+UID mapping. Use **Assign this map to day N** in the admin debug panel, or fill
+`Map UID to day` with `UID=day` pairs. `Force current map as day` is a quick
+override for testing.
 
 ## Source layout
 
