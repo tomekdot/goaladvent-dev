@@ -259,6 +259,7 @@ void LoadProgress() {
     Json::Value@ root = Json::FromFile(SAVE_FILE);
     if (root is null || root.GetType() != Json::Type::Object) return;
 
+    if (root.HasKey("accountId")) g_cachedAccountId = string(root["accountId"]);
     if (root.HasKey("bounties")) g_bountiesWon = int(root["bounties"]);
     LoadArrayBool(root, "opened", g_opened);
     LoadArrayInt(root, "bests", g_bests);
@@ -285,6 +286,7 @@ void LoadProgress() {
 void SaveProgress() {
     Json::Value@ root = Json::Object();
     root["version"] = 2;
+    root["accountId"] = AccountId();
     root["bounties"] = g_bountiesWon;
 
     Json::Value@ opened = Json::Array();

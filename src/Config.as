@@ -11,6 +11,9 @@ enum UiTheme { ObsidianMinimal, TransparentGlass }
 [Setting category="Appearance" name="UI Theme" description="Obsidian Minimal is matte carbon; Transparent Glass is neutral smoke with white frosted cards."]
 UiTheme g_Theme = UiTheme::ObsidianMinimal;
 
+[Setting category="Appearance" name="UI scale" description="Scales every font and the cards around it. 1.5 is the default; raise it on high-resolution screens." min=1.0 max=2.0]
+float S_UiScale = 1.5f;
+
 [Setting category="Appearance" name="Glass Opacity" description="Window tint strength. Lower values let more of the game show through." min=0.15 max=0.80]
 float S_GlassOpacity = 0.55f;
 
@@ -33,7 +36,7 @@ int S_MapDayOverride = 0;
 
 
 
-const string PLUGIN_VERSION = "0.5.7-dev";
+const string PLUGIN_VERSION = "0.5.8-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -113,11 +116,15 @@ array<bool> g_bountyClaimed;  // bounty bonus already granted per day
 array<string> g_bountyHolder;
 array<string> g_badges;
 int g_bountiesWon = 0;
+// Last known account id, persisted so a profile that has not loaded yet does
+// not fall back to a nickname-based id and create a second leaderboard row.
+string g_cachedAccountId = "";
 
 // ---------------------------------------------------------------------------
 // Leaderboard cache (shared folder or worker)
 // ---------------------------------------------------------------------------
 array<string> g_boardNames;
+array<string> g_boardAccountIds;   // stable MP4 login, independent of the nickname
 array<int> g_boardPoints;
 array<int> g_boardBounties;
 

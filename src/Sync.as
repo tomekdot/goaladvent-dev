@@ -74,10 +74,13 @@ void WriteFolderFile() {
     g_status = "Progress written to the shared folder.";
 }
 
-void AddBoardRow(const string &in name, int points, int bounties) {
+void AddBoardRow(const string &in name, int points, int bounties, const string &in accountId) {
     if (name.Length == 0) return;
     for (uint i = 0; i < g_boardNames.Length; i++) {
-        if (g_boardNames[i] != name) continue;
+        bool same = accountId.Length > 0
+            ? (i < g_boardAccountIds.Length && g_boardAccountIds[i] == accountId)
+            : g_boardNames[i] == name;
+        if (!same) continue;
         if (points > g_boardPoints[i]) {
             g_boardPoints[i] = points;
             g_boardBounties[i] = bounties;
@@ -85,6 +88,7 @@ void AddBoardRow(const string &in name, int points, int bounties) {
         return;
     }
     g_boardNames.InsertLast(name);
+    g_boardAccountIds.InsertLast(accountId);
     g_boardPoints.InsertLast(points);
     g_boardBounties.InsertLast(bounties);
 }
@@ -95,16 +99,19 @@ void SortBoard() {
         int points = g_boardPoints[i];
         int bounties = g_boardBounties[i];
         string name = g_boardNames[i];
+        string accountId = i < g_boardAccountIds.Length ? g_boardAccountIds[i] : "";
         int j = i - 1;
         while (j >= 0 && g_boardPoints[j] < points) {
             g_boardPoints[j + 1] = g_boardPoints[j];
             g_boardBounties[j + 1] = g_boardBounties[j];
             g_boardNames[j + 1] = g_boardNames[j];
+            if (j < g_boardAccountIds.Length) g_boardAccountIds[j + 1] = g_boardAccountIds[j];
             j--;
         }
         g_boardPoints[j + 1] = points;
         g_boardBounties[j + 1] = bounties;
         g_boardNames[j + 1] = name;
+        if (i < g_boardAccountIds.Length) g_boardAccountIds[j + 1] = accountId;
     }
 }
 
@@ -114,6 +121,7 @@ void RefreshFolderBoard() {
     if (!IO::FolderExists(folder)) return;
 
     g_boardNames.Resize(0);
+    g_boardAccountIds.Resize(0);
     g_boardPoints.Resize(0);
     g_boardBounties.Resize(0);
 
@@ -131,7 +139,8 @@ void RefreshFolderBoard() {
         string name = entry.HasKey("name") ? string(entry["name"]) : "";
         int points = entry.HasKey("points") ? int(entry["points"]) : 0;
         int bounties = entry.HasKey("bounties") ? int(entry["bounties"]) : 0;
-        AddBoardRow(name, points, bounties);
+        string accountId = entry.HasKey("accountId") ? string(entry["accountId"]) : "";
+        AddBoardRow(name, points, bounties, accountId);
     }
     SortBoard();
     g_lastSyncStamp = int(Time::Stamp);
@@ -179,6 +188,7 @@ void ApplyState(const string &in body) {
     Json::Value@ board = root["leaderboard"];
     if (board !is null && board.GetType() == Json::Type::Array) {
         g_boardNames.Resize(0);
+        g_boardAccountIds.Resize(0);
         g_boardPoints.Resize(0);
         g_boardBounties.Resize(0);
         for (uint i = 0; i < board.Length; i++) {
@@ -187,7 +197,8 @@ void ApplyState(const string &in body) {
             string name = row.HasKey("name") ? string(row["name"]) : "";
             int points = row.HasKey("points") ? int(row["points"]) : 0;
             int bounties = row.HasKey("bounties") ? int(row["bounties"]) : 0;
-            AddBoardRow(name, points, bounties);
+            string accountId = row.HasKey("accountId") ? string(row["accountId"]) : "";
+            AddBoardRow(name, points, bounties, accountId);
         }
         SortBoard();
         g_boardCount = g_boardNames.Length;

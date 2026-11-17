@@ -41,11 +41,18 @@ string LocalName() {
     return "Player";
 }
 
-// Stable key for scoreboards shared between players.
+// Stable key for scoreboards shared between players. The live login wins when
+// available; while the profile is still loading we reuse the last saved id so
+// the same player never gets a second, nickname-based leaderboard row.
 string AccountId() {
     string login = LocalLogin();
-    if (login.Length > 0) return login;
-    return "local-" + LocalName().ToLower().Replace(" ", "-");
+    if (login.Length > 0) {
+        g_cachedAccountId = login;
+        return login;
+    }
+    if (g_cachedAccountId.Length > 0) return g_cachedAccountId;
+    g_cachedAccountId = "local-" + LocalName().ToLower().Replace(" ", "-");
+    return g_cachedAccountId;
 }
 
 // ---------------------------------------------------------------------------

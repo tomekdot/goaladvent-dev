@@ -253,6 +253,7 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         "SELECT account_id, name, points, bounties, badges FROM players ORDER BY points DESC LIMIT 50"
       ).all();
       const leaderboard = (top.results || []).map((p) => ({
+        accountId: p.account_id,
         name: p.name,
         points: p.points,
         bounties: p.bounties,

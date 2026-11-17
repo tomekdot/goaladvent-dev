@@ -7,9 +7,28 @@ int g_activeTab = 0;   // 0 Calendar, 1 Leaderboard, 2 Live feed, 3 Bounties, 4 
 bool g_windowSizeApplied = false;
 
 // One type scale for the whole dashboard - every text call uses one of these.
-const float FS_LABEL = 13.0f;   // labels, footer, captions
-const float FS_BODY = 15.0f;    // values, sentences, table rows
-const float FS_TITLE = 18.0f;   // day title, app name, section headers
+// They are refreshed from S_UiScale so the setting scales text and cards
+// together instead of overflowing them.
+float FS_LABEL = 13.0f;   // labels, footer, captions
+float FS_BODY = 15.0f;    // values, sentences, table rows
+float FS_TITLE = 18.0f;   // day title, app name, section headers
+
+float UiScale() {
+    float s = S_UiScale;
+    if (s < 1.0f) s = 1.0f;
+    if (s > 2.0f) s = 2.0f;
+    return s;
+}
+
+// Geometry factor: 1.5 is the designed size, so 1.5 -> 1.0.
+float UiK() { return UiScale() / 1.5f; }
+
+void ApplyUiScale() {
+    float s = UiScale();
+    FS_LABEL = 13.0f * s;
+    FS_BODY = 15.0f * s;
+    FS_TITLE = 18.0f * s;
+}
 
 // ---------------------------------------------------------------------------
 // Palette accessors - the layout calls these, never hard-coded colours
@@ -83,9 +102,9 @@ void DrawDot(vec2 pos, float radius, vec4 col) {
 void DrawSectionHeader(const string &in title) {
     vec2 p = UI::GetCursorScreenPos();
     UI::GetWindowDrawList().AddRectFilled(
-        vec4(p.x, p.y + 2.0f, 3.0f, 13.0f),
+        vec4(p.x, p.y + 2.0f * UiK(), 3.0f * UiK(), 15.0f * UiK()),
         g_palette.iceBlue);
-    UI::Dummy(vec2(12, 0));
+    UI::Dummy(vec2(12.0f * UiK(), 0));
     UI::SameLine(0, 0);
     UI::PushFontSize(FS_BODY);
     TextTone(MixCol(TextMuted(), TextMain(), 0.65f), title);
@@ -97,16 +116,16 @@ void DrawSectionHeader(const string &in title) {
 void DrawStatCard(const string &in icon, const string &in label,
                   const string &in value, vec4 accent) {
     UI::PushStyleColor(UI::Col::ChildBg, InnerBg());
-    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(10, 7));
+    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(10.0f * UiK(), 7.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int flags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
-    if (UI::BeginChild("##stat" + label + icon, vec2(0, 66), UI::ChildFlags::Borders, flags)) {
+    if (UI::BeginChild("##stat" + label + icon, vec2(0, 66.0f * UiK()), UI::ChildFlags::Borders, flags)) {
         vec2 start = UI::GetCursorPos();
 
         // A button with ButtonTextAlign centres the glyph reliably. Measuring
         // an icon with MeasureString is not dependable across Openplanet fonts.
-        const float boxSize = 38.0f;
-        const float boxTop = 7.0f;   // centre the 38 px box in the 52 px content area
+        const float boxSize = 38.0f * UiK();
+        const float boxTop = 7.0f * UiK();   // centre the box in the padded card
         vec4 boxCol = vec4(accent.x * 0.50f, accent.y * 0.50f, accent.z * 0.50f, 1.00f);
         UI::SetCursorPos(vec2(start.x, start.y + boxTop));
         UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.5f, 0.5f));
@@ -122,12 +141,12 @@ void DrawStatCard(const string &in icon, const string &in label,
         UI::PopStyleVar(2);
 
         // Compact gap after the box; both lines fit the 66 px card.
-        float textX = start.x + boxSize + 12.0f;
-        UI::SetCursorPos(vec2(textX, start.y + 8.0f));
+        float textX = start.x + boxSize + 12.0f * UiK();
+        UI::SetCursorPos(vec2(textX, start.y + 8.0f * UiK()));
         UI::PushFontSize(FS_LABEL);
         TextTone(TextMuted(), label);
         UI::PopFontSize();
-        UI::SetCursorPos(vec2(textX, start.y + 30.0f));
+        UI::SetCursorPos(vec2(textX, start.y + 30.0f * UiK()));
         UI::PushFontSize(FS_BODY);
         TextTone(TextMain(), value);
         UI::PopFontSize();
@@ -141,9 +160,9 @@ void DrawStatCard(const string &in icon, const string &in label,
 // Dashboard style
 // ---------------------------------------------------------------------------
 void PushDashboardStyle() {
-    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(12, 10));
-    UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(8, 5));
-    UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(8, 4));
+    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(12.0f * UiK(), 10.0f * UiK()));
+    UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(8.0f * UiK(), 5.0f * UiK()));
+    UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(8.0f * UiK(), 4.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::WindowRounding, g_palette.windowRounding);
     UI::PushStyleVar(UI::StyleVar::ChildRounding, g_palette.childRounding);
     UI::PushStyleVar(UI::StyleVar::FrameRounding, g_palette.frameRounding);
@@ -196,26 +215,26 @@ void RenderTopBar() {
     // Right-align the three buttons on the SAME row as the title. Deriving the
     // offset from the remaining width keeps them aligned when the window size
     // changes; an absolute X used to drop them below the separator.
-    float btnW = 32.0f;
-    float gap = 4.0f;
+    float btnW = 32.0f * UiK();
+    float gap = 4.0f * UiK();
     float groupW = btnW * 3.0f + gap * 2.0f;
     float rightOffset = UI::GetContentRegionAvail().x - groupW;
     if (rightOffset < 0.0f) rightOffset = 0.0f;
     UI::SameLine(0, rightOffset);
 
     UI::BeginDisabled(g_syncing);
-    if (UI::Button(Icons::Refresh, vec2(btnW, 26))) SyncNow();
+    if (UI::Button(Icons::Refresh, vec2(btnW, 26.0f * UiK()))) SyncNow();
     UI::SetItemTooltip(g_syncing ? "Sync in progress..." : "Refresh results from the event server.");
     UI::EndDisabled();
     UI::SameLine(0, gap);
-    if (UI::Button(Icons::FloppyO, vec2(btnW, 26))) {
+    if (UI::Button(Icons::FloppyO, vec2(btnW, 26.0f * UiK()))) {
         SaveProgress();
         g_status = "Progress saved locally.";
     }
     UI::SetItemTooltip("Save progress to this PC.");
     UI::SameLine(0, gap);
     UI::PushStyleColor(UI::Col::ButtonHovered, Crimson());
-    if (UI::Button(Icons::Trash, vec2(btnW, 26))) {
+    if (UI::Button(Icons::Trash, vec2(btnW, 26.0f * UiK()))) {
         if (g_confirmReset) {
             ResetProgress();
             SaveProgress();
@@ -245,8 +264,8 @@ void SidebarTab(int id, const string &in icon, const string &in label) {
     UI::PushStyleColor(UI::Col::Border, active ? g_palette.borderStrong : vec4(0, 0, 0, 0));
     // Left-aligned menu: icons and labels start at the same x on every row.
     UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.0f, 0.5f));
-    UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(12.0f, 4.0f));
-    if (UI::Button(icon + "    " + label, vec2(-1, 36))) {
+    UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(12.0f * UiK(), 4.0f * UiK()));
+    if (UI::Button(icon + "    " + label, vec2(-1, 36.0f * UiK()))) {
         g_activeTab = id;
         g_confirmReset = false;
     }
@@ -258,7 +277,7 @@ void SidebarTab(int id, const string &in icon, const string &in label) {
 
 void RenderSidebar() {
     UI::PushStyleColor(UI::Col::ChildBg, CardBg());
-    if (UI::BeginChild("##goaladventSidebar", vec2(205, -30), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goaladventSidebar", vec2(205.0f * UiK(), -30), UI::ChildFlags::Borders)) {
         SidebarTab(0, Icons::Calendar, "Calendar");
         SidebarTab(1, Icons::Trophy, "Leaderboard");
         SidebarTab(2, Icons::Rss, "Live feed");
@@ -267,7 +286,7 @@ void RenderSidebar() {
         UI::Separator();   // thin divider using the theme border colour
 
         // Mini summary fills the otherwise empty middle of the sidebar.
-        float remain = UI::GetContentRegionAvail().y - 220.0f;
+        float remain = UI::GetContentRegionAvail().y - 220.0f * UiK();
         if (remain > 0) UI::Dummy(vec2(0, remain));
 
         UI::PushFontSize(FS_LABEL);
@@ -291,16 +310,16 @@ void RenderSidebar() {
         UI::PopFontSize();
         UI::PushStyleColor(UI::Col::FrameBg, g_palette.frameBg);
         UI::PushStyleColor(UI::Col::PlotHistogram, Emerald());
-        UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 14), "");
+        UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 14.0f * UiK()), "");
         UI::PopStyleColor(2);
-        UI::Dummy(vec2(0, 6));
+        UI::Dummy(vec2(0, 6.0f * UiK()));
 
         // Dedicated status field: the selected day gets a real box with a
         // short explanation instead of a bare dot and a truncated label.
         UI::PushStyleColor(UI::Col::ChildBg, InnerBg());
-        UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(8, 6));
+        UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(8.0f * UiK(), 6.0f * UiK()));
         int statusFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
-        if (UI::BeginChild("##goaladventSidebarStatus", vec2(0, 68), UI::ChildFlags::Borders, statusFlags)) {
+        if (UI::BeginChild("##goaladventSidebarStatus", vec2(0, 68.0f * UiK()), UI::ChildFlags::Borders, statusFlags)) {
             string status;
             string detail;
             vec4 col;
@@ -382,7 +401,7 @@ string DayTileStatus(int day, bool showPct, float tileW) {
     if (IsPremiereDay(day)) return "x2";
     if (!showPct) return "";
     string pct = tostring(MoonIlluminationPct(day)) + "%";
-    return tileW >= 62.0f ? pct + " lit" : pct;
+    return tileW >= 62.0f * UiK() ? pct + " lit" : pct;
 }
 
 bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
@@ -397,10 +416,10 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
 
     // The button carries only its ID. Its lines are drawn separately so the
     // short icon stays centred and the percentage never overlaps it.
-    const float iconF = 20.0f;
-    const float labelF = 18.0f;
-    const float pctF = 15.0f;
-    float top = (tileH - 68.0f) * 0.5f;
+    const float iconF = 20.0f * UiK();
+    const float labelF = 18.0f * UiK();
+    const float pctF = 15.0f * UiK();
+    float top = (tileH - 68.0f * UiK()) * 0.5f;
     if (top < 0.0f) top = 0.0f;
     bool clicked = UI::Button("##goaladventtile" + tostring(day), vec2(tileW, tileH));
     vec4 r = UI::GetItemRect();
@@ -408,22 +427,22 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
     float iconW = UI::MeasureString(icon, null, iconF).x;
     float labelW = UI::MeasureString(label, null, labelF).x;
     vec4 bright = MixCol(textCol, vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f);
-    UI::GetWindowDrawList().AddText(vec2(cx - iconW * 0.5f, r.y + 5.0f + top),
+    UI::GetWindowDrawList().AddText(vec2(cx - iconW * 0.5f, r.y + 5.0f * UiK() + top),
                                     bright, icon, null, iconF);
-    UI::GetWindowDrawList().AddText(vec2(cx - labelW * 0.5f, r.y + 27.0f + top),
+    UI::GetWindowDrawList().AddText(vec2(cx - labelW * 0.5f, r.y + 27.0f * UiK() + top),
                                     bright, label, null, labelF);
 
     // Illumination goes on its own centred line under the status, so a narrow
     // tile can never push "45%" over the gift icon.
     float pctW = UI::MeasureString(moonLine, null, pctF).x;
-    UI::GetWindowDrawList().AddText(vec2(cx - pctW * 0.5f, r.y + 50.0f + top),
+    UI::GetWindowDrawList().AddText(vec2(cx - pctW * 0.5f, r.y + 50.0f * UiK() + top),
                                     MixCol(TextMuted(), vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.35f),
                                     moonLine, null, pctF);
-    DrawDot(vec2(r.x + 5.0f, r.y + 5.0f), 2.5f, accent);
+    DrawDot(vec2(r.x + 5.0f * UiK(), r.y + 5.0f * UiK()), 2.5f * UiK(), accent);
     if (isSelected) {
         // Thin accent underline: the selected day reads at a glance.
         UI::GetWindowDrawList().AddRectFilled(
-            vec4(r.x + 10.0f, r.y + r.w - 4.0f, r.z - 20.0f, 2.0f), accent, 1.0f);
+            vec4(r.x + 10.0f * UiK(), r.y + r.w - 4.0f * UiK(), r.z - 20.0f * UiK(), 2.0f * UiK()), accent, 1.0f);
     }
 
     UI::PopStyleColor(5);
@@ -465,12 +484,12 @@ void RenderDayGrid() {
     // and centre the resulting grid instead of leaving a strip on the right.
     vec2 origin = UI::GetCursorPos();
     vec2 avail = UI::GetContentRegionAvail();
-    const float spacing = 6.0f;
+    const float spacing = 6.0f * UiK();
     float tileH = (avail.y - 4.0f * spacing) / 5.0f;
-    if (tileH < 72.0f) tileH = 72.0f;
-    if (tileH > 110.0f) tileH = 110.0f;
+    if (tileH < 72.0f * UiK()) tileH = 72.0f * UiK();
+    if (tileH > 110.0f * UiK()) tileH = 110.0f * UiK();
     float tileW = (avail.x - 4.0f * spacing) / 5.0f;
-    if (tileW < 48.0f) tileW = 48.0f;
+    if (tileW < 48.0f * UiK()) tileW = 48.0f * UiK();
     if (tileW > tileH * 1.3f) tileW = tileH * 1.3f;
     float gridW = 5.0f * tileW + 4.0f * spacing;
     float gridX = origin.x + (avail.x - gridW) * 0.5f;
@@ -582,7 +601,7 @@ void RenderDayDetails() {
 // Fixed footer of the details panel. It lives outside the scrolling body, so
 // the action button can never be pushed below the visible window edge.
 void RenderDayAction(int day) {
-    const float rowH = 40.0f;
+    const float rowH = 40.0f * UiK();
     bool locked = !IsOffDay(day) && !DayUnlocked(day);
 
     if (locked || IsOffDay(day)) {
@@ -607,7 +626,7 @@ void RenderDayAction(int day) {
     UI::PushStyleColor(UI::Col::ButtonHovered, vec4(1.00, 1.00, 1.00, 1.00));
     UI::PushStyleColor(UI::Col::Text, vec4(0.06, 0.06, 0.08, 1.00));
     string action = S_TestMode ? "SUBMIT TEST CP (12)" : "OPEN DAY " + tostring(day);
-    if (UI::Button(action, vec2(-104, rowH))) {
+    if (UI::Button(action, vec2(-104.0f * UiK(), rowH))) {
         if (S_TestMode) {
             RequestCpSubmit(day, 12);
             g_status = "Test CP submitted for day " + tostring(day) + ".";
@@ -618,9 +637,9 @@ void RenderDayAction(int day) {
     UI::SetItemTooltip("Join #" + tostring(day) + " Goal Hunt | reach " + tostring(GOAL_CP) +
                        " CP in one run to complete this day.");
     UI::PopStyleColor(3);
-    UI::SameLine(0, 8);
+    UI::SameLine(0, 8.0f * UiK());
     UI::BeginDisabled(g_syncing);
-    if (UI::Button(Icons::Refresh + "  Sync", vec2(96, rowH))) SyncNow();
+    if (UI::Button(Icons::Refresh + "  Sync", vec2(96.0f * UiK(), rowH))) SyncNow();
     UI::EndDisabled();
 }
 
@@ -630,7 +649,7 @@ void RenderDayAction(int day) {
 void RenderCalendarTab() {
     float width = UI::GetContentRegionAvail().x;
     float leftW = width * 0.58f;
-    float rightW = width - leftW - 8;
+    float rightW = width - leftW - 8.0f * UiK();
 
     // Columns stay fully transparent - only the window and the cards tint.
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
@@ -761,14 +780,15 @@ void RenderLeaderboardTab() {
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     UI::PushFontSize(FS_BODY);
     if (UI::BeginTable("##goaladventBoardTable", 4, flags)) {
-        UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 46);
+        UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 46.0f * UiK());
         UI::TableSetupColumn("PLAYER", UI::TableColumnFlags::WidthStretch);
-        UI::TableSetupColumn("POINTS", UI::TableColumnFlags::WidthFixed, 104);
-        UI::TableSetupColumn("BOUNTIES", UI::TableColumnFlags::WidthFixed, 104);
+        UI::TableSetupColumn("POINTS", UI::TableColumnFlags::WidthFixed, 104.0f * UiK());
+        UI::TableSetupColumn("BOUNTIES", UI::TableColumnFlags::WidthFixed, 104.0f * UiK());
         UI::TableHeadersRow();
         for (uint i = 0; i < g_boardNames.Length; i++) {
             UI::TableNextRow();
-            bool mine = g_boardNames[i] == LocalName();
+            bool mine = i < g_boardAccountIds.Length && g_boardAccountIds[i] == AccountId();
+            if (!mine && g_boardNames[i] == LocalName() && (i >= g_boardAccountIds.Length || g_boardAccountIds[i].Length == 0)) mine = true;
             if (mine) {
                 UI::TableSetBgColor(UI::TableBgTarget::RowBg0, Tone(Navy()));
                 UI::TableSetBgColor(UI::TableBgTarget::RowBg1, Tone(Navy()));
@@ -817,7 +837,7 @@ void RenderFeedTab() {
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     UI::PushFontSize(FS_BODY);
     if (UI::BeginTable("##goaladventFeedTable", 2, flags)) {
-        UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 46);
+        UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 46.0f * UiK());
         UI::TableSetupColumn("EVENT", UI::TableColumnFlags::WidthStretch);
         UI::TableHeadersRow();
         for (uint i = 0; i < g_liveFeed.Length; i++) {
@@ -857,10 +877,10 @@ void RenderBountyTab() {
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     UI::PushFontSize(FS_BODY);
     if (UI::BeginTable("##goaladventBountyTable", 4, flags, vec2(0, -34))) {
-        UI::TableSetupColumn("DAY", UI::TableColumnFlags::WidthFixed, 72);
+        UI::TableSetupColumn("DAY", UI::TableColumnFlags::WidthFixed, 72.0f * UiK());
         UI::TableSetupColumn("MAP", UI::TableColumnFlags::WidthStretch);
-        UI::TableSetupColumn("RECORD", UI::TableColumnFlags::WidthFixed, 96);
-        UI::TableSetupColumn("HOLDER", UI::TableColumnFlags::WidthFixed, 164);
+        UI::TableSetupColumn("RECORD", UI::TableColumnFlags::WidthFixed, 96.0f * UiK());
+        UI::TableSetupColumn("HOLDER", UI::TableColumnFlags::WidthFixed, 164.0f * UiK());
         UI::TableHeadersRow();
         for (int day = 1; day <= DAY_COUNT; day++) {
             UI::TableNextRow();
@@ -944,9 +964,9 @@ void RenderFooter() {
     string right = "DAY " + tostring(g_selectedDay) + "/25 | TOTAL " +
                    tostring(TotalPoints()) + " pts | " +
                    tostring(OpenedCount()) + "/25 gifts";
-    float w = UI::MeasureString(right, null, FS_LABEL, 0.0f).x + 8.0f;
-    if (w < 1.0f) w = 320.0f;
-    UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f);
+    float w = UI::MeasureString(right, null, FS_LABEL, 0.0f).x + 8.0f * UiK();
+    if (w < 1.0f) w = 320.0f * UiK();
+    UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f * UiK());
     TextTone(MixCol(TextMuted(), TextMain(), 0.50f), right);
     UI::PopFontSize();
 }
@@ -970,12 +990,13 @@ void RenderWorkspace() {
 // separate settings window: the [Setting] declarations in Config.as are the
 // single source of truth and are edited in the Openplanet menu.
 void RenderDashboard() {
+    ApplyUiScale();      // the setting scales text and containers together
     RefreshPalette();   // one layout, colours chosen by the active theme
 
     // Apply once per plugin load: the saved ImGui size can be taller than a
     // 1024x768 game window and leave the footer off-screen.
     if (!g_windowSizeApplied) {
-        UI::SetNextWindowSize(1040, 660, UI::Cond::FirstUseEver);
+        UI::SetNextWindowSize(1040.0f * UiK(), 660.0f * UiK(), UI::Cond::FirstUseEver);
         UI::SetNextWindowPos(24, 40, UI::Cond::Always);
         g_windowSizeApplied = true;
     }
@@ -987,7 +1008,7 @@ void RenderDashboard() {
     PushDashboardStyle();
     RenderTopBar();
     RenderSidebar();
-    UI::SameLine(0, 8);
+    UI::SameLine(0, 8.0f * UiK());
     RenderWorkspace();
     RenderFooter();
     PopDashboardStyle();
@@ -1032,6 +1053,7 @@ void StartOpenAnimation(int day, int points, int cp, bool bounty) {
 }
 
 void RenderOpenAnimation() {
+    ApplyUiScale();
     if (!g_openAnimActive) return;
     float t = Clamp01(1.0f - g_openAnimTimer / OPEN_ANIM_SEC);
     float alpha = Clamp01(t / 0.10f) * (1.0f - EaseOutCubic((t - 0.84f) / 0.16f));
@@ -1041,70 +1063,70 @@ void RenderOpenAnimation() {
     vec4 bg = g_palette.windowBg;
     UI::DrawList@ dl = UI::GetForegroundDrawList();
 
-    const float cardW = 410.0f;
-    const float cardH = 182.0f;
+    const float cardW = 410.0f * UiK();
+    const float cardH = 182.0f * UiK();
     float x = (Display::GetWidth() - cardW) * 0.5f;
-    float y = 42.0f;
+    float y = 42.0f * UiK();
 
     dl.AddRectFilled(vec4(x, y, cardW, cardH),
-                     FadeCol(vec4(bg.x, bg.y, bg.z, 0.95f), alpha), 10.0f);
-    dl.AddRect(vec4(x, y, cardW, cardH), FadeCol(accent, alpha * 0.85f), 10.0f, 1.5f);
+                     FadeCol(vec4(bg.x, bg.y, bg.z, 0.95f), alpha), 10.0f * UiK());
+    dl.AddRect(vec4(x, y, cardW, cardH), FadeCol(accent, alpha * 0.85f), 10.0f * UiK(), 1.5f * UiK());
 
     // Gift geometry: the box pops in, then the lid lifts and the halo expands.
     float pop = EaseOutCubic(t / 0.16f);
     float open = EaseOutCubic((t - 0.18f) / 0.32f);
-    float cx = x + 82.0f;
-    float cy = y + 104.0f;
-    float bw = 58.0f * (0.55f + 0.45f * pop);
-    float bh = 46.0f * (0.55f + 0.45f * pop);
+    float cx = x + 82.0f * UiK();
+    float cy = y + 104.0f * UiK();
+    float bw = 58.0f * UiK() * (0.55f + 0.45f * pop);
+    float bh = 46.0f * UiK() * (0.55f + 0.45f * pop);
     float bodyTop = cy - bh * 0.5f;
     float bodyLeft = cx - bw * 0.5f;
 
     float ring = EaseOutCubic((t - 0.26f) / 0.58f);
     if (ring > 0.01f && ring < 0.99f) {
-        dl.AddCircle(vec2(cx, bodyTop), 16.0f + 56.0f * ring,
+        dl.AddCircle(vec2(cx, bodyTop), 16.0f * UiK() + 56.0f * UiK() * ring,
                      FadeCol(accent, alpha * (0.55f - ring * 0.50f)), 32, 2.0f);
     }
 
     // Sparkles around the opening box.
     float tw = 0.55f + 0.45f * open;
-    dl.AddCircleFilled(vec2(cx - 46.0f, bodyTop - 12.0f), 2.0f * tw, FadeCol(Gold(), alpha * open));
-    dl.AddCircleFilled(vec2(cx + 44.0f, bodyTop - 6.0f), 2.4f * tw, FadeCol(Gold(), alpha * open));
-    dl.AddCircleFilled(vec2(cx - 34.0f, bodyTop - 34.0f), 1.6f * tw, FadeCol(accent, alpha * open));
-    dl.AddCircleFilled(vec2(cx + 34.0f, bodyTop - 30.0f), 1.6f * tw, FadeCol(accent, alpha * open));
+    dl.AddCircleFilled(vec2(cx - 46.0f * UiK(), bodyTop - 12.0f * UiK()), 2.0f * UiK() * tw, FadeCol(Gold(), alpha * open));
+    dl.AddCircleFilled(vec2(cx + 44.0f * UiK(), bodyTop - 6.0f * UiK()), 2.4f * UiK() * tw, FadeCol(Gold(), alpha * open));
+    dl.AddCircleFilled(vec2(cx - 34.0f * UiK(), bodyTop - 34.0f * UiK()), 1.6f * UiK() * tw, FadeCol(accent, alpha * open));
+    dl.AddCircleFilled(vec2(cx + 34.0f * UiK(), bodyTop - 30.0f * UiK()), 1.6f * UiK() * tw, FadeCol(accent, alpha * open));
 
     // Box body and ribbon.
     dl.AddRectFilled(vec4(bodyLeft, bodyTop, bw, bh),
-                     FadeCol(vec4(accent.x * 0.32f, accent.y * 0.32f, accent.z * 0.32f, 1.0f), alpha), 3.0f);
-    dl.AddRectFilled(vec4(cx - 4.0f, bodyTop, 8.0f, bh), FadeCol(accent, alpha), 1.0f);
-    dl.AddRectFilled(vec4(bodyLeft, cy - 4.0f, bw, 8.0f), FadeCol(accent, alpha), 1.0f);
+                     FadeCol(vec4(accent.x * 0.32f, accent.y * 0.32f, accent.z * 0.32f, 1.0f), alpha), 3.0f * UiK());
+    dl.AddRectFilled(vec4(cx - 4.0f * UiK(), bodyTop, 8.0f * UiK(), bh), FadeCol(accent, alpha), 1.0f);
+    dl.AddRectFilled(vec4(bodyLeft, cy - 4.0f * UiK(), bw, 8.0f * UiK()), FadeCol(accent, alpha), 1.0f);
 
     // Lid rises and takes the bow with it.
-    float lidLift = open * 26.0f;
-    float lidH = 14.0f * (0.60f + 0.40f * pop);
-    float lidW = bw + 10.0f;
+    float lidLift = open * 26.0f * UiK();
+    float lidH = 14.0f * UiK() * (0.60f + 0.40f * pop);
+    float lidW = bw + 10.0f * UiK();
     float lidY = bodyTop - lidH - lidLift;
-    dl.AddRectFilled(vec4(cx - lidW * 0.5f, lidY, lidW, lidH), FadeCol(accent, alpha), 3.0f);
-    dl.AddCircleFilled(vec2(cx - 7.0f, lidY - 5.0f), 6.0f, FadeCol(accent, alpha), 12);
-    dl.AddCircleFilled(vec2(cx + 7.0f, lidY - 5.0f), 6.0f, FadeCol(accent, alpha), 12);
-    dl.AddCircleFilled(vec2(cx, lidY - 5.0f), 3.5f, FadeCol(Gold(), alpha), 10);
+    dl.AddRectFilled(vec4(cx - lidW * 0.5f, lidY, lidW, lidH), FadeCol(accent, alpha), 3.0f * UiK());
+    dl.AddCircleFilled(vec2(cx - 7.0f * UiK(), lidY - 5.0f * UiK()), 6.0f * UiK(), FadeCol(accent, alpha), 12);
+    dl.AddCircleFilled(vec2(cx + 7.0f * UiK(), lidY - 5.0f * UiK()), 6.0f * UiK(), FadeCol(accent, alpha), 12);
+    dl.AddCircleFilled(vec2(cx, lidY - 5.0f * UiK()), 3.5f * UiK(), FadeCol(Gold(), alpha), 10);
 
     // Result text.
-    float tx = x + 140.0f;
-    float ty = y + 20.0f;
+    float tx = x + 140.0f * UiK();
+    float ty = y + 20.0f * UiK();
     string head = g_openAnimBounty
         ? "BOUNTY TAKEN"
         : ("DAY " + tostring(g_openAnimDay) + " OPENED");
     dl.AddText(vec2(tx, ty), FadeCol(accent, alpha), head, null, FS_TITLE);
-    dl.AddText(vec2(tx, ty + 28.0f), FadeCol(TextMain(), alpha), g_openAnimTitle, null, FS_BODY);
-    dl.AddText(vec2(tx, ty + 52.0f), FadeCol(TextMain(), alpha),
+    dl.AddText(vec2(tx, ty + 28.0f * UiK()), FadeCol(TextMain(), alpha), g_openAnimTitle, null, FS_BODY);
+    dl.AddText(vec2(tx, ty + 52.0f * UiK()), FadeCol(TextMain(), alpha),
                "+" + tostring(g_openAnimPoints) + " pts | " + tostring(g_openAnimCp) + " CP",
                null, FS_BODY);
     int idx = g_openAnimDay - 1;
-    dl.AddText(vec2(tx, ty + 78.0f), FadeCol(TextMuted(), alpha),
+    dl.AddText(vec2(tx, ty + 78.0f * UiK()), FadeCol(TextMuted(), alpha),
                "Bounty: " + tostring(g_bountyCp[idx]) + " CP by " + g_bountyHolder[idx],
                null, FS_LABEL);
-    dl.AddText(vec2(tx, ty + 104.0f), FadeCol(TextMuted(), alpha),
+    dl.AddText(vec2(tx, ty + 104.0f * UiK()), FadeCol(TextMuted(), alpha),
                tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " gifts open",
                null, FS_LABEL);
 }
@@ -1113,6 +1135,7 @@ void RenderOpenAnimation() {
 // Overlays
 // ---------------------------------------------------------------------------
 void RenderBanner() {
+    ApplyUiScale();
     if (g_bannerTimer <= 0.0f || g_bannerText.Length == 0) return;
     int screenWidth = Display::GetWidth();
     UI::SetNextWindowPos(screenWidth / 2, 40, UI::Cond::Always, 0.5f, 0.0f);
@@ -1130,6 +1153,7 @@ void RenderBanner() {
 }
 
 void RenderGoalHuntHud() {
+    ApplyUiScale();
     if (g_activeDay <= 0 || g_activeDay > DAY_COUNT) return;
     int day = g_activeDay;
     UI::SetNextWindowPos(20, 120, UI::Cond::FirstUseEver);
