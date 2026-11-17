@@ -157,7 +157,9 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 
 - One clean commit per change. Conventional Commits **with scope**:
   `feat(goalmas): ...`, `fix(goalmas): ...`, `style(goalmas): ...`.
-- Author identity: `tomekdot <tomekdot@users.noreply.github.com>`.
+- Author identity: `tomekdot <73403480+tomekdot@users.noreply.github.com>`
+  (the GitHub ID + noreply address, identical to the global git config and all
+  other repos). Never use the plain `tomekdot@users.noreply.github.com` form.
 - Iterate with `git commit --amend` + `git push --force-with-lease` on the
   personal feature branch; do not stack fixup commits.
 - Another agent may rebase/rewrite this branch concurrently. If a push is
