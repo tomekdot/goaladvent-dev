@@ -12,7 +12,10 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goaladvent-dev`.
   Remote: `https://github.com/tomekdot/goaladvent-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.5.0-dev`.
+- Version in `info.toml`: `0.5.1-dev`.
+- Leaderboard points come from `scoreFromBests(bests)`: best 15 of days 1-24
+  plus finale. Each day stores `pts` and a one-time bounty flag `b` in `bests`.
+  Verified with 3x100 CP submits -> 300 points in `/state`.
 - Renamed: folder / repo / package are `goaladvent-dev`, display name is
   `GoalAdvent`. Deliberately unchanged: Cloudflare worker + D1 name `goalmas`,
   API URL, save file `GoalmasAdvent.json` and badge codes `GOALMAS-*` - changing
@@ -66,6 +69,8 @@ editing code. The broader workspace rules also apply:
   `Glass Opacity` uses min/max there; changing it updates the palette next frame.
 - `S_ShowOnStart` defaults to `true` - the dashboard opens by itself. There is
   deliberately no startup banner; banners are only for in-game Goal Hunt events.
+- The worker has a read-only `/admin?token=<ADMIN_TOKEN>` HTML page (secret is
+  never committed) and D1 can be browsed in the Cloudflare dashboard.
 - `[Setting]` entries carry user-facing `description` (and `min`/`max` for
   numbers), following the style of `event-calendar-dev`.
 - Stat-card icons are centred with a borderless `Button` + `ButtonTextAlign`;
@@ -89,16 +94,18 @@ editing code. The broader workspace rules also apply:
   Do not revert to `ubuntu-latest` or `checkout@v4` - GitHub warns about both.
 - `main` is the default branch and the source of releases. Merge feature work
   there first, then push a `v*` tag from `main`.
-- Display name is lowercase `goaladvent` everywhere (menu, window, banner, docs).
-  Keep uppercase identifiers unchanged: `GoalmasAdvent.json` (save file, would
-  reset progress) and badge codes such as `GOALMAS-2026`.
+- Display name is `GoalAdvent` in the README and UI; folder/repo/package id is
+  lowercase `goaladvent-dev`. Keep uppercase data identifiers unchanged:
+  `GoalmasAdvent.json` (save file, would reset progress) and badge codes such as
+  `GOALMAS-2026`.
 - Pushing a `v*` tag runs `.github/workflows/release.yml`, which zips
   `info.toml`, `README.md` and `src/` into `goaladvent-dev.op` and publishes a
   GitHub release automatically. Do not upload the asset by hand. Release notes
   are a short human-readable list of commit subjects since the previous tag,
   not just the auto-generated Full Changelog.
 - **Everything in English**: code, comments, identifiers, UI strings, docs.
-  Chat with the user may be Polish; source files must contain no non-ASCII text.
+  Chat with the user may be Polish. Source files (`src/*.as`, `backend/*`) must
+  contain no non-ASCII text; `README.md` may use emojis for readability.
 
 ## 2. Layout
 
@@ -132,8 +139,9 @@ Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
 - Finale grace period is `FINALE_GRACE_DAYS = 5` (5 January). Do not hardcode
   "5 January" in UI text - read the constant.
 - Local JSON (`GoalmasAdvent.json`) is authoritative; the worker is a mirror.
-- Map detection by **name only**: `#N Goal Hunt` (also `GoalHunt`, `Goal-Hunt`,
-  format codes tolerated). No UID matching.
+- Map detection uses UID mappings learned by the worker first, then the name
+  parser (`#N Goal Hunt`, `Goal Hunt Day N`, `GH N`, `goalhuntarena`), then the
+  UTC event day. The old "name only" rule is obsolete.
 - Premiere x2 is decided by the **server UTC** clock, never the client clock.
 - Optional anti-cheat gate: `S_EventServerKeyword` matches part of the server
   name/login; empty accepts every server (test mode).
@@ -236,4 +244,4 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
   rejected, `git fetch` + inspect `git log --graph --all` and `.git/rebase-merge`
   **before** force-pushing. Never clobber a rebase in progress.
 - After code changes, rebuild `goaladvent-dev.op` (`info.toml` + `README.md` at
-  root, code in `src/`) and refresh the `v0.2.0-dev` release only when asked.
+  root, code in `src/`) and refresh the latest `v*` release only when asked.

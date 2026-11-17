@@ -64,9 +64,29 @@ async function ensureSchema(env) {
 }
 
 function normalizeBest(value) {
-  if (!value) return { cp: 0, ms: 0 };
-  if (typeof value === "number") return { cp: 0, ms: value }; // legacy time-only record
-  return { cp: Number(value.cp) || 0, ms: Number(value.ms) || 0 };
+  if (!value) return { cp: 0, ms: 0, pts: 0, b: 0 };
+  if (typeof value === "number") return { cp: 0, ms: value, pts: 0, b: 0 }; // legacy
+  return {
+    cp: Number(value.cp) || 0,
+    ms: Number(value.ms) || 0,
+    pts: Number(value.pts) || 0,
+    b: value.b ? 1 : 0
+  };
+}
+
+// Only the best 15 of days 1-24 count; the finale always counts. Keeps the
+// server leaderboard identical to the plugin's local "BEST 15" number.
+function scoreFromBests(bests) {
+  const vals = [];
+  for (let d = 1; d <= 24; d++) {
+    const b = bests[d];
+    if (b && (b.cp || 0) >= GOAL_CP && (b.pts || 0) > 0) vals.push(b.pts);
+  }
+  vals.sort((a, b) => b - a);
+  let total = vals.slice(0, 15).reduce((a, b) => a + b, 0);
+  const finale = bests[DAY_COUNT];
+  if (finale && (finale.cp || 0) >= GOAL_CP) total += (finale.pts || FINALE_POINTS);
+  return total;
 }
 
 function normalizeBests(raw) {
@@ -125,6 +145,43 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/") {
       return Response.json({ ok: true, service: "goalmas", goalCp: GOAL_CP, days: DAY_COUNT });
+    }
+
+    // Small read-only admin page. Requires the ADMIN_TOKEN secret as ?token=...
+    // Without the secret the route does not exist, so the data stays private.
+    if (request.method === "GET" && url.pathname === "/admin") {
+      if (!env.ADMIN_TOKEN || url.searchParams.get("token") !== env.ADMIN_TOKEN) {
+        return new Response("Not found", { status: 404 });
+      }
+      const [players, bounties, events, maps] = await Promise.all([
+        env.DB.prepare("SELECT account_id, name, points, bounties, badges, bests FROM players ORDER BY points DESC LIMIT 20").all(),
+        env.DB.prepare("SELECT day, cp, ms, holder FROM bounties ORDER BY day").all(),
+        env.DB.prepare("SELECT msg, created_at FROM events ORDER BY id DESC LIMIT 15").all(),
+        env.DB.prepare("SELECT uid, day, first_seen FROM map_days ORDER BY day").all()
+      ]);
+      const esc = (v) => String(v == null ? "" : v).replace(/[&<>\"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const rows = (items, cols) => (items.results || []).map(r =>
+        "<tr>" + cols.map(c => "<td>" + esc(r[c]) + "</td>").join("") + "</tr>").join("");
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>goalmas D1</title>
+<style>body{background:#141519;color:#e8e9ee;font:13px monospace;margin:24px}
+h1{color:#ffd166;font-size:20px}h2{color:#9fb4d0;font-size:14px;margin-top:28px}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #333642;padding:4px 7px;text-align:left}
+th{background:#242733}tr:nth-child(even){background:#1b1d24}a{color:#9ecbff}</style></head><body>
+<h1>GoalAdvent / goalmas D1 - live data</h1>
+<p><a href="/admin?token=${encodeURIComponent(env.ADMIN_TOKEN)}">Refresh</a> &middot;
+<a href="https://dash.cloudflare.com/2975602b6ae7dc883884858d1b5ce4bf/database/d1">Cloudflare D1 dashboard</a></p>
+<h2>Players (${(players.results || []).length} of ${(players.results || []).length})</h2>
+<table><tr><th>account</th><th>name</th><th>pts</th><th>bounties</th><th>badges</th><th>bests</th></tr>
+${rows(players, ["account_id", "name", "points", "bounties", "badges", "bests"])}</table>
+<h2>Bounties</h2><table><tr><th>day</th><th>cp</th><th>ms</th><th>holder</th></tr>
+${rows(bounties, ["day", "cp", "ms", "holder"])}</table>
+<h2>Map UID -&gt; day (learned)</h2><table><tr><th>uid</th><th>day</th><th>first seen</th></tr>
+${rows(maps, ["uid", "day", "first_seen"])}</table>
+<h2>Recent events</h2><table><tr><th>time</th><th>message</th></tr>
+${rows(events, ["created_at", "msg"])}</table></body></html>`;
+      return new Response(html, {
+        headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
+      });
     }
 
     if (request.method === "GET" && url.pathname === "/state") {
@@ -221,12 +278,14 @@ export default {
       const mult = isPremiere(day, now) ? 2 : 1;
       const isFinale = day === DAY_COUNT;
 
-      const prev = bests[day] || { cp: 0, ms: 0 };
+      const prev = bests[day] || { cp: 0, ms: 0, pts: 0, b: 0 };
       let gained = 0;
+      let dayPts = prev.pts || 0;
 
       // Day completed for the first time.
       if ((prev.cp || 0) < GOAL_CP && cpCount >= GOAL_CP) {
         gained += (isFinale ? FINALE_POINTS : BASE_POINTS) * mult;
+        dayPts += gained;
         badges.add("GOALMAS-PLAYER");
       }
 
@@ -234,9 +293,11 @@ export default {
       const betterPersonal =
         cpCount > (prev.cp || 0) ||
         (cpCount === (prev.cp || 0) && timeMs > 0 && (!prev.ms || timeMs < prev.ms));
-      if (betterPersonal) bests[day] = { cp: cpCount, ms: timeMs };
+      const bestCp = Math.max(prev.cp || 0, cpCount);
+      const bestMs = betterPersonal ? timeMs : (prev.ms || 0);
 
-      // Bounty: the player with the most checkpoints on that day.
+      // Bounty: the player with the most checkpoints on that day. Bonus points
+      // are granted at most once per day, so a player cannot farm the record.
       const bountyRow = await env.DB.prepare("SELECT * FROM bounties WHERE day = ?")
         .bind(day)
         .first();
@@ -254,11 +315,20 @@ export default {
         )
           .bind(day, cpCount, timeMs, name || "Player")
           .run();
-        gained += BASE_BOUNTY_POINTS * mult;
-        bountyWon = true;
+        if (!prev.b) {
+          gained += BASE_BOUNTY_POINTS * mult;
+          dayPts += BASE_BOUNTY_POINTS * mult;
+          bountyWon = true;
+        }
         badges.add("BOUNTY-HUNTER");
-        bests[day] = { cp: cpCount, ms: timeMs };
       }
+
+      bests[day] = {
+        cp: bestCp,
+        ms: bestMs,
+        pts: dayPts,
+        b: prev.b || bountyWon ? 1 : 0
+      };
 
       const completedDays = Object.keys(bests).filter(
         (key) => (bests[key].cp || 0) >= GOAL_CP
@@ -267,7 +337,12 @@ export default {
       if (completedDays >= 24) badges.add("GOALMAS-24");
       if (completedDays >= DAY_COUNT) badges.add("FINALIST");
 
-      const totalPoints = (player ? player.points : 0) + gained;
+      // Legacy rows have no per-day pts; keep their old total until they next
+      // submit, then the best-15 rule takes over.
+      const hasDayPoints = Object.keys(bests).some(k => (bests[k].pts || 0) > 0);
+      const totalPoints = hasDayPoints
+        ? scoreFromBests(bests)
+        : ((player ? player.points : 0) + gained);
       const totalBounties = (player ? player.bounties : 0) + (bountyWon ? 1 : 0);
 
       await env.DB.prepare(

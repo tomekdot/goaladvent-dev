@@ -6,6 +6,18 @@ Already deployed for this project. The live endpoint is:
 https://goalmas.tomekdot-goalmas.workers.dev
 ```
 
+Read-only admin panel (requires the ADMIN_TOKEN secret in the query string):
+
+```
+https://goalmas.tomekdot-goalmas.workers.dev/admin?token=<ADMIN_TOKEN>
+```
+
+Raw D1 tables in the Cloudflare dashboard:
+
+```
+https://dash.cloudflare.com/2975602b6ae7dc883884858d1b5ce4bf/database/d1
+```
+
 It is baked into `src/Config.as` as `DEFAULT_API_URL`, so players need no
 configuration. The D1 database ID is stored in `wrangler.toml`.
 

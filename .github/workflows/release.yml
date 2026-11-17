@@ -32,7 +32,7 @@ jobs:
               git log --pretty=format:'- %s' "${PREV}..${GITHUB_REF_NAME}"
               echo
               echo
-              echo "Full Changelog: ${PREV}...${GITHUB_REF_NAME}"
+              echo "[Full Changelog: ${PREV}...${GITHUB_REF_NAME}](https://github.com/${GITHUB_REPOSITORY}/compare/${PREV}...${GITHUB_REF_NAME})"
             else
               git log --pretty=format:'- %s' "${GITHUB_REF_NAME}"
             fi
