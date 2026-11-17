@@ -12,7 +12,9 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.2.8-dev`.
+- Version in `info.toml`: `0.2.9-dev`.
+- `TextMuted()` is deliberately 40% brighter than the raw palette value so
+  labels, hints and footer text stay readable. Adjust there, not in `Theme.as`.
 - `Transparent Glass` uses neutral backgrounds (R == G == B). Intermediate
   containers must stay `alpha = 0` (`containerBg`) or transparency stacks into
   an opaque wall. The window tint is `S_GlassOpacity` (0.15-0.80, default 0.45).

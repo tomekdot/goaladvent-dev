@@ -21,7 +21,13 @@ vec4 Bronze()    { return g_palette.bronze; }
 vec4 Teal()      { return g_palette.teal; }
 vec4 DimNavy()   { return g_palette.dimNavy; }
 vec4 TextMain()  { return g_palette.text; }
-vec4 TextMuted() { return g_palette.textMuted; }
+// Muted text is pulled 40% toward the main text colour: labels, hints and the
+// footer were too faint to read on dark and glass backgrounds.
+vec4 MixCol(vec4 a, vec4 b, float t) {
+    return vec4(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
+                a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
+}
+vec4 TextMuted() { return MixCol(g_palette.textMuted, g_palette.text, 0.40f); }
 vec4 TileBg()    { return g_palette.tileBg; }
 vec4 TileSelectedBg() { return g_palette.tileSelectedBg; }
 vec4 IceBlue()   { return g_palette.iceBlue; }
@@ -53,7 +59,7 @@ void DrawSectionHeader(const string &in title) {
         g_palette.iceBlue);
     UI::Dummy(vec2(12, 0));
     UI::SameLine(0, 0);
-    TextTone(TextMuted(), title);
+    TextTone(MixCol(TextMuted(), TextMain(), 0.50f), title);
     UI::Dummy(vec2(0, 5));
 }
 
@@ -73,7 +79,8 @@ void DrawStatCard(const string &in icon, const string &in label,
         const float boxSize = 36.0f;
         const float boxTop = 7.0f;
         UI::GetWindowDrawList().AddRectFilled(
-            vec4(screen.x, screen.y + boxTop, boxSize, boxSize), Tone(accent), 3.0f);
+            vec4(screen.x, screen.y + boxTop, boxSize, boxSize),
+            vec4(accent.x * 0.50f, accent.y * 0.50f, accent.z * 0.50f, 1.00f), 4.0f);
 
         float iconW = UI::MeasureString(icon, null, 17.0f).x;
         UI::SetCursorPos(vec2(start.x + (boxSize - iconW) * 0.5f,
@@ -122,7 +129,7 @@ void PushDashboardStyle() {
     UI::PushStyleColor(UI::Col::ButtonHovered, g_palette.buttonHover);
     UI::PushStyleColor(UI::Col::ButtonActive, g_palette.buttonActive);
     UI::PushStyleColor(UI::Col::Text, g_palette.text);
-    UI::PushStyleColor(UI::Col::TextDisabled, g_palette.textMuted);
+    UI::PushStyleColor(UI::Col::TextDisabled, TextMuted());
 }
 
 void PopDashboardStyle() {
@@ -134,7 +141,9 @@ void PopDashboardStyle() {
 // Top bar
 // ---------------------------------------------------------------------------
 void RenderTopBar() {
-    TextTone(TextMain(), Icons::SnowflakeO + "  goalmas 2026");
+    TextTone(IceBlue(), Icons::SnowflakeO);
+    UI::SameLine(0, 8);
+    TextTone(TextMain(), "goalmas 2026");
 
     // Title and the three small buttons share ONE row. SameLine first, then an
     // absolute X on that row, otherwise ImGui drops the buttons to a new line.
@@ -238,7 +247,7 @@ vec4 DayAccent(int day) {
     if (IsPremiereDay(day)) return Crimson();
     if (g_opened[day - 1]) return Emerald();
     if (DayPlayableNow(day)) return Teal();
-    return g_palette.textMuted;
+    return TextMuted();
 }
 
 string DayTileIcon(int day) {
@@ -307,6 +316,11 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
     UI::GetWindowDrawList().AddText(vec2(r.x + r.z - pctW - 6.0f, r.y + 4.0f),
                                     TextMuted(), moonLine, null, 11.0f);
     DrawDot(vec2(r.x + 5.0f, r.y + 5.0f), 2.5f, accent);
+    if (isSelected) {
+        // Thin accent underline: the selected day reads at a glance.
+        UI::GetWindowDrawList().AddRectFilled(
+            vec4(r.x + 10.0f, r.y + r.w - 4.0f, r.z - 20.0f, 2.0f), accent, 1.0f);
+    }
 
     UI::PopStyleColor(5);
     UI::PopStyleVar();
