@@ -203,6 +203,7 @@ void RenderSidebar() {
         SidebarTab(1, Icons::Trophy, "Leaderboard");
         SidebarTab(2, Icons::Rss, "Live feed");
         SidebarTab(3, Icons::Star, "Grand finale");
+        UI::Separator();   // thin divider using the theme border colour
 
         float remain = UI::GetContentRegionAvail().y - 78.0f;
         if (remain > 0) UI::Dummy(vec2(0, remain));
@@ -454,17 +455,22 @@ void RenderCalendarTab() {
     float leftW = width * 0.58f;
     float rightW = width - leftW - 8;
 
+    // Columns stay fully transparent - only the window and the cards tint.
+    UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
     if (UI::BeginChild("##goalmasCalendarGrid", vec2(leftW, 0), UI::ChildFlags::Borders)) {
         DrawSectionHeader("ADVENT CALENDAR");
         RenderDayGrid();
     }
     UI::EndChild();
+    UI::PopStyleColor();
     UI::SameLine(0, 8);
+    UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
     if (UI::BeginChild("##goalmasDayDetailsCard", vec2(rightW, 0), UI::ChildFlags::Borders)) {
         DrawSectionHeader("DAY DETAILS");
         RenderDayDetails();
     }
     UI::EndChild();
+    UI::PopStyleColor();
 }
 
 void RenderLeaderboardTab() {
@@ -585,7 +591,9 @@ void RenderFooter() {
 }
 
 void RenderWorkspace() {
-    UI::PushStyleColor(UI::Col::ChildBg, g_palette.windowBg);
+    // No extra background layer here: stacking translucent panels would turn
+    // the glass into an opaque wall.
+    UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
     if (UI::BeginChild("##goalmasWorkspace", vec2(0, -36), UI::ChildFlags::Borders)) {
         if (g_activeTab == 0) RenderCalendarTab();
         else if (g_activeTab == 1) RenderLeaderboardTab();
@@ -610,14 +618,18 @@ void RenderSettingsWindow() {
     if (UI::RadioButton("Obsidian Minimal", g_Theme == UiTheme::ObsidianMinimal)) {
         g_Theme = UiTheme::ObsidianMinimal;
     }
-    if (UI::RadioButton("Pursuit Match (Glass)", g_Theme == UiTheme::PursuitMatch)) {
-        g_Theme = UiTheme::PursuitMatch;
+    if (UI::RadioButton("Transparent Glass", g_Theme == UiTheme::TransparentGlass)) {
+        g_Theme = UiTheme::TransparentGlass;
     }
     UI::TextDisabled("Switch themes live - no game restart needed.");
 
     UI::Dummy(vec2(0, 8));
     TextTone(TextMain(), "OPTIONS");
     UI::Separator();
+    if (GlassTheme()) {
+        S_GlassOpacity = UI::SliderFloat("Glass Opacity", S_GlassOpacity, 0.15f, 0.80f, "%.2f");
+        UI::TextDisabled("Lower = more of the game visible behind the window.");
+    }
     S_ShowMoonPct = UI::Checkbox("Show moon phase %", S_ShowMoonPct);
     S_ShowTips = UI::Checkbox("Show in-game tips", S_ShowTips);
     S_AutoSync = UI::Checkbox("Auto sync", S_AutoSync);
@@ -633,7 +645,7 @@ void RenderDashboard() {
     // Apply once per plugin load: the saved ImGui size can be taller than a
     // 1024x768 game window and leave the footer off-screen.
     if (!g_windowSizeApplied) {
-        UI::SetNextWindowSize(980, 620, UI::Cond::Always);
+        UI::SetNextWindowSize(940, 580, UI::Cond::FirstUseEver);
         UI::SetNextWindowPos(24, 40, UI::Cond::Always);
         g_windowSizeApplied = true;
     }

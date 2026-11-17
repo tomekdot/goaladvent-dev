@@ -12,7 +12,10 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.2.7-dev`.
+- Version in `info.toml`: `0.2.8-dev`.
+- `Transparent Glass` uses neutral backgrounds (R == G == B). Intermediate
+  containers must stay `alpha = 0` (`containerBg`) or transparency stacks into
+  an opaque wall. The window tint is `S_GlassOpacity` (0.15-0.80, default 0.45).
 - Two themes share the **same layout**. `UiTheme` + `g_Theme` are persisted
   `[Setting]`s in `Config.as`; `Theme.as` holds `ThemePalette` and
   `RefreshPalette()`. UI code reads colours only through `Gold()`, `TextMain()`,

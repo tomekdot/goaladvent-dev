@@ -53,9 +53,10 @@ The layout is identical in both themes - only colours, transparency and corner
 radius change. Switching is live, with no game restart:
 
 - **Obsidian Minimal** (default): matte carbon palette, 4-6 px rounding.
-- **Pursuit Match (Glass)**: translucent slate glass, 0 px corners, white
-  semi-transparent borders and the Pursuit HUD accents (gold leader star,
-  blue Pursuit night, green completed).
+- **Transparent Glass**: neutral black smoke over the game (45% by default),
+  white frosted cards and tiles, 0 px corners and white alpha borders. A
+  `Glass Opacity` slider in Settings adjusts the window tint from 15% to 80%
+  live; intermediate containers stay fully transparent so layers do not stack.
 
 Switch with the cog button in the plugin window, the `Settings` item in the
 plugin menu, or the `UI Theme` setting in Openplanet -> Settings -> Plugins.

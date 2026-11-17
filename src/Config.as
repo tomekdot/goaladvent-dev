@@ -6,10 +6,15 @@
 // ---------------------------------------------------------------------------
 // Appearance
 // ---------------------------------------------------------------------------
-enum UiTheme { ObsidianMinimal, PursuitMatch }
+enum UiTheme { ObsidianMinimal, TransparentGlass }
 
 [Setting category="Appearance" name="UI Theme"]
 UiTheme g_Theme = UiTheme::ObsidianMinimal;
+
+[Setting category="Appearance" name="Glass Opacity"]
+float S_GlassOpacity = 0.45f;
+
+bool GlassTheme() { return g_Theme == UiTheme::TransparentGlass; }
 
 [Setting category="Appearance" name="Show moon phase percent"]
 bool S_ShowMoonPct = true;
@@ -17,7 +22,7 @@ bool S_ShowMoonPct = true;
 [Setting category="Sync" name="Auto sync"]
 bool S_AutoSync = true;
 
-bool PursuitTheme() { return g_Theme == UiTheme::PursuitMatch; }
+
 
 // ---------------------------------------------------------------------------
 // Tuning
