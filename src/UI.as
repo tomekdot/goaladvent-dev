@@ -155,24 +155,29 @@ void RenderTopBar() {
     UI::SameLine(0, 8);
     UI::TextDisabled("- 25 days of checkpoints, bounties and badges");
 
-    // Title and the three small buttons share ONE row. SameLine first, then an
-    // absolute X on that row, otherwise ImGui drops the buttons to a new line.
-    UI::SameLine(0, 0);
-    UI::SetCursorPosX(UI::GetWindowSize().x - 106.0f);
+    // Right-align the three buttons on the SAME row as the title. Deriving the
+    // offset from the remaining width keeps them aligned when the window size
+    // changes; an absolute X used to drop them below the separator.
+    float btnW = 28.0f;
+    float gap = 4.0f;
+    float groupW = btnW * 3.0f + gap * 2.0f;
+    float rightOffset = UI::GetContentRegionAvail().x - groupW;
+    if (rightOffset < 0.0f) rightOffset = 0.0f;
+    UI::SameLine(0, rightOffset);
 
     UI::BeginDisabled(g_syncing);
-    if (UI::Button(Icons::Refresh, vec2(28, 24))) SyncNow();
+    if (UI::Button(Icons::Refresh, vec2(btnW, 22))) SyncNow();
     UI::SetItemTooltip(g_syncing ? "Sync in progress..." : "Refresh results from the event server.");
     UI::EndDisabled();
-    UI::SameLine(0, 4);
-    if (UI::Button(Icons::FloppyO, vec2(28, 24))) {
+    UI::SameLine(0, gap);
+    if (UI::Button(Icons::FloppyO, vec2(btnW, 22))) {
         SaveProgress();
         g_status = "Progress saved locally.";
     }
     UI::SetItemTooltip("Save progress to this PC.");
-    UI::SameLine(0, 10);
+    UI::SameLine(0, gap);
     UI::PushStyleColor(UI::Col::ButtonHovered, Crimson());
-    if (UI::Button(Icons::Trash, vec2(28, 24))) {
+    if (UI::Button(Icons::Trash, vec2(btnW, 22))) {
         if (g_confirmReset) {
             ResetProgress();
             SaveProgress();
