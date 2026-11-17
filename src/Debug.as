@@ -14,7 +14,13 @@ void DebugError(const string &in source, const string &in detail) {
 }
 
 void LogDebugState() {
+    Time::Info now = Time::Parse();
+    string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
+    bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
     print("[goalmas][DBG] version=0.3.5-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+          " localDate=" + localDate +
+          " eventSeason=" + tostring(eventSeason) +
+          " errors=" + tostring(g_debugErrors.Length) +
           " opacity=" + tostring(S_GlassOpacity) +
           " selected=" + tostring(g_selectedDay) +
           " active=" + tostring(g_activeDay) +
@@ -46,8 +52,13 @@ void RenderDebugWindow() {
     UI::TextDisabled("Admin diagnostics - state is read only");
     UI::Separator();
 
+    Time::Info now = Time::Parse();
+    string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
+    bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
+
     UI::Text("VERSION / VIEW");
     UI::Text("  version: 0.3.5-dev");
+    UI::Text("  local date: " + localDate + "   event season: " + tostring(eventSeason));
     UI::Text("  theme: " + string(GlassTheme() ? "Transparent Glass" : "Obsidian Minimal"));
     UI::Text("  glass opacity: " + tostring(S_GlassOpacity));
     UI::Text("  dashboard visible: " + tostring(g_showCalendar));
