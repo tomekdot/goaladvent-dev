@@ -63,6 +63,15 @@ plugin menu, or the `UI Theme` setting in Openplanet -> Settings -> Plugins.
 The choice is saved between game sessions. Settings also expose `Show moon
 phase percent`, `Show in-game tips` and `Auto sync`.
 
+## Debugging (admin)
+
+Enable **Settings -> Advanced -> Debug overlay** in Openplanet. This adds a
+`Debug` item to the plugin menu with a live state window (selected/active day,
+CP counters, submit queue, sync mode, API URL, event-server check, map UID).
+The **Log state** button writes one readable `[goalmas][DBG]` line to
+`Openplanet.log`; the same line is written automatically on plugin load while
+the option is on. A **Run sync now** button is available for testing.
+
 ## Sync modes
 
 | Mode | Transport | What you need |

@@ -23,6 +23,7 @@ void Main() {
 
     print("[goalmas] Loaded: " + tostring(DAY_COUNT) + " days, goal " +
           tostring(GOAL_CP) + " CP, sync mode " + tostring(S_SyncMode) + ".");
+    if (S_Debug) LogDebugState();
 }
 
 void OnDisabled() {
@@ -51,6 +52,7 @@ void Render() {
     RefreshPalette();   // overlays use the same theme colours as the dashboard
     RenderBanner();
     RenderGoalHuntHud();
+    if (S_Debug) RenderDebugWindow();
 }
 
 void RenderInterface() {
@@ -63,4 +65,7 @@ void RenderMenu() {
         g_showCalendar = !g_showCalendar;
     }
     UI::SetItemTooltip("Open the goalmas dashboard - calendar, bounties and leaderboard.");
+    if (S_Debug && UI::MenuItem(Icons::Info + " Debug", "", g_showDebug)) {
+        g_showDebug = !g_showDebug;
+    }
 }

@@ -12,7 +12,10 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.3.3-dev`.
+- Version in `info.toml`: `0.3.4-dev`.
+- Admin debug: `S_Debug` (Settings -> Advanced -> Debug overlay) adds a `Debug`
+  menu item and writes one `[goalmas][DBG]` line on load. `LogDebugState()` is
+  the single place to extend when adding a new diagnostic field.
 - There is NO in-plugin settings window. All options are `[Setting]` globals in
   `Config.as`, edited only in Openplanet -> Settings -> Plugins -> goalmas.
   `Glass Opacity` uses min/max there; changing it updates the palette next frame.
@@ -62,6 +65,7 @@ editing code. The broader workspace rules also apply:
 | `src/Sync.as` | Banner/feed, shared-folder + HTTP transports, `/state` parsing |
 | `src/UI.as` | Single dashboard layout, tabs, tile grid, HUD, banner, settings |
 | `src/Theme.as` | `ThemePalette` - colours, alpha and radii for both themes |
+| `src/Debug.as` | Admin diagnostics window + `[goalmas][DBG]` log line |
 | `src/Main.as` | Entry points: `Main`, `Update`, `Render`, `RenderInterface`, `RenderMenu` |
 | `backend/worker.js` | Cloudflare Worker + D1: `/state`, `/submit` |
 | `backend/schema.sql` | D1 tables (`players`, `bounties`, `events`) |

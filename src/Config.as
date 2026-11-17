@@ -16,6 +16,9 @@ float S_GlassOpacity = 0.55f;
 
 bool GlassTheme() { return g_Theme == UiTheme::TransparentGlass; }
 
+[Setting category="Advanced" name="Debug overlay" description="Admin-only diagnostics: live plugin state and a button that writes one readable line to Openplanet.log."]
+bool S_Debug = false;
+
 [Setting category="Appearance" name="Show moon phase percent" description="Show the illumination percentage on each calendar tile."]
 bool S_ShowMoonPct = true;
 
