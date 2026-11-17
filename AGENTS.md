@@ -90,8 +90,14 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 - `UI::BeginTabBar(id)` takes only the id. `UI::ListBox(label, int& item,
   string[] items)` exists (value array).
 - UI strings stay English. Palette functions live at the top of `UI.as`.
-- Keep cards text-wrapped; stat card = 64 px, icon box 34x34, label and value
-  on separate rows starting at x=44.
+- Keep cards text-wrapped; stat card = 64 px, icon box 36x36 centred vertically,
+  label and value on separate rows with a 14 px gap after the box.
+- Calendar tiles use absolute column positions derived from
+  `GetContentRegionAvail()`; do not use `SameLine()` for the 5x5 grid (it leaves
+  an unused strip after column five). Draw the icon and status with `AddText()`
+  at the measured centre so a short glyph stays aligned with a wider label.
+- Sidebar menu is left-aligned (`ButtonTextAlign = (0, 0.5)`, FramePadding.x=12).
+  Sidebar shows the day mode; the footer alone shows connection status.
 
 ### Runtime integration
 

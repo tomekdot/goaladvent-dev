@@ -65,21 +65,29 @@ void DrawStatCard(const string &in icon, const string &in label,
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int flags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
     if (UI::BeginChild("##stat" + label + icon, vec2(0, 64), UI::ChildFlags::Borders, flags)) {
-        vec2 p = UI::GetCursorScreenPos();
-        UI::GetWindowDrawList().AddRectFilled(vec4(p.x, p.y, 34.0f, 34.0f), Tone(accent), 3.0f);
+        vec2 start = UI::GetCursorPos();
+        vec2 screen = UI::GetCursorScreenPos();
 
-        // Centre the glyph inside the 34x34 box, then share the line with the
-        // two text lines to the right. Nothing stacks under the icon box.
-        float startX = UI::GetCursorPos().x;
+        // The card is 64 px tall with 7 px vertical padding, leaving 50 px of
+        // content. A 36 px box centred in it starts 7 px below the content top.
+        const float boxSize = 36.0f;
+        const float boxTop = 7.0f;
+        UI::GetWindowDrawList().AddRectFilled(
+            vec4(screen.x, screen.y + boxTop, boxSize, boxSize), Tone(accent), 3.0f);
+
         float iconW = UI::MeasureString(icon, null, 17.0f).x;
-        if (iconW < 34.0f) UI::SetCursorPosX(startX + (34.0f - iconW) * 0.5f);
+        UI::SetCursorPos(vec2(start.x + (boxSize - iconW) * 0.5f,
+                              start.y + boxTop + (boxSize - 17.0f) * 0.5f));
         UI::PushFontSize(17.0f);
         TextTone(accent, icon);
         UI::PopFontSize();
 
-        UI::SameLine(44.0f, 0.0f);
+        // 14 px clear gap after the box; the two text lines are centred as a
+        // block against the same 50 px content height.
+        float textX = start.x + boxSize + 14.0f;
+        UI::SetCursorPos(vec2(textX, start.y + 9.0f));
         TextTone(TextMuted(), label);
-        UI::SetCursorPosX(44.0f);
+        UI::SetCursorPos(vec2(textX, start.y + 26.0f));
         TextTone(TextMain(), value);
     }
     UI::EndChild();
@@ -168,10 +176,14 @@ void SidebarTab(int id, const string &in icon, const string &in label) {
     UI::PushStyleColor(UI::Col::Text, active ? TextMain() : TextMuted());
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, active ? 1.0f : 0.0f);
     UI::PushStyleColor(UI::Col::Border, active ? vec4(0.30, 0.30, 0.36, 1.00) : vec4(0, 0, 0, 0));
-    if (UI::Button(icon + "   " + label, vec2(-1, 32))) {
+    // Left-aligned menu: icons and labels start at the same x on every row.
+    UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.0f, 0.5f));
+    UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(12.0f, 4.0f));
+    if (UI::Button(icon + "    " + label, vec2(-1, 32))) {
         g_activeTab = id;
         g_confirmReset = false;
     }
+    UI::PopStyleVar(2);
     UI::PopStyleColor();
     UI::PopStyleVar();
     UI::PopStyleColor(4);
@@ -194,10 +206,14 @@ void RenderSidebar() {
         UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 4), "");
         UI::PopStyleColor(2);
         UI::Dummy(vec2(0, 6));
+        // The sidebar describes the selected day; connection status belongs in
+        // the footer only. Green is reserved for a playable Goal Hunt day.
         if (IsOffDay(g_selectedDay)) {
             TextTone(Purple(), Icons::Circle + "  PURSUIT NIGHT");
+        } else if (!DayUnlocked(g_selectedDay)) {
+            TextTone(TextMuted(), Icons::Circle + "  LOCKED DAY");
         } else {
-            TextTone(Emerald(), Icons::Circle + "  " + (S_SyncMode == 0 ? "OFFLINE" : "ONLINE"));
+            TextTone(Emerald(), Icons::Circle + "  GOAL HUNT DAY");
         }
     }
     UI::EndChild();
@@ -256,39 +272,54 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
                          vec4 accent, bool isSelected, float tileW) {
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, isSelected ? 1.5f : 1.0f);
     UI::PushStyleColor(UI::Col::Border, isSelected ? IceBlue() : vec4(0.16, 0.16, 0.20, 1.00));
-    UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.5f, 0.5f));
     UI::PushStyleColor(UI::Col::Button, bgCol);
     UI::PushStyleColor(UI::Col::ButtonHovered, Lift(bgCol));
     UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(bgCol)));
     UI::PushStyleColor(UI::Col::Text, textCol);
-    UI::PushFontSize(13.0f);
 
-    string caption = icon + "\n" + label + "##goalmastile" + tostring(day);
-    bool clicked = UI::Button(caption, vec2(tileW, 60));
+    // The button carries only its ID. Its two lines are drawn separately so
+    // the short icon is centred on the tile, not on the wider status text.
+    bool clicked = UI::Button("##goalmastile" + tostring(day), vec2(tileW, 60));
     vec4 r = UI::GetItemRect();
+    float cx = r.x + r.z * 0.5f;
+    float iconW = UI::MeasureString(icon, null, 15.0f).x;
+    float labelW = UI::MeasureString(label, null, 13.0f).x;
+    UI::GetWindowDrawList().AddText(vec2(cx - iconW * 0.5f, r.y + 7.0f),
+                                    textCol, icon, null, 15.0f);
+    UI::GetWindowDrawList().AddText(vec2(cx - labelW * 0.5f, r.y + 28.0f),
+                                    textCol, label, null, 13.0f);
 
     // Illumination sits in the top-right corner on its own, so the short status
     // line can never push the percentage past the right edge of the tile.
     float pctW = UI::MeasureString(moonLine, null, 11.0f).x;
     UI::GetWindowDrawList().AddText(vec2(r.x + r.z - pctW - 6.0f, r.y + 4.0f),
                                     TextMuted(), moonLine, null, 11.0f);
-    DrawDot(vec2(r.x + 7.0f, r.y + 7.0f), 2.5f, accent);
+    DrawDot(vec2(r.x + 5.0f, r.y + 5.0f), 2.5f, accent);
 
-    UI::PopFontSize();
-    UI::PopStyleColor(4);
-    UI::PopStyleVar();
-    UI::PopStyleColor();
+    UI::PopStyleColor(5);
     UI::PopStyleVar();
     return clicked;
 }
 
 void RenderDayGrid() {
     UI::TextDisabled("Pursuit rest days: " + OffDaysText() + "   |   premiere x2 points");
-    float width = UI::GetContentRegionAvail().x;
-    float tileW = (width - 24) / 5;
-    if (tileW < 48) tileW = 48;
+
+    // Absolute column positions fill the panel edge to edge. SameLine() left a
+    // 20 px unused strip after the fifth column because its spacing stacked
+    // with the fixed 24 px deduction.
+    vec2 origin = UI::GetCursorPos();
+    float availW = UI::GetContentRegionAvail().x;
+    const float spacing = 6.0f;
+    const float tileH = 60.0f;
+    float tileW = (availW - 4.0f * spacing) / 5.0f;
+    if (tileW < 48.0f) tileW = 48.0f;
 
     for (int day = 1; day <= DAY_COUNT; day++) {
+        int col = (day - 1) % 5;
+        int row = (day - 1) / 5;
+        UI::SetCursorPos(vec2(origin.x + col * (tileW + spacing),
+                              origin.y + row * (tileH + spacing)));
+
         vec4 textCol = (day == DAY_COUNT || IsPremiereDay(day)) ? Gold() : TextMain();
         string moonLine = tostring(MoonIlluminationPct(day)) + "%";
         vec4 bg = (day == g_selectedDay) ? TileSelectedBg() : TileBg();
@@ -299,8 +330,8 @@ void RenderDayGrid() {
         }
         UI::SetItemTooltip(MoonPhaseName(day) + " - " +
                            tostring(MoonIlluminationPct(day)) + "% illumination");
-        if (day % 5 != 0) UI::SameLine(0, 6);
     }
+    UI::SetCursorPos(vec2(origin.x, origin.y + 5.0f * (tileH + spacing)));
 }
 
 // ---------------------------------------------------------------------------
@@ -357,23 +388,30 @@ void RenderDayDetails() {
         UI::TextWrapped(g_hints[day - 1]);
     }
 
-    float remain = UI::GetContentRegionAvail().y - 42.0f;
-    if (remain > 0) UI::Dummy(vec2(0, remain));
+    if (g_confirmReset) TextTone(Crimson(), "Press the trash icon again to reset local progress.");
+    else if (g_status.Length > 0) UI::TextDisabled(g_status);
+
+    // Pin the action row 12 px above the bottom edge of the details card.
+    const float rowH = 34.0f;
+    float targetY = UI::GetWindowSize().y - 12.0f - rowH;
+    float curY = UI::GetCursorPos().y;
+    if (targetY > curY) UI::SetCursorPosY(targetY);
 
     if (locked || IsOffDay(day)) {
         UI::PushStyleColor(UI::Col::Button, vec4(0.11, 0.11, 0.14, 1.00));
         UI::PushStyleColor(UI::Col::Text, TextMuted());
-        UI::Button(locked ? "AVAILABLE DEC " + tostring(day) : "Pursuit Night - No Race", vec2(-1, 34));
+        UI::Button(locked ? "AVAILABLE DEC " + tostring(day) : "Pursuit Night - No Race", vec2(-1, rowH));
         UI::PopStyleColor(2);
         return;
     }
 
     // One white CTA is the only high-contrast element in the whole dashboard.
+    // Width -96 leaves exactly 8 px gap + 88 px Sync button on the same row.
     UI::PushStyleColor(UI::Col::Button, vec4(0.95, 0.95, 0.97, 1.00));
     UI::PushStyleColor(UI::Col::ButtonHovered, vec4(1.00, 1.00, 1.00, 1.00));
     UI::PushStyleColor(UI::Col::Text, vec4(0.06, 0.06, 0.08, 1.00));
     string action = S_TestMode ? "SUBMIT TEST CP (12)" : "OPEN DAY " + tostring(day);
-    if (UI::Button(action, vec2(-1, 34))) {
+    if (UI::Button(action, vec2(-96, rowH))) {
         if (S_TestMode) {
             RequestCpSubmit(day, 12);
             g_status = "Test CP submitted for day " + tostring(day) + ".";
@@ -384,11 +422,8 @@ void RenderDayDetails() {
     UI::PopStyleColor(3);
     UI::SameLine(0, 8);
     UI::BeginDisabled(g_syncing);
-    if (UI::Button(Icons::Refresh + "  Sync", vec2(88, 34))) SyncNow();
+    if (UI::Button(Icons::Refresh + "  Sync", vec2(88, rowH))) SyncNow();
     UI::EndDisabled();
-
-    if (g_confirmReset) TextTone(Crimson(), "Press the trash icon again to reset local progress.");
-    else if (g_status.Length > 0) UI::TextDisabled(g_status);
 }
 
 // ---------------------------------------------------------------------------
@@ -516,11 +551,10 @@ void RenderFinaleTab() {
 // ---------------------------------------------------------------------------
 void RenderFooter() {
     UI::Separator();
-    if (S_SyncMode == 0) {
-        TextTone(TextMuted(), Icons::Circle + "  OFFLINE  |  GOALMAS 2026");
-    } else {
-        TextTone(Emerald(), Icons::Circle + "  SYNCED  |  GOALMAS 2026");
-    }
+    // Footer = connection status, sidebar = day mode. No duplicate OFFLINE.
+    string link = S_SyncMode == 0 ? "OFFLINE" : "CONNECTED";
+    vec4 linkCol = S_SyncMode == 0 ? TextMuted() : Emerald();
+    TextTone(linkCol, Icons::Circle + "  " + link + "  |  GOALMAS 2026");
     UI::SameLine(0, 0);
     string right = "BEST 15: " + tostring(ScoreDays()) + " PTS  |  " +
                    tostring(OpenedCount()) + "/25 GIFTS";
