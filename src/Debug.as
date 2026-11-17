@@ -74,6 +74,7 @@ void RenderDebugWindow() {
         return;
     }
 
+    UI::PushFontSize(15.0f);
     UI::TextDisabled("Admin diagnostics | state is read only");
     UI::Separator();
 
@@ -179,5 +180,6 @@ void RenderDebugWindow() {
     UI::SameLine(0, 6);
     if (UI::Button("Close")) g_showDebug = false;
 
+    UI::PopFontSize();
     UI::End();
 }

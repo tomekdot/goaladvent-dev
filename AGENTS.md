@@ -210,14 +210,14 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 
 ### UI text and typography
 
-- Font scale: 11 px for labels and the footer, 13 px for body text and values,
-  16 px for the day title and the app name. Nothing below 11 px; do not add
+- Font scale: 13 px for labels and the footer, 15 px for body text and values,
+  18 px for the day title and the app name. Nothing below 13 px; do not add
   extra sizes.
 - Section headers and card labels are UPPERCASE; navigation, values and
   sentences are sentence case.
 - Separators are ` | ` or `:` - never ` - `. Source files stay ASCII, so no
   middle dots or other non-ASCII punctuation.
-- Stat card = muted 11 px label above a 13 px value in the main text colour.
+- Stat card = muted 13 px label above a 15 px value in the main text colour.
 - Spell out units: `Last quarter | 56% lit`, `TOTAL 240 pts`.
 - Times carry UTC next to local time: `Bonus 20:00 CET (19:00 UTC)`.
 - Tone: short, factual, plain English, no exclamation marks. It should read
