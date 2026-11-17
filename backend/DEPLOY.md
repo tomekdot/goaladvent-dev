@@ -1,6 +1,15 @@
 # Cloudflare Worker deployment (free tier)
 
-One-time setup, about 5 minutes. Nothing runs until you do this.
+Already deployed for this project. The live endpoint is:
+
+```
+https://goalmas.tomekdot-goalmas.workers.dev
+```
+
+It is baked into `src/Config.as` as `DEFAULT_API_URL`, so players need no
+configuration. The D1 database ID is stored in `wrangler.toml`.
+
+The steps below are only needed if you want to redeploy from scratch.
 Run the commands below from this `backend/` folder (it holds `worker.js`,
 `schema.sql` and `wrangler.toml`).
 

@@ -1,0 +1,5 @@
+# Local Wrangler state (never commit tokens or local cache)
+backend/.wrangler/
+
+# Built plugin packages are release artifacts, not source
+*.op

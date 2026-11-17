@@ -78,7 +78,7 @@ const string SYNC_SUBFOLDER = "goalmas";
 
 // Deployed worker URL. Paste it here once and every player syncs with no setup:
 // the plugin switches to HTTP mode automatically when this is not empty.
-const string DEFAULT_API_URL = "";
+const string DEFAULT_API_URL = "https://goalmas.tomekdot-goalmas.workers.dev";
 
 // ---------------------------------------------------------------------------
 // Windows

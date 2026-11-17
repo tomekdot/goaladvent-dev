@@ -1,5 +1,6 @@
 # Cloudflare Worker configuration for the goalmas backend.
-# Replace database_id with the value printed by: wrangler d1 create goalmas
+# Deployed to https://goalmas.tomekdot-goalmas.workers.dev
+# D1 database ID is already filled in; do not replace it.
 
 name = "goalmas"
 main = "worker.js"
@@ -8,4 +9,4 @@ compatibility_date = "2026-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "goalmas"
-database_id = "PASTE_D1_DATABASE_ID_HERE"
+database_id = "a9b969c7-bdc6-496b-9a71-37c56461d6bd"

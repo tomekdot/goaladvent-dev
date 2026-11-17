@@ -80,8 +80,10 @@ the option is on. A **Run sync now** button is available for testing.
 | `1` | Shared folder | A folder shared by everyone (SMB, OneDrive, Dropbox). One JSON per player, local leaderboard. |
 | `2` | HTTP worker | Free Cloudflare Workers + D1. See [DEPLOY.md](DEPLOY.md). |
 
-Set `Sync mode` in the plugin settings. If a Worker URL is configured, the plugin
-switches to HTTP mode automatically - players do not have to configure anything.
+The free worker is already deployed at
+`https://goalmas.tomekdot-goalmas.workers.dev` and baked into `DEFAULT_API_URL`,
+so `Sync mode` switches to HTTP (2) automatically on load - players configure
+nothing. Set it to `0` in settings if you want to force offline mode.
 
 ## Event server
 

@@ -12,7 +12,11 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.3.8-dev`.
+- Version in `info.toml`: `0.4.0-dev`.
+- Backend is live at `https://goalmas.tomekdot-goalmas.workers.dev` and baked
+  into `DEFAULT_API_URL` in `Config.as`, so sync mode 2 is automatic for every
+  player. D1 `goalmas` ID is in `backend/wrangler.toml`; redeploy with
+  `wrangler deploy` from `backend/`.
 - Map detection is name-based only: `ParseDayFromMapName(app.RootMap.MapInfo.Name)`
   looks for `#N` plus `Goal Hunt` / `GoalHunt` / `Goal-Hunt`, then gates on
   `OnEventServer()`. `CurrentMapName()` and the live `detected day` are shown
