@@ -122,6 +122,10 @@ string g_lastTopEvent = "";
 // ---------------------------------------------------------------------------
 bool g_syncing = false;
 int g_lastSyncStamp = 0;
+bool g_lastSyncOk = false;
+int g_lastSyncHttp = 0;
+int g_boardCount = 0;
+string g_selfTestResult = "not run";
 
 // ---------------------------------------------------------------------------
 // Goal Hunt state

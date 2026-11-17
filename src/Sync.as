@@ -190,6 +190,7 @@ void ApplyState(const string &in body) {
             AddBoardRow(name, points, bounties);
         }
         SortBoard();
+        g_boardCount = g_boardNames.Length;
     }
 
     Json::Value@ events = root["events"];
@@ -217,20 +218,45 @@ void SyncState() {
     string url = ApiUrl() + "/state?accountId=" + Net::UrlEncode(AccountId());
     Net::HttpRequest@ req = Net::HttpGet(url);
     if (req is null) {
+        g_lastSyncOk = false;
+        g_lastSyncHttp = 0;
         DebugError("sync", "could not create state request");
         g_syncing = false;
         return;
     }
     while (!req.Finished()) yield();
 
-    if (req.ResponseCode() == 200) {
+    int code = req.ResponseCode();
+    g_lastSyncHttp = code;
+    if (code == 200) {
         ApplyState(req.String());
+        g_lastSyncOk = true;
         g_status = "Synced with the event server.";
     } else {
-        g_status = "Sync failed (HTTP " + tostring(req.ResponseCode()) + ").";
-        DebugError("sync", "HTTP " + tostring(req.ResponseCode()));
+        g_lastSyncOk = false;
+        g_status = "Sync failed (HTTP " + tostring(code) + ").";
+        DebugError("sync", "HTTP " + tostring(code));
     }
     g_syncing = false;
+}
+
+// Admin self-test: one HTTP GET to the worker root, run as a coroutine so it
+// can be started from the debug button without suspending the UI context.
+void SelfTestServer() {
+    g_selfTestResult = "running...";
+    if (ApiUrl().Length == 0) {
+        g_selfTestResult = "FAIL - no API URL";
+        return;
+    }
+    Net::HttpRequest@ req = Net::HttpGet(ApiUrl() + "/");
+    if (req is null) {
+        g_selfTestResult = "FAIL - request not created";
+        return;
+    }
+    while (!req.Finished()) yield();
+    int code = req.ResponseCode();
+    if (code == 200) g_selfTestResult = "OK (HTTP 200)";
+    else g_selfTestResult = "FAIL (HTTP " + tostring(code) + ")";
 }
 
 void SyncNow() {

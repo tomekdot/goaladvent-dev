@@ -430,6 +430,14 @@ void RenderDayDetails() {
     TextTone(statusCol, status);
     UI::Dummy(vec2(0, 4));
 
+    // Always-visible proof that the local server / map detection path works.
+    int detectedDay = DetectGoalHuntDay();
+    DrawStatCard(detectedDay > 0 ? Icons::FlagCheckered : Icons::Crosshairs,
+                 "GOAL HUNT MAP",
+                 detectedDay > 0 ? ("#" + tostring(detectedDay) + " detected") : "not detected",
+                 detectedDay > 0 ? Emerald() : TextMuted());
+    UI::Dummy(vec2(0, 5));
+
     DrawStatCard(Icons::MoonO, "MOON PHASE",
                  MoonPhaseName(day) + "  " + tostring(MoonIlluminationPct(day)) + "%",
                  MoonTint(MoonIlluminationPct(day)));
@@ -626,9 +634,27 @@ void RenderFinaleTab() {
 void RenderFooter() {
     UI::Separator();
     // Footer = connection status, sidebar = day mode. No duplicate OFFLINE.
-    string link = S_SyncMode == 0 ? "Offline - saved locally"
-                                  : "Connected - live results";
-    vec4 linkCol = S_SyncMode == 0 ? TextMuted() : Emerald();
+    // Live health, not just the configured mode: a failed HTTP call must not
+    // keep claiming "Connected". This is the one always-visible status line.
+    string link;
+    vec4 linkCol;
+    if (S_SyncMode == 0) {
+        link = "Offline - saved locally";
+        linkCol = TextMuted();
+    } else if (g_syncing) {
+        link = "Syncing results...";
+        linkCol = IceBlue();
+    } else if (g_debugErrors.Length > 0 || g_status.Contains("failed")) {
+        link = "Results error - open Debug";
+        linkCol = Crimson();
+    } else if (g_lastSyncStamp > 0) {
+        link = "Connected - " + tostring(g_boardCount) + " players - synced " +
+               tostring(int(Time::Stamp) - g_lastSyncStamp) + "s ago";
+        linkCol = Emerald();
+    } else {
+        link = "Connecting to results...";
+        linkCol = TextMuted();
+    }
     TextTone(linkCol, Icons::Circle + "  " + link);
     UI::SameLine(0, 0);
     string right = "DAY " + tostring(g_selectedDay) + "/25   BEST 15: " +

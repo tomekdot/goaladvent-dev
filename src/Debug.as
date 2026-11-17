@@ -17,7 +17,7 @@ void LogDebugState() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    print("[goalmas][DBG] version=0.4.1-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    print("[goalmas][DBG] version=0.4.2-dev theme=" + (GlassTheme() ? "glass" : "obsidian") +
           " localDate=" + localDate +
           " eventSeason=" + tostring(eventSeason) +
           " errors=" + tostring(g_debugErrors.Length) +
@@ -33,6 +33,11 @@ void LogDebugState() {
           " score=" + tostring(ScoreDays()) +
           " syncMode=" + tostring(S_SyncMode) +
           " syncing=" + tostring(g_syncing) +
+          " lastSyncOk=" + tostring(g_lastSyncOk) +
+          " lastHttp=" + tostring(g_lastSyncHttp) +
+          " syncAge=" + tostring(int(Time::Stamp) - g_lastSyncStamp) + "s" +
+          " boardRows=" + tostring(g_boardCount) +
+          " selfTest=" + g_selfTestResult +
           " api=" + ApiUrl() +
           " map=" + GetCurrentMapUid() +
           " mapName=" + CurrentMapName() +
@@ -58,8 +63,25 @@ void RenderDebugWindow() {
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
 
+    // Answers "is it working right now?" without reading the log.
+    int detectedNow = DetectGoalHuntDay();
+    bool serverOk = (S_SyncMode == 2 && g_lastSyncOk);
+    int syncAge = int(Time::Stamp) - g_lastSyncStamp;
+    TextTone(serverOk ? Emerald() : Crimson(),
+             serverOk ? Icons::CheckCircle + "  SERVER ONLINE" : Icons::Info + "  SERVER NOT CONFIRMED");
+    UI::Text("  HTTP " + tostring(g_lastSyncHttp) + "   last sync " +
+             (g_lastSyncStamp > 0 ? tostring(syncAge) + "s ago" : "never") +
+             "   board rows " + tostring(g_boardCount));
+    TextTone(detectedNow > 0 ? Emerald() : TextMuted(),
+             detectedNow > 0 ? Icons::CheckCircle + "  GOAL HUNT MAP: DAY " + tostring(detectedNow)
+                             : Icons::Info + "  NO GOAL HUNT MAP DETECTED");
+    UI::Text("  event server: " + tostring(OnEventServer()) +
+             "   playable now: " + tostring(detectedNow > 0 ? DayPlayableNow(detectedNow) : false));
+    UI::Text("  server test: " + g_selfTestResult);
+    UI::Separator();
+
     UI::Text("VERSION / VIEW");
-    UI::Text("  version: 0.4.1-dev");
+    UI::Text("  version: 0.4.2-dev");
     UI::Text("  local date: " + localDate + "   event season: " + tostring(eventSeason));
     UI::Text("  theme: " + string(GlassTheme() ? "Transparent Glass" : "Obsidian Minimal"));
     UI::Text("  glass opacity: " + tostring(S_GlassOpacity));
@@ -111,6 +133,9 @@ void RenderDebugWindow() {
     }
 
     UI::Separator();
+    if (UI::Button("Test server")) startnew(SelfTestServer);
+    UI::SetItemTooltip("Sends one GET to the worker root and shows OK/FAIL above.");
+    UI::SameLine(0, 6);
     if (UI::Button("Log state to Openplanet.log")) LogDebugState();
     UI::SameLine(0, 6);
     UI::BeginDisabled(g_syncing);
