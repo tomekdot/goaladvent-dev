@@ -12,7 +12,7 @@ enum UiTheme { ObsidianMinimal, TransparentGlass }
 UiTheme g_Theme = UiTheme::ObsidianMinimal;
 
 [Setting category="Appearance" name="Glass Opacity"]
-float S_GlassOpacity = 0.45f;
+float S_GlassOpacity = 0.55f;
 
 bool GlassTheme() { return g_Theme == UiTheme::TransparentGlass; }
 

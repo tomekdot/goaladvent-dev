@@ -12,7 +12,10 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goalmas-dev`.
   Remote: `https://github.com/tomekdot/goalmas-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.2.9-dev`.
+- Version in `info.toml`: `0.3.0-dev`.
+- Calendar tile height is derived from available column height (60-84 px);
+  moon percentage sits on its own centred line below the status, never in the
+  top-right corner where it collided with the tile icon.
 - `TextMuted()` is deliberately 40% brighter than the raw palette value so
   labels, hints and footer text stay readable. Adjust there, not in `Theme.as`.
 - `Transparent Glass` uses neutral backgrounds (R == G == B). Intermediate

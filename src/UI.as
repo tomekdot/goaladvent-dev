@@ -290,7 +290,7 @@ string DayTileShort(int day) {
 
 bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
                          const string &in moonLine, vec4 bgCol, vec4 textCol,
-                         vec4 accent, bool isSelected, float tileW) {
+                         vec4 accent, bool isSelected, float tileW, float tileH) {
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, isSelected ? 1.5f : 1.0f);
     UI::PushStyleColor(UI::Col::Border, isSelected ? g_palette.borderStrong : g_palette.borderWeak);
     UI::PushStyleColor(UI::Col::Button, bgCol);
@@ -298,22 +298,23 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
     UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(bgCol)));
     UI::PushStyleColor(UI::Col::Text, textCol);
 
-    // The button carries only its ID. Its two lines are drawn separately so
-    // the short icon is centred on the tile, not on the wider status text.
-    bool clicked = UI::Button("##goalmastile" + tostring(day), vec2(tileW, 60));
+    // The button carries only its ID. Its lines are drawn separately so the
+    // short icon stays centred and the percentage never overlaps it.
+    float top = (tileH - 60.0f) * 0.5f;
+    bool clicked = UI::Button("##goalmastile" + tostring(day), vec2(tileW, tileH));
     vec4 r = UI::GetItemRect();
     float cx = r.x + r.z * 0.5f;
     float iconW = UI::MeasureString(icon, null, 15.0f).x;
     float labelW = UI::MeasureString(label, null, 13.0f).x;
-    UI::GetWindowDrawList().AddText(vec2(cx - iconW * 0.5f, r.y + 7.0f),
+    UI::GetWindowDrawList().AddText(vec2(cx - iconW * 0.5f, r.y + 7.0f + top),
                                     textCol, icon, null, 15.0f);
-    UI::GetWindowDrawList().AddText(vec2(cx - labelW * 0.5f, r.y + 28.0f),
+    UI::GetWindowDrawList().AddText(vec2(cx - labelW * 0.5f, r.y + 28.0f + top),
                                     textCol, label, null, 13.0f);
 
-    // Illumination sits in the top-right corner on its own, so the short status
-    // line can never push the percentage past the right edge of the tile.
+    // Illumination goes on its own centred line under the status, so a narrow
+    // tile can never push "45%" over the gift icon.
     float pctW = UI::MeasureString(moonLine, null, 11.0f).x;
-    UI::GetWindowDrawList().AddText(vec2(r.x + r.z - pctW - 6.0f, r.y + 4.0f),
+    UI::GetWindowDrawList().AddText(vec2(cx - pctW * 0.5f, r.y + 44.0f + top),
                                     TextMuted(), moonLine, null, 11.0f);
     DrawDot(vec2(r.x + 5.0f, r.y + 5.0f), 2.5f, accent);
     if (isSelected) {
@@ -330,7 +331,7 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
 void RenderDayGrid() {
     UI::TextDisabled("Pursuit rest days: " + OffDaysText() + "   |   premiere x2 points");
     if (S_ShowTips) {
-        UI::TextWrapped("Tip: play #" + tostring(DAY_COUNT) + " Goal Hunt on the event server (" +
+        UI::TextWrapped("Tip: play #" + tostring(g_selectedDay) + " Goal Hunt on the event server (" +
                         tostring(GOAL_CP) + " CP/run).");
     }
 
@@ -338,10 +339,14 @@ void RenderDayGrid() {
     // 20 px unused strip after the fifth column because its spacing stacked
     // with the fixed 24 px deduction.
     vec2 origin = UI::GetCursorPos();
-    float availW = UI::GetContentRegionAvail().x;
+    vec2 avail = UI::GetContentRegionAvail();
     const float spacing = 6.0f;
-    const float tileH = 60.0f;
-    float tileW = (availW - 4.0f * spacing) / 5.0f;
+    // Height comes from the column so five rows fill it instead of stopping
+    // halfway down the panel. Clamped so small windows stay readable.
+    float tileH = (avail.y - 4.0f * spacing) / 5.0f;
+    if (tileH < 60.0f) tileH = 60.0f;
+    if (tileH > 84.0f) tileH = 84.0f;
+    float tileW = (avail.x - 4.0f * spacing) / 5.0f;
     if (tileW < 48.0f) tileW = 48.0f;
 
     for (int day = 1; day <= DAY_COUNT; day++) {
@@ -353,8 +358,13 @@ void RenderDayGrid() {
         vec4 textCol = (day == DAY_COUNT || IsPremiereDay(day)) ? Gold() : TextMain();
         string moonLine = S_ShowMoonPct ? tostring(MoonIlluminationPct(day)) + "%" : "";
         vec4 bg = (day == g_selectedDay) ? TileSelectedBg() : TileBg();
+        // A subtle accent wash separates playable / completed days from the
+        // locked ones without turning the whole grid into coloured blocks.
+        if (g_opened[day - 1] || DayPlayableNow(day)) {
+            bg = MixCol(bg, DayAccent(day), 0.15f);
+        }
         if (DrawCenteredDayTile(day, DayTileIcon(day), DayTileShort(day), moonLine,
-                                bg, textCol, DayAccent(day), day == g_selectedDay, tileW)) {
+                                bg, textCol, DayAccent(day), day == g_selectedDay, tileW, tileH)) {
             g_selectedDay = day;
             g_confirmReset = false;
         }
@@ -594,7 +604,7 @@ void RenderFooter() {
     // Footer = connection status, sidebar = day mode. No duplicate OFFLINE.
     string link = S_SyncMode == 0 ? "OFFLINE" : "CONNECTED";
     vec4 linkCol = S_SyncMode == 0 ? TextMuted() : Emerald();
-    TextTone(linkCol, Icons::Circle + "  " + link + "  |  goalmas 2026");
+    TextTone(linkCol, Icons::Circle + "  " + link);
     UI::SameLine(0, 0);
     string right = "BEST 15: " + tostring(ScoreDays()) + " PTS  |  " +
                    tostring(OpenedCount()) + "/25 GIFTS";
