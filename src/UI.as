@@ -833,8 +833,8 @@ void RenderLeaderboardTab() {
             UI::Text(tostring(g_boardBounties[i]));
         }
         UI::EndTable();
-    UI::PopFontSize();
     }
+    UI::PopFontSize();
     UI::PopStyleColor(2);
     UI::BeginDisabled(g_syncing);
     if (UI::Button(Icons::Refresh + " Refresh leaderboard")) SyncNow();
@@ -873,8 +873,8 @@ void RenderFeedTab() {
             DrawMpName(g_liveFeed[i], TextMain());
         }
         UI::EndTable();
-    UI::PopFontSize();
     }
+    UI::PopFontSize();
     UI::PopStyleColor(2);
     UI::BeginDisabled(g_syncing);
     if (UI::Button(Icons::Refresh + " Refresh feed")) SyncNow();
@@ -920,8 +920,8 @@ void RenderBountyTab() {
             else UI::Text(g_bountyHolder[day - 1]);
         }
         UI::EndTable();
-    UI::PopFontSize();
     }
+    UI::PopFontSize();
     UI::PopStyleColor(2);
     UI::BeginDisabled(g_syncing);
     if (UI::Button(Icons::Refresh + " Refresh bounties")) SyncNow();

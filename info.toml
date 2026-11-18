@@ -1,7 +1,7 @@
 [meta]
 name = "GoalAdvent 2026"
 author = "tomekdot"
-version = "0.5.14-dev"
+version = "0.5.15-dev"
 category = "Event"
 
 [script]

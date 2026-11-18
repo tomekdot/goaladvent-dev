@@ -1,7 +1,16 @@
 // goaladvent Calendar & Bounty - entry points.
 // Windows stay closed until the player opens them from the Openplanet menu.
 
+// Dev-only helper: the local QA script drops this marker file when new sources
+// are ready. The plugin reloads itself so no keyboard/menu interaction is
+// needed while iterating on the UI. The file is deleted immediately.
+const string AGENT_RELOAD_MARKER = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload";
+Meta::Plugin@ g_selfPlugin;
+
 void Main() {
+    @g_selfPlugin = Meta::ExecutingPlugin();
+    startnew(AgentReloadLoop);
+
     LoadProgress();
 
     // Zero-setup sync: a baked or configured worker URL wins over offline mode.
@@ -28,6 +37,20 @@ void Main() {
 
 void OnDisabled() {
     SaveProgress();
+}
+
+// Reload on demand from the local QA script. Sleeping in a coroutine keeps
+// this off the render thread; no Openplanet menu clicks are required.
+void AgentReloadLoop() {
+    while (true) {
+        sleep(1000);
+        if (!IO::FileExists(AGENT_RELOAD_MARKER)) continue;
+        IO::Delete(AGENT_RELOAD_MARKER);
+        if (g_selfPlugin is null) continue;
+        print("[goaladvent] Reload requested by local QA.");
+        Meta::ReloadPlugin(g_selfPlugin);
+        return;
+    }
 }
 
 // Background leaderboard refresh - never blocks the game loop.
