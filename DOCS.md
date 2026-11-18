@@ -261,9 +261,10 @@ One layout, two palettes (`Theme.as`). `RefreshPalette()` is called from
 Font scale: title 16 px, tagline 13 px, section headers 15 px, calendar tip
 14 px, tile icon 18 px, tile label 16 px, tile moon 13 px, footer 14 px.
 
-Panels: sidebar (tabs + progress + day status field), workspace (calendar,
-leaderboard, live feed, bounty board, finale), fixed footer with live health,
-admin debug window, HUD and banner overlays.
+Panels: header card (tagline + sync/save/reset icon buttons + progress bar),
+compact tab bar (calendar, leaderboard, live feed, bounty board, finale),
+two-column calendar workspace (5x5 status tile grid + day details card),
+fixed footer with live health, admin debug window, HUD and banner overlays.
 
 Completing a day (or stealing a bounty) plays a short gift-opening card drawn
 on the foreground draw list: the box pops in, the lid lifts, a gold ring

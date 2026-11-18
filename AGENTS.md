@@ -62,8 +62,10 @@ editing code. The broader workspace rules also apply:
   live `detected day` are shown in the debug panel; a
   `[goaladvent][DBG] Map ... -> day ...` line is logged on every map change
   when `S_Debug` is on.
-- Sidebar day state lives in its own 52 px status field (locked / Goal Hunt /
-  Pursuit bonus). Keep the footer short - long sentences get clipped.
+- Header card carries the tagline, the sync/save/reset icon buttons and the
+  progress summary (gifts | pts | badges) with a thin bar on the same line.
+  Navigation is a compact five-tab bar (Calendar / Leaderboard / Live feed /
+  Bounties / Finale), not a sidebar. The footer shows connection status.
 - Admin debug: `S_Debug` (Settings -> Advanced -> Debug overlay) adds a `Debug`
   menu item and writes one `[goaladvent][DBG]` line on load. `LogDebugState()` is
   the single place to extend when adding a new diagnostic field.

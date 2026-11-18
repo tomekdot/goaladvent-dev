@@ -27,8 +27,9 @@ technical reference see [DOCS.md](DOCS.md).
   never destroy a run.
 - 🎖️ **Badges**: `GOALMAS-2026`, `GOALMAS-PLAYER`, `BOUNTY-HUNTER`,
   `ELF-VETERAN`, `GOALMAS-24`, `FINALIST`, plus `PURSUIT` and `MP-GALAXY`.
-- 🖥️ **Dashboard**: left sidebar, 5x5 colour-coded calendar, day details,
-  leaderboard, live feed, per-day bounty board, finale tab, HUD and banner.
+- 🖥️ **Dashboard**: header card with progress, compact tab bar, 5x5
+  colour-coded calendar, day details, leaderboard, live feed, per-day bounty
+  board, finale tab, HUD and banner.
 - 🎁 **Gift opening**: finishing a day (or stealing a bounty) pops a short
   animation with the points, checkpoints and current bounty holder.
 - 💬 **Discord feed**: the worker mirrors bounty takeovers and first clears to a

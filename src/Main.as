@@ -5,7 +5,19 @@
 // are ready. The plugin reloads itself so no keyboard/menu interaction is
 // needed while iterating on the UI. The file is deleted immediately.
 const string AGENT_RELOAD_MARKER = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload";
+const string AGENT_RELOAD_PURSUIT = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-pursuit";
+const string AGENT_RELOAD_VEHICLE = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-vehicle";
 Meta::Plugin@ g_selfPlugin;
+
+void ReloadPluginById(const string &in id) {
+    Meta::Plugin@ p = Meta::GetPluginFromID(id);
+    if (p is null) {
+        print("[goaladvent] Reload target not found: " + id);
+        return;
+    }
+    print("[goaladvent] Reloading " + id + ".");
+    Meta::ReloadPlugin(p);
+}
 
 void Main() {
     @g_selfPlugin = Meta::ExecutingPlugin();
@@ -44,12 +56,19 @@ void OnDisabled() {
 void AgentReloadLoop() {
     while (true) {
         sleep(1000);
-        if (!IO::FileExists(AGENT_RELOAD_MARKER)) continue;
-        IO::Delete(AGENT_RELOAD_MARKER);
-        if (g_selfPlugin is null) continue;
-        print("[goaladvent] Reload requested by local QA.");
-        Meta::ReloadPlugin(g_selfPlugin);
-        return;
+        if (IO::FileExists(AGENT_RELOAD_MARKER)) {
+            IO::Delete(AGENT_RELOAD_MARKER);
+            if (g_selfPlugin !is null) Meta::ReloadPlugin(g_selfPlugin);
+            return;
+        }
+        if (IO::FileExists(AGENT_RELOAD_PURSUIT)) {
+            IO::Delete(AGENT_RELOAD_PURSUIT);
+            ReloadPluginById("pursuit-suite-dev");
+        }
+        if (IO::FileExists(AGENT_RELOAD_VEHICLE)) {
+            IO::Delete(AGENT_RELOAD_VEHICLE);
+            ReloadPluginById("czatsky-vehicle-dev");
+        }
     }
 }
 
@@ -83,12 +102,14 @@ void Render() {
     RenderBanner();
     RenderOpenAnimation();
     RenderGoalHuntHud();
+    if (g_showCalendar) RenderDashboard();   // QA-TEMP: draw during gameplay too
     if (S_Debug) RenderDebugWindow();
 }
 
 void RenderInterface() {
     // All panels are tabs of one dashboard; the menu controls its visibility.
-    if (g_showCalendar) RenderDashboard();
+    // QA-TEMP: dashboard is drawn from Render() for the screenshot matrix.
+    // if (g_showCalendar) RenderDashboard();
 }
 
 void RenderMenu() {

@@ -22,8 +22,8 @@ bool GlassTheme() { return g_Theme == UiTheme::TransparentGlass; }
 [Setting category="Advanced" name="Debug overlay" description="Admin-only diagnostics: live plugin state and a button that writes one readable line to Openplanet.log."]
 bool S_Debug = false;
 
-[Setting category="Appearance" name="Show moon phase percent" description="Show the illumination percentage on each calendar tile."]
-bool S_ShowMoonPct = true;
+[Setting category="Appearance" name="Show moon phase percent" description="Show the illumination percentage on locked calendar tiles instead of the LOCKED status."]
+bool S_ShowMoonPct = false;
 
 [Setting category="Sync" name="Auto sync" description="Refresh the leaderboard every 20 seconds in the background."]
 bool S_AutoSync = true;
@@ -36,7 +36,7 @@ int S_MapDayOverride = 0;
 
 
 
-const string PLUGIN_VERSION = "0.5.15-dev";
+const string PLUGIN_VERSION = "0.5.16-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
