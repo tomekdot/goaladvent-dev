@@ -11,8 +11,8 @@ enum UiTheme { ObsidianMinimal, TransparentGlass }
 [Setting category="Appearance" name="UI Theme" description="Obsidian Minimal is matte carbon; Transparent Glass is neutral smoke with white frosted cards."]
 UiTheme g_Theme = UiTheme::ObsidianMinimal;
 
-[Setting category="Appearance" name="UI scale" description="Scales every font and the cards around it. 1.5 is the default; raise it on high-resolution screens." min=1.0 max=2.0]
-float S_UiScale = 1.5f;
+[Setting category="Appearance" name="UI scale" description="Scales every font and the cards around it. 1.25 is the default; adjust it to taste." min=1.0 max=2.0]
+float S_UiScale = 1.25f;
 
 [Setting category="Appearance" name="Glass Opacity" description="Window tint strength. Lower values let more of the game show through." min=0.15 max=0.80]
 float S_GlassOpacity = 0.55f;
@@ -36,7 +36,7 @@ int S_MapDayOverride = 0;
 
 
 
-const string PLUGIN_VERSION = "0.5.8-dev";
+const string PLUGIN_VERSION = "0.5.9-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
