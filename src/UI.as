@@ -478,6 +478,108 @@ void RenderDayGrid() {
     UI::Dummy(vec2(0, 1));
 }
 
+// One thin label/value pair for the optional details strip - no card box.
+void DetailLine(const string &in label, const string &in value, vec4 valueCol) {
+    UI::PushFontSize(FS_LABEL);
+    TextTone(TextMuted(), label);
+    UI::PopFontSize();
+    UI::PushFontSize(FS_LABEL);
+    TextToneWrapped(valueCol, value);
+    UI::PopFontSize();
+}
+
+// Optional details strip (S_ShowDayDetails). The default view is the
+// full-width calendar; this panel is opt-in for players who want the facts
+// beside the grid instead of in the tile tooltips.
+void RenderDayDetails() {
+    int day = g_selectedDay;
+    if (day < 1 || day > DAY_COUNT) day = 1;
+
+    bool locked = !IsOffDay(day) && !DayUnlocked(day);
+
+    UI::PushFontSize(FS_TITLE);
+    TextTone(TextMain(), "DAY " + tostring(day) + " | " + g_titles[day - 1]);
+    UI::PopFontSize();
+    string status = "Available";
+    vec4 statusCol = Emerald();
+    if (locked) {
+        status = "Locked until Dec " + tostring(day);
+        statusCol = TextMuted();
+    } else if (g_opened[day - 1]) {
+        status = "Completed";
+    } else if (IsOffDay(day)) {
+        status = "Pursuit night";
+        statusCol = Purple();
+    } else if (IsPremiereDay(day)) {
+        status = "Premiere | double points";
+        statusCol = Gold();
+    } else if (!DayPlayableNow(day)) {
+        status = "Waiting for the event";
+        statusCol = TextMuted();
+    }
+    int detectedDay = DetectGoalHuntDay();
+    if (!IsOffDay(day) && detectedDay > 0) {
+        status += " | map #" + tostring(detectedDay);
+    }
+    UI::PushFontSize(FS_BODY);
+    TextTone(statusCol, status);
+    UI::PopFontSize();
+
+    if (IsOffDay(day)) {
+        DetailLine("PURSUIT BONUS", "Bonus 20:00 CET (19:00 UTC)", Purple());
+        DetailLine("MOON", MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "%", TextMain());
+        DetailLine("STREAK", "Protected | no race tonight", Emerald());
+    } else {
+        DetailLine("BOUNTY", tostring(g_bountyCp[day - 1]) + " CP | " +
+                   Text::StripFormatCodes(g_bountyHolder[day - 1]), Gold());
+        DetailLine("GOAL", "Catch " + tostring(GOAL_CP) + " CP | best " + tostring(g_bests[day - 1]), TextMain());
+        DetailLine("MOON", MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "%", TextMain());
+    }
+    if (locked) {
+        UI::TextDisabled("This gift opens on December " + tostring(day) + ".");
+    } else if (!IsOffDay(day)) {
+        UI::TextWrapped(g_hints[day - 1]);
+    }
+}
+
+// Fixed action row of the optional details strip, outside the scrolling body.
+void RenderDayAction(int day) {
+    const float rowH = 40.0f * UiK();
+    bool locked = !IsOffDay(day) && !DayUnlocked(day);
+
+    if (locked || IsOffDay(day)) {
+        UI::BeginDisabled(true);
+        UI::PushStyleColor(UI::Col::Button, MixCol(g_palette.buttonBg, g_palette.text, 0.04f));
+        UI::PushStyleColor(UI::Col::Text, MixCol(TextMuted(), g_palette.text, 0.20f));
+        if (locked) {
+            UI::Button("AVAILABLE DEC " + tostring(day), vec2(-1, rowH));
+        } else {
+            UI::Button("Next hunt: Dec " + tostring(NextGoalHuntDay(day)), vec2(-1, rowH));
+            UI::SetItemTooltip("No race tonight | next Goal Hunt: Dec " +
+                               tostring(NextGoalHuntDay(day)));
+        }
+        UI::PopStyleColor(2);
+        UI::EndDisabled();
+        return;
+    }
+
+    UI::PushStyleColor(UI::Col::Button, vec4(0.95, 0.95, 0.97, 1.00));
+    UI::PushStyleColor(UI::Col::ButtonHovered, vec4(1.00, 1.00, 1.00, 1.00));
+    UI::PushStyleColor(UI::Col::Text, vec4(0.06, 0.06, 0.08, 1.00));
+    string action = S_TestMode ? "SUBMIT TEST (12)" : "OPEN DAY " + tostring(day);
+    if (UI::Button(action, vec2(-1, rowH))) {
+        if (S_TestMode) {
+            RequestCpSubmit(day, 12);
+            g_status = "Test CP submitted for day " + tostring(day) + ".";
+        } else {
+            g_status = "Join #" + tostring(day) + " Goal Hunt on the event server | CP count automatically.";
+        }
+    }
+    UI::SetItemTooltip("Join #" + tostring(day) + " Goal Hunt | reach " + tostring(GOAL_CP) +
+                       " CP in one run to complete this day.");
+    UI::PopStyleColor(3);
+}
+
 // ---------------------------------------------------------------------------
 // Day bar - one thin row under the full-width grid: identity + status on the
 // left, the day action on the right. All other facts live on the tiles and
@@ -564,14 +666,14 @@ void RenderDayBar(int day) {
 // ---------------------------------------------------------------------------
 // Workspace panes
 // ---------------------------------------------------------------------------
-void RenderCalendarTab() {
-    // Full-width grid; the thin day bar below carries identity + action.
+// Shared grid child: transparent, no scrollbars, legend on the header tooltip.
+void RenderCalendarGrid(float w, float hReserve) {
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
     UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(10.0f * UiK(), 8.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(6.0f * UiK(), 4.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int gridFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
-    if (UI::BeginChild("##goaladventCalendarGrid", vec2(0, -46.0f * UiK()), UI::ChildFlags::None, gridFlags)) {
+    if (UI::BeginChild("##goaladventCalendarGrid", vec2(w, hReserve), UI::ChildFlags::None, gridFlags)) {
         DrawSectionHeader("ADVENT CALENDAR");
         // Legend on the header tooltip keeps the grid chrome to one line.
         UI::SetItemTooltip("REST = Pursuit night | FINAL = day 25 finale | DONE = completed | gray gift = opens later");
@@ -580,10 +682,45 @@ void RenderCalendarTab() {
     UI::EndChild();
     UI::PopStyleVar(3);
     UI::PopStyleColor();
+}
 
+void RenderCalendarTab() {
     int day = g_selectedDay;
     if (day < 1 || day > DAY_COUNT) day = 1;
-    RenderDayBar(day);
+
+    // Default: calendar only, 25 tiles and a thin day bar. The details strip
+    // is opt-in (Settings -> Appearance -> Show day details).
+    if (!S_ShowDayDetails) {
+        RenderCalendarGrid(0, -46.0f * UiK());
+        RenderDayBar(day);
+        return;
+    }
+
+    float width = UI::GetContentRegionAvail().x;
+    float leftW = width * 0.72f;
+    float rightW = width - leftW - 8.0f * UiK();
+    RenderCalendarGrid(leftW, 0);
+    UI::SameLine(0, 8);
+    UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
+    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(10.0f * UiK(), 8.0f * UiK()));
+    UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(10.0f * UiK(), 6.0f * UiK()));
+    if (UI::BeginChild("##goaladventDayDetailsCard", vec2(rightW, 0), UI::ChildFlags::None)) {
+        DrawSectionHeader("DAY DETAILS");
+        // Fixed action row below the body; the body itself never scrolls.
+        int gridFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
+        UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
+        UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
+        if (UI::BeginChild("##goaladventDayDetailsBody", vec2(0, -46), UI::ChildFlags::None, gridFlags)) {
+            RenderDayDetails();
+        }
+        UI::EndChild();
+        UI::PopStyleVar();
+        UI::PopStyleColor();
+        RenderDayAction(day);
+    }
+    UI::EndChild();
+    UI::PopStyleVar(2);
+    UI::PopStyleColor();
 }
 
 // ManiaPlanet nicknames carry inline colour codes ($fff, $48b, $z, ...).
