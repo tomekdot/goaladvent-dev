@@ -478,6 +478,14 @@ void RenderDayGrid() {
     UI::Dummy(vec2(0, 1));
 }
 
+// Keep button text off the edges: use the shorter wording when the measured
+// label plus frame padding would not fit the available width.
+string FitLabel(const string &in longLabel, const string &in shortLabel, float maxW) {
+    vec2 ts = UI::MeasureString(longLabel, null, FS_BODY);
+    if (ts.x + 20.0f * UiK() <= maxW) return longLabel;
+    return shortLabel;
+}
+
 // One thin label/value pair for the optional details strip - no card box.
 void DetailLine(const string &in label, const string &in value, vec4 valueCol) {
     UI::PushFontSize(FS_LABEL);
@@ -546,15 +554,18 @@ void RenderDayDetails() {
 void RenderDayAction(int day) {
     const float rowH = 40.0f * UiK();
     bool locked = !IsOffDay(day) && !DayUnlocked(day);
+    float maxW = UI::GetContentRegionAvail().x;
 
     if (locked || IsOffDay(day)) {
         UI::BeginDisabled(true);
         UI::PushStyleColor(UI::Col::Button, MixCol(g_palette.buttonBg, g_palette.text, 0.04f));
         UI::PushStyleColor(UI::Col::Text, MixCol(TextMuted(), g_palette.text, 0.20f));
         if (locked) {
-            UI::Button("AVAILABLE DEC " + tostring(day), vec2(-1, rowH));
+            UI::Button(FitLabel("AVAILABLE DEC " + tostring(day),
+                                "OPENS DEC " + tostring(day), maxW), vec2(-1, rowH));
         } else {
-            UI::Button("Next hunt: Dec " + tostring(NextGoalHuntDay(day)), vec2(-1, rowH));
+            UI::Button(FitLabel("Next hunt: Dec " + tostring(NextGoalHuntDay(day)),
+                                "Hunt: Dec " + tostring(NextGoalHuntDay(day)), maxW), vec2(-1, rowH));
             UI::SetItemTooltip("No race tonight | next Goal Hunt: Dec " +
                                tostring(NextGoalHuntDay(day)));
         }
@@ -567,7 +578,8 @@ void RenderDayAction(int day) {
     UI::PushStyleColor(UI::Col::ButtonHovered, vec4(1.00, 1.00, 1.00, 1.00));
     UI::PushStyleColor(UI::Col::Text, vec4(0.06, 0.06, 0.08, 1.00));
     string action = S_TestMode ? "SUBMIT TEST (12)" : "OPEN DAY " + tostring(day);
-    if (UI::Button(action, vec2(-1, rowH))) {
+    string actionShort = S_TestMode ? "TEST (12)" : "OPEN " + tostring(day);
+    if (UI::Button(FitLabel(action, actionShort, maxW), vec2(-1, rowH))) {
         if (S_TestMode) {
             RequestCpSubmit(day, 12);
             g_status = "Test CP submitted for day " + tostring(day) + ".";
@@ -613,8 +625,23 @@ void RenderDayBar(int day) {
     // and GetContentRegionAvail would report the full width.
     vec2 rowStart = UI::GetCursorPos();
     float contentW = UI::GetContentRegionAvail().x;
-    float btnW = 190.0f * UiK();
     float rowH = 36.0f * UiK();
+
+    // Size the button to its label so the text never touches the edges.
+    float maxBtnW = contentW * 0.5f;
+    string label;
+    if (locked) {
+        label = FitLabel("AVAILABLE DEC " + tostring(day), "OPENS DEC " + tostring(day), maxBtnW);
+    } else if (IsOffDay(day)) {
+        label = FitLabel("Next hunt: Dec " + tostring(NextGoalHuntDay(day)),
+                         "Hunt: Dec " + tostring(NextGoalHuntDay(day)), maxBtnW);
+    } else {
+        label = FitLabel(S_TestMode ? "SUBMIT TEST (12)" : "OPEN DAY " + tostring(day),
+                         S_TestMode ? "TEST (12)" : "OPEN " + tostring(day), maxBtnW);
+    }
+    float btnW = UI::MeasureString(label, null, FS_BODY).x + 24.0f * UiK();
+    if (btnW < 150.0f * UiK()) btnW = 150.0f * UiK();
+    if (btnW > maxBtnW) btnW = maxBtnW;
 
     UI::PushFontSize(FS_BODY);
     TextTone(TextMain(), "DAY " + tostring(day) + " | " + g_titles[day - 1]);
@@ -633,10 +660,8 @@ void RenderDayBar(int day) {
         UI::BeginDisabled(true);
         UI::PushStyleColor(UI::Col::Button, MixCol(g_palette.buttonBg, g_palette.text, 0.04f));
         UI::PushStyleColor(UI::Col::Text, MixCol(TextMuted(), g_palette.text, 0.20f));
-        if (locked) {
-            UI::Button("AVAILABLE DEC " + tostring(day), vec2(btnW, rowH));
-        } else {
-            UI::Button("Next hunt: Dec " + tostring(NextGoalHuntDay(day)), vec2(btnW, rowH));
+        UI::Button(label, vec2(btnW, rowH));
+        if (!locked) {
             UI::SetItemTooltip("No race tonight | next Goal Hunt: Dec " +
                                tostring(NextGoalHuntDay(day)));
         }
@@ -649,8 +674,7 @@ void RenderDayBar(int day) {
     UI::PushStyleColor(UI::Col::Button, vec4(0.95, 0.95, 0.97, 1.00));
     UI::PushStyleColor(UI::Col::ButtonHovered, vec4(1.00, 1.00, 1.00, 1.00));
     UI::PushStyleColor(UI::Col::Text, vec4(0.06, 0.06, 0.08, 1.00));
-    string action = S_TestMode ? "SUBMIT TEST (12)" : "OPEN DAY " + tostring(day);
-    if (UI::Button(action, vec2(btnW, rowH))) {
+    if (UI::Button(label, vec2(btnW, rowH))) {
         if (S_TestMode) {
             RequestCpSubmit(day, 12);
             g_status = "Test CP submitted for day " + tostring(day) + ".";
