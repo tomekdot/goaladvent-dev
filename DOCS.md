@@ -1,4 +1,4 @@
-# GoalEvent - full technical documentation
+# GoalAdvent 2026 - full technical documentation
 
 This file is the complete reference for the project. For the player-facing
 overview see [README.md](README.md); for deployment commands see
@@ -10,7 +10,7 @@ overview see [README.md](README.md); for deployment commands see
 
 | Item | Value |
 |---|---|
-| Display name | GoalEvent |
+| Display name | GoalAdvent 2026 |
 | Folder / repo / package id | `goaladvent-dev` |
 | GitHub | https://github.com/tomekdot/goaladvent-dev |
 | Default branch | `main` |
@@ -48,8 +48,8 @@ Create it with `wrangler secret put ADMIN_TOKEN` from `backend/`.
 3. Reload scripts with `F3 -> Developer -> Reload Scripts`, or restart the game
    after a folder move so stale load errors clear.
 4. The dashboard opens on start (`S_ShowOnStart = true`). It can also be opened
-   from the Openplanet menu item `GoalEvent`.
-5. Settings are edited in `Openplanet -> Settings -> Plugins -> GoalEvent`.
+   from the Openplanet menu item `GoalAdvent 2026`.
+5. Settings are edited in `Openplanet -> Settings -> Plugins -> GoalAdvent 2026`.
    There is no in-plugin settings window.
 6. Verify the log:
    ```

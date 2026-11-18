@@ -69,10 +69,10 @@ void RenderInterface() {
 }
 
 void RenderMenu() {
-    if (UI::MenuItem(Icons::Calendar + " GoalEvent", "", g_showCalendar)) {
+    if (UI::MenuItem(Icons::Calendar + " GoalAdvent 2026", "", g_showCalendar)) {
         g_showCalendar = !g_showCalendar;
     }
-    UI::SetItemTooltip("Open the GoalEvent dashboard | calendar, bounties and leaderboard.");
+    UI::SetItemTooltip("Open the GoalAdvent 2026 dashboard | calendar, bounties and leaderboard.");
     if (S_Debug && UI::MenuItem(Icons::Info + " Debug", "", g_showDebug)) {
         g_showDebug = !g_showDebug;
     }
