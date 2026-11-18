@@ -40,9 +40,11 @@ editing code. The broader workspace rules also apply:
 - Debug panel has `Copy log to clipboard` (`IO::SetClipboard`), which pastes
   the full state line, status, server-test result and all collected errors as
   one block. Keep `DebugStateLine()` as the single source for log and clipboard.
-- The day-details panel is split: a scrolling body child plus a fixed 46 px
-  footer (`RenderDayAction`) so the action button is always visible. Never pin
-  the button with `SetCursorPosY()` on the whole panel again.
+- The optional day-details strip (`S_ShowDayDetails`, default off) is split:
+  a non-scrolling body child plus a fixed 46 px action row (`RenderDayAction`)
+  so the button is always visible. The default view is the full-width grid
+  with a thin day bar (`RenderDayBar`) below it. Never pin the button with
+  `SetCursorPosY()` on the whole panel again.
 - Readiness at a glance: debug panel starts with SERVER ONLINE / NOT CONFIRMED,
   HTTP code, last-sync age, board row count and Goal Hunt map detection. The
   `Test server` button runs `SelfTestServer()` (a coroutine) and prints OK/FAIL.
@@ -63,8 +65,9 @@ editing code. The broader workspace rules also apply:
   live `detected day` are shown in the debug panel; a
   `[goaladvent][DBG] Map ... -> day ...` line is logged on every map change
   when `S_Debug` is on.
-- Header card carries the tagline, the sync/save/reset icon buttons and the
-  progress summary (gifts | pts | badges) with a thin bar on the same line.
+- Header card is a single row: tagline on the left, sync/save/reset/theme
+  icon buttons on the right. Progress numbers live only in the footer
+  (points | gifts | badges, with icon anchors); no header progress strip.
   Navigation is a compact five-tab bar (Calendar / Leaderboard / Live feed /
   Bounties / Finale), not a sidebar. The footer shows connection status.
 - Admin debug: `S_Debug` (Settings -> Advanced -> Debug overlay) adds a `Debug`
@@ -208,8 +211,9 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
   `GetContentRegionAvail()`; do not use `SameLine()` for the 5x5 grid (it leaves
   an unused strip after column five). Draw the icon and status with `AddText()`
   at the measured centre so a short glyph stays aligned with a wider label.
-- Sidebar menu is left-aligned (`ButtonTextAlign = (0, 0.5)`, FramePadding.x=12).
-  Sidebar shows the day mode; the footer alone shows connection status.
+- Panel refresh buttons are centred (`CenteredButton`, FS_BODY); day action
+  buttons size to their measured label (`FitLabel`). The footer alone shows
+  connection status and totals.
 
 ### UI text and typography
 

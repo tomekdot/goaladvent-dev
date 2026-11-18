@@ -1009,8 +1009,8 @@ void RenderFinaleTab() {
 void RenderFooter() {
     UI::Separator();
     // The footer is the single status line: live connection health on the
-    // left, day / points / gifts / badges on the right. The header carries
-    // no progress strip - it would only duplicate these numbers.
+    // left, points / gifts / badges on the right. The selected day lives in
+    // the day bar above, so it is not repeated here.
     string link;
     vec4 linkCol;
     if (S_SyncMode == 0) {
@@ -1034,10 +1034,9 @@ void RenderFooter() {
     TextTone(linkCol, Icons::Circle + "  " + link);
     UI::SameLine(0, 0);
     string badgeWord = g_badges.Length == 1 ? "badge" : "badges";
-    string right = "DAY " + tostring(g_selectedDay) + "/25 | " +
-                   tostring(TotalPoints()) + " pts | " +
-                   tostring(OpenedCount()) + "/25 gifts | " +
-                   tostring(g_badges.Length) + " " + badgeWord;
+    string right = Icons::Trophy + " " + tostring(TotalPoints()) + " pts | " +
+                   Icons::Gift + " " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " gifts | " +
+                   Icons::Star + " " + tostring(g_badges.Length) + " " + badgeWord;
     float w = UI::MeasureString(right, null, FS_LABEL, 0.0f).x + 8.0f * UiK();
     if (w < 1.0f) w = 320.0f * UiK();
     UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f * UiK());
