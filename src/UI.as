@@ -5,10 +5,6 @@
 bool g_confirmReset = false;
 int g_activeTab = 0;   // 0 Calendar, 1 Leaderboard, 2 Live feed, 3 Bounties, 4 Finale
 bool g_windowSizeApplied = false;
-bool g_qaPreview = true;   // QA-TEMP: preview tile states, remove before commit
-bool g_qaGeomLogged = false;   // QA-TEMP
-int g_qaForceTab = -1;   // QA-TEMP: force a tab selected for the matrix
-float g_qaLastBeat = 0.0f;   // QA-TEMP
 
 // One type scale for the whole dashboard - every text call uses one of these.
 // They are refreshed from S_UiScale so the setting scales text and cards
@@ -318,11 +314,6 @@ void RenderHeaderCard() {
 // bounty/action, purple Pursuit rest, gray locked. The accent is carried by
 // the tile surface, border and top rule, not by a tiny dot.
 vec4 DayAccent(int day) {
-    if (g_qaPreview) {   // QA-TEMP
-        if (day == 2 || day == 4) return Emerald();
-        if (day == 3) return Gold();
-        if (day == 5 || day == 6) return Crimson();
-    }
     if (day == DAY_COUNT) return Gold();
     if (IsOffDay(day)) return Purple();
     if (g_opened[day - 1]) return Emerald();
@@ -332,11 +323,6 @@ vec4 DayAccent(int day) {
 }
 
 string DayTileIcon(int day) {
-    if (g_qaPreview) {   // QA-TEMP
-        if (day == 2 || day == 4) return Icons::CheckCircle;
-        if (day == 3) return Icons::Star;
-        if (day == 5 || day == 6) return Icons::FlagCheckered;
-    }
     if (day == DAY_COUNT) return Icons::Trophy;
     if (IsOffDay(day)) return Icons::MoonO;
     if (IsPremiereDay(day)) return Icons::Star;
@@ -373,11 +359,6 @@ string DayTileShort(int day) {
 string DayTileStatus(int day, float tileW) {
     if (day == DAY_COUNT) return "FINAL";
     if (IsOffDay(day)) return "REST";
-    if (g_qaPreview) {   // QA-TEMP
-        if (day == 2 || day == 4) return "DONE";
-        if (day == 3) return "x2";
-        if (day == 5 || day == 6) return tostring(MoonIlluminationPct(day)) + "% lit";
-    }
     if (g_opened[day - 1]) return "DONE";
     if (IsPremiereDay(day)) return "x2";
     string pct = tostring(MoonIlluminationPct(day)) + "%";
@@ -494,13 +475,6 @@ void RenderDayGrid() {
     float tileW = (avail.x - 4.0f * spacing) / 5.0f;
     if (tileW < 48.0f * UiK()) tileW = 48.0f * UiK();
     if (tileW > tileH * 1.3f) tileW = tileH * 1.3f;
-    if (!g_qaGeomLogged) {   // QA-TEMP
-        vec2 ws = UI::GetWindowSize();
-        print("[goaladvent][QA] gridChild=" + tostring(int(ws.x)) + "x" + tostring(int(ws.y)) +
-              " gridAvail=" + tostring(int(avail.x)) + "x" + tostring(int(avail.y)) +
-              " tileH=" + tostring(int(tileH)) + " tileW=" + tostring(int(tileW)) +
-              " minTileH=" + tostring(int(minTileH)));
-    }
     float gridW = 5.0f * tileW + 4.0f * spacing;
     float gridX = origin.x + (avail.x - gridW) * 0.5f;
     int today = CurrentEventDayUtc();
@@ -512,8 +486,7 @@ void RenderDayGrid() {
                               origin.y + row * (tileH + spacing)));
 
         vec4 accent = DayAccent(day);
-        bool qaActive = g_qaPreview && (day >= 2 && day <= 6);   // QA-TEMP
-        bool lockedDay = !IsOffDay(day) && !DayUnlocked(day) && !qaActive;
+        bool lockedDay = !IsOffDay(day) && !DayUnlocked(day);
         if (lockedDay) {
             // A muted, low-alpha gray keeps locked days visibly inactive
             // instead of giving them the same bright rule as playable days.
@@ -529,7 +502,7 @@ void RenderDayGrid() {
         // Status tint on the surface itself: locked days stay gray, every
         // active state gets its own hue. TintKeepAlpha preserves glass.
         float tint = 0.10f;
-        if (!IsOffDay(day) && (DayUnlocked(day) || qaActive)) tint = 0.42f;
+        if (!IsOffDay(day) && DayUnlocked(day)) tint = 0.42f;
         bg = TintKeepAlpha(bg, accent, tint);
         if (DrawCenteredDayTile(day, DayTileIcon(day), DayTileShort(day), statusLine,
                                 bg, textCol, accent, day == g_selectedDay,
@@ -540,7 +513,7 @@ void RenderDayGrid() {
         UI::SetItemTooltip(MoonPhaseName(day) + " | " +
                            tostring(MoonIlluminationPct(day)) + "% lit\n" +
                            "Bounty: " + tostring(g_bountyCp[day - 1]) + " CP | " +
-                           g_bountyHolder[day - 1]);
+                           Text::StripFormatCodes(g_bountyHolder[day - 1]));
     }
     // SetCursorPos() past the last tile extends the child boundary, so ImGui
     // requires an item afterwards - otherwise EndChild() throws an assertion.
@@ -606,7 +579,8 @@ void RenderDayDetails() {
                      "Catch " + tostring(GOAL_CP) + " CP | best " + tostring(g_bests[day - 1]), Teal());
         UI::Dummy(vec2(0, 5));
         DrawStatCard(Icons::Crosshairs, "BOUNTY RECORD",
-                     tostring(g_bountyCp[day - 1]) + " CP | " + g_bountyHolder[day - 1], Gold());
+                     tostring(g_bountyCp[day - 1]) + " CP | " +
+                     Text::StripFormatCodes(g_bountyHolder[day - 1]), Gold());
         UI::Dummy(vec2(0, 5));
         DrawStatCard(Icons::Star, "YOUR BADGES", BadgeShort(), Silver());
     }
@@ -925,7 +899,7 @@ void RenderBountyTab() {
             TextTone(Gold(), tostring(g_bountyCp[day - 1]) + " CP");
             UI::TableSetColumnIndex(3);
             if (g_bountyHolder[day - 1] == LocalName()) TextTone(Gold(), "you");
-            else UI::Text(g_bountyHolder[day - 1]);
+            else DrawMpName(g_bountyHolder[day - 1], TextMain());
         }
         UI::EndTable();
     }
@@ -1007,30 +981,27 @@ void RenderWorkspace() {
         UI::PushStyleColor(UI::Col::Tab, vec4(0, 0, 0, 0));
         // BeginTabBar returns void in this build: never capture its result.
         UI::BeginTabBar("##goaladventTabs");
-        // QA-TEMP: g_qaForceTab selects one tab for the screenshot matrix.
-        int qaSel = UI::TabItemFlags::SetSelected;
-        int qaNon = UI::TabItemFlags::None;
-        if (UI::BeginTabItem(Icons::Calendar + " Calendar", g_qaForceTab == 0 ? qaSel : qaNon)) {
+        if (UI::BeginTabItem(Icons::Calendar + " Calendar")) {
             if (g_activeTab != 0) { g_activeTab = 0; g_confirmReset = false; }
             RenderCalendarTab();
             UI::EndTabItem();
         }
-        if (UI::BeginTabItem(Icons::Trophy + " Leaderboard", g_qaForceTab == 1 ? qaSel : qaNon)) {
+        if (UI::BeginTabItem(Icons::Trophy + " Leaderboard")) {
             if (g_activeTab != 1) { g_activeTab = 1; g_confirmReset = false; }
             RenderLeaderboardTab();
             UI::EndTabItem();
         }
-        if (UI::BeginTabItem(Icons::Rss + " Live feed", g_qaForceTab == 2 ? qaSel : qaNon)) {
+        if (UI::BeginTabItem(Icons::Rss + " Live feed")) {
             if (g_activeTab != 2) { g_activeTab = 2; g_confirmReset = false; }
             RenderFeedTab();
             UI::EndTabItem();
         }
-        if (UI::BeginTabItem(Icons::Crosshairs + " Bounties", g_qaForceTab == 3 ? qaSel : qaNon)) {
+        if (UI::BeginTabItem(Icons::Crosshairs + " Bounties")) {
             if (g_activeTab != 3) { g_activeTab = 3; g_confirmReset = false; }
             RenderBountyTab();
             UI::EndTabItem();
         }
-        if (UI::BeginTabItem(Icons::Star + " Finale", g_qaForceTab == 4 ? qaSel : qaNon)) {
+        if (UI::BeginTabItem(Icons::Star + " Finale")) {
             if (g_activeTab != 4) { g_activeTab = 4; g_confirmReset = false; }
             RenderFinaleTab();
             UI::EndTabItem();
@@ -1047,51 +1018,24 @@ void RenderWorkspace() {
 // separate settings window: the [Setting] declarations in Config.as are the
 // single source of truth and are edited in the Openplanet menu.
 void RenderDashboard() {
-    // QA-TEMP: forced theme/opacity for the screenshot matrix.
-    g_Theme = UiTheme::TransparentGlass;
-    S_GlassOpacity = 0.55f;
     ApplyUiScale();      // the setting scales text and containers together
     RefreshPalette();   // one layout, colours chosen by the active theme
 
     // Apply once per plugin load: the saved ImGui size can be taller than a
-    // 1024x768 game window and leave the footer off-screen. One-shot Always
-    // overrides the saved size; afterwards the window drags and resizes freely.
+    // 1024x768 game window and leave the footer off-screen.
     if (!g_windowSizeApplied) {
-        UI::SetNextWindowSize(1106, 682, UI::Cond::Always);   // QA-TEMP: 940x580 at OverlayScale 0.85
-        UI::SetNextWindowPos(24, 460, UI::Cond::Always);   // QA-TEMP: clear of the tactical HUD
+        UI::SetNextWindowSize(int(1040.0f * UiK()), int(660.0f * UiK()), UI::Cond::FirstUseEver);
+        UI::SetNextWindowPos(24, 40, UI::Cond::Always);
         g_windowSizeApplied = true;
     }
     if (!UI::Begin("GoalAdvent 2026", g_showCalendar)) {
         UI::End();
         return;
     }
-    if (Time::Stamp - g_qaLastBeat > 5.0f) {   // QA-TEMP
-        g_qaLastBeat = Time::Stamp;
-        vec2 wp = UI::GetWindowPos();
-        vec2 wz = UI::GetWindowSize();
-        print("[goaladvent][QA] beat pos=" + tostring(int(wp.x)) + "," + tostring(int(wp.y)) +
-              " size=" + tostring(int(wz.x)) + "x" + tostring(int(wz.y)) +
-              " show=" + tostring(g_showCalendar));
-    }
 
     PushDashboardStyle();
-    if (!g_qaGeomLogged) {   // QA-TEMP
-        vec2 ws = UI::GetWindowSize();
-        print("[goaladvent][QA] dash=" + tostring(int(ws.x)) + "x" + tostring(int(ws.y)) +
-              " availAfterBegin=" + tostring(int(UI::GetContentRegionAvail().x)) + "x" +
-              tostring(int(UI::GetContentRegionAvail().y)));
-    }
     RenderHeaderCard();
-    if (!g_qaGeomLogged) {   // QA-TEMP
-        vec4 hr = UI::GetItemRect();
-        print("[goaladvent][QA] headerH=" + tostring(int(hr.w)) +
-              " availAfterHeader=" + tostring(int(UI::GetContentRegionAvail().y)));
-    }
     RenderWorkspace();
-    if (!g_qaGeomLogged) {   // QA-TEMP
-        g_qaGeomLogged = true;
-        print("[goaladvent][QA] availAfterWorkspace=" + tostring(int(UI::GetContentRegionAvail().y)));
-    }
     RenderFooter();
     PopDashboardStyle();
     UI::End();
@@ -1206,7 +1150,8 @@ void RenderOpenAnimation() {
                null, FS_BODY);
     int idx = g_openAnimDay - 1;
     dl.AddText(vec2(tx, ty + 78.0f * UiK()), FadeCol(TextMuted(), alpha),
-               "Bounty: " + tostring(g_bountyCp[idx]) + " CP by " + g_bountyHolder[idx],
+               "Bounty: " + tostring(g_bountyCp[idx]) + " CP by " +
+               Text::StripFormatCodes(g_bountyHolder[idx]),
                null, FS_LABEL);
     dl.AddText(vec2(tx, ty + 104.0f * UiK()), FadeCol(TextMuted(), alpha),
                tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " gifts open",
@@ -1248,7 +1193,8 @@ void RenderGoalHuntHud() {
         else UI::TextDisabled("Catch-up | x1 points");
         if (InWarmupGate()) UI::TextDisabled("Warmup | CP counting paused");
         UI::Text("Goal " + tostring(GOAL_CP) + " CP | session " + tostring(g_sessionCp) + " CP");
-        UI::Text("Bounty " + tostring(g_bountyCp[day - 1]) + " CP | " + g_bountyHolder[day - 1]);
+        UI::Text("Bounty " + tostring(g_bountyCp[day - 1]) + " CP | " +
+                 Text::StripFormatCodes(g_bountyHolder[day - 1]));
         UI::Text("Best | " + tostring(g_bests[day - 1]) + " CP");
         UI::PopFontSize();
     }

@@ -107,14 +107,14 @@ void Render() {
     RenderBanner();
     RenderOpenAnimation();
     RenderGoalHuntHud();
-    if (g_showCalendar) RenderDashboard();   // QA-TEMP: draw during gameplay too
     if (S_Debug) RenderDebugWindow();
 }
 
 void RenderInterface() {
     // All panels are tabs of one dashboard; the menu controls its visibility.
-    // QA-TEMP: dashboard is drawn from Render() for the screenshot matrix.
-    // if (g_showCalendar) RenderDashboard();
+    // Interface windows are suppressed by Openplanet during active driving,
+    // so the dashboard must live here, not in Render().
+    if (g_showCalendar) RenderDashboard();
 }
 
 void RenderMenu() {
