@@ -272,20 +272,6 @@ void RenderHeaderCard() {
         }
         UI::SetItemTooltip("Switch theme | Obsidian / Transparent Glass");
         UI::PopStyleColor(3);
-
-        // Row 2: progress summary and a thin bar on one line. No overlay text
-        // on an 8 px bar - the label carries the numbers.
-        UI::PushFontSize(FS_LABEL);
-        string badgeWord = g_badges.Length == 1 ? "badge" : "badges";
-        TextTone(TextMuted(), "PROGRESS | " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) +
-                 " gifts | " + tostring(TotalPoints()) + " pts | " +
-                 tostring(g_badges.Length) + " " + badgeWord);
-        UI::PopFontSize();
-        UI::SameLine(0, 10.0f * UiK());
-        UI::PushStyleColor(UI::Col::FrameBg, g_palette.frameBg);
-        UI::PushStyleColor(UI::Col::PlotHistogram, Emerald());
-        UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 6.0f * UiK()), "");
-        UI::PopStyleColor(2);
     }
     UI::EndChild();
     UI::PopStyleVar(3);
@@ -1022,9 +1008,9 @@ void RenderFinaleTab() {
 // ---------------------------------------------------------------------------
 void RenderFooter() {
     UI::Separator();
-    // Footer = connection status, sidebar = day mode. No duplicate OFFLINE.
-    // Live health, not just the configured mode: a failed HTTP call must not
-    // keep claiming "Connected". This is the one always-visible status line.
+    // The footer is the single status line: live connection health on the
+    // left, day / points / gifts / badges on the right. The header carries
+    // no progress strip - it would only duplicate these numbers.
     string link;
     vec4 linkCol;
     if (S_SyncMode == 0) {
@@ -1038,7 +1024,7 @@ void RenderFooter() {
         linkCol = Crimson();
     } else if (g_lastSyncStamp > 0) {
         link = "Connected | " + tostring(g_boardCount) + " players | synced " +
-               tostring(int(Time::Stamp) - g_lastSyncStamp) + "s ago";
+               tostring(int(Time::Stamp) - g_lastSyncStamp) + "s";
         linkCol = Emerald();
     } else {
         link = "Connecting to results...";
@@ -1047,9 +1033,11 @@ void RenderFooter() {
     UI::PushFontSize(FS_LABEL);
     TextTone(linkCol, Icons::Circle + "  " + link);
     UI::SameLine(0, 0);
-    string right = "DAY " + tostring(g_selectedDay) + "/25 | TOTAL " +
+    string badgeWord = g_badges.Length == 1 ? "badge" : "badges";
+    string right = "DAY " + tostring(g_selectedDay) + "/25 | " +
                    tostring(TotalPoints()) + " pts | " +
-                   tostring(OpenedCount()) + "/25 gifts";
+                   tostring(OpenedCount()) + "/25 gifts | " +
+                   tostring(g_badges.Length) + " " + badgeWord;
     float w = UI::MeasureString(right, null, FS_LABEL, 0.0f).x + 8.0f * UiK();
     if (w < 1.0f) w = 320.0f * UiK();
     UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f * UiK());
