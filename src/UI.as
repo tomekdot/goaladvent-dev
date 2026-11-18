@@ -574,9 +574,12 @@ void RenderDayAction(int day) {
         return;
     }
 
-    UI::PushStyleColor(UI::Col::Button, vec4(0.95, 0.95, 0.97, 1.00));
-    UI::PushStyleColor(UI::Col::ButtonHovered, vec4(1.00, 1.00, 1.00, 1.00));
-    UI::PushStyleColor(UI::Col::Text, vec4(0.06, 0.06, 0.08, 1.00));
+    // White text on a deep glass pill with a strong frame - the CTA stays
+    // the standout element without any dark-on-light text.
+    UI::PushStyleColor(UI::Col::Button, g_palette.tabActiveBg);
+    UI::PushStyleColor(UI::Col::ButtonHovered, MixCol(g_palette.tabActiveBg, g_palette.text, 0.10f));
+    UI::PushStyleColor(UI::Col::Text, TextMain());
+    UI::PushStyleColor(UI::Col::Border, g_palette.borderStrong);
     string action = S_TestMode ? "SUBMIT TEST (12)" : "OPEN DAY " + tostring(day);
     string actionShort = S_TestMode ? "TEST (12)" : "OPEN " + tostring(day);
     if (UI::Button(FitLabel(action, actionShort, maxW), vec2(-1, rowH))) {
@@ -589,7 +592,7 @@ void RenderDayAction(int day) {
     }
     UI::SetItemTooltip("Join #" + tostring(day) + " Goal Hunt | reach " + tostring(GOAL_CP) +
                        " CP in one run to complete this day.");
-    UI::PopStyleColor(3);
+    UI::PopStyleColor(4);
 }
 
 // ---------------------------------------------------------------------------
@@ -670,10 +673,13 @@ void RenderDayBar(int day) {
         return;
     }
 
-    // One white CTA is the only high-contrast element in the whole dashboard.
-    UI::PushStyleColor(UI::Col::Button, vec4(0.95, 0.95, 0.97, 1.00));
-    UI::PushStyleColor(UI::Col::ButtonHovered, vec4(1.00, 1.00, 1.00, 1.00));
-    UI::PushStyleColor(UI::Col::Text, vec4(0.06, 0.06, 0.08, 1.00));
+    // The framed CTA is the only high-contrast element in the whole dashboard.
+    // White text on a deep glass pill with a strong frame - the CTA stays
+    // the standout element without any dark-on-light text.
+    UI::PushStyleColor(UI::Col::Button, g_palette.tabActiveBg);
+    UI::PushStyleColor(UI::Col::ButtonHovered, MixCol(g_palette.tabActiveBg, g_palette.text, 0.10f));
+    UI::PushStyleColor(UI::Col::Text, TextMain());
+    UI::PushStyleColor(UI::Col::Border, g_palette.borderStrong);
     if (UI::Button(label, vec2(btnW, rowH))) {
         if (S_TestMode) {
             RequestCpSubmit(day, 12);
@@ -684,7 +690,7 @@ void RenderDayBar(int day) {
     }
     UI::SetItemTooltip("Join #" + tostring(day) + " Goal Hunt | reach " + tostring(GOAL_CP) +
                        " CP in one run to complete this day.");
-    UI::PopStyleColor(3);
+    UI::PopStyleColor(4);
 }
 
 // ---------------------------------------------------------------------------

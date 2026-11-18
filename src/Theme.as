@@ -82,8 +82,8 @@ class ThemePalette {
         iceBlue = vec4(0.92, 0.93, 0.96, 1.00);
 
         tabBg = vec4(0.000, 0.000, 0.000, 0.55);
-        tabActiveBg = vec4(0.96, 0.96, 0.97, 1.00);
-        tabActiveText = vec4(0.06, 0.06, 0.07, 1.00);
+        tabActiveBg = vec4(0.00, 0.00, 0.00, 0.85);
+        tabActiveText = vec4(0.98, 0.98, 1.00, 1.00);
         tabHoverBg = vec4(0.170, 0.170, 0.210, 1.00);
         tileEdge = border;
         tileHover = vec4(0.140, 0.140, 0.170, 1.00);
@@ -131,8 +131,8 @@ class ThemePalette {
         iceBlue = vec4(1.000, 1.000, 1.000, 0.96);
 
         tabBg = vec4(0.000, 0.000, 0.000, 0.55);
-        tabActiveBg = vec4(0.96, 0.96, 0.97, 1.00);
-        tabActiveText = vec4(0.06, 0.06, 0.07, 1.00);
+        tabActiveBg = vec4(0.00, 0.00, 0.00, 0.60);
+        tabActiveText = vec4(0.98, 0.98, 1.00, 1.00);
         tabHoverBg = vec4(1.000, 1.000, 1.000, 0.14);
         tileEdge = vec4(1.000, 1.000, 1.000, 0.16);
         tileHover = vec4(1.000, 1.000, 1.000, 0.15);

@@ -12,7 +12,8 @@ editing code. The broader workspace rules also apply:
 - Folder / repo / package: `goaladvent-dev`.
   Remote: `https://github.com/tomekdot/goaladvent-dev`, default branch `main`,
   active feature branch `ui-layout-fixes`.
-- Version in `info.toml`: `0.5.5-dev`.
+- Version: `info.toml` is the single source of truth and is bumped with every
+  release tag - never hardcode the current version number in this file.
 - Leaderboard points come from `scoreFromBests(bests)`: best 15 of days 1-24
   plus finale. Each day stores `pts` and a one-time bounty flag `b` in `bests`.
   Verified with 3x100 CP submits -> 300 points in `/state`.
@@ -195,7 +196,7 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
   `UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse` plus
   `UI::StyleVar::ScrollbarSize = 0.0f`.
 - Every `PushStyleColor` / `PushStyleVar` needs a matching pop in the same
-  function. `PushDashboardStyle()` = 13 colours + 10 vars,
+  function. `PushDashboardStyle()` = 14 colours + 10 vars,
   `PopDashboardStyle()` pops exactly those counts.
 - `UI::BeginDisabled(bool)` / `UI::EndDisabled()` are available.
 - `UI::BeginTabBar(id)` takes only the id. `UI::ListBox(label, int& item,
