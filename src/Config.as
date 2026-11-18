@@ -36,7 +36,7 @@ int S_MapDayOverride = 0;
 
 
 
-const string PLUGIN_VERSION = "0.5.10-dev";
+const string PLUGIN_VERSION = "0.5.11-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -54,7 +54,7 @@ const int FINALE_GRACE_DAYS = 5;   // finale / catch-up window after Christmas
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
-[Setting category="General" name="Show dashboard on start" description="Open the GoalAdvent window when the game starts. Turn off to hide it until selected from the menu."]
+[Setting category="General" name="Show dashboard on start" description="Open the GoalEvent window when the game starts. Turn off to hide it until selected from the menu."]
 bool S_ShowOnStart = true;
 
 [Setting category="General" name="Test mode (unlock every day)" description="Unlock all 25 days for testing. Not intended for the real event."]

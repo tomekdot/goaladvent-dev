@@ -6,7 +6,7 @@ editing code. The broader workspace rules also apply:
 
 ## 1. Project identity
 
-- **GoalAdvent 2026** - a 25-day Goal Hunt advent event for **ManiaPlanet 4** with
+- **GoalEvent** - a 25-day Goal Hunt advent event for **ManiaPlanet 4** with
   **Openplanet 1.29.14**. Dev-only build; never submit to the official
   Openplanet plugin list.
 - Folder / repo / package: `goaladvent-dev`.
@@ -17,7 +17,7 @@ editing code. The broader workspace rules also apply:
   plus finale. Each day stores `pts` and a one-time bounty flag `b` in `bests`.
   Verified with 3x100 CP submits -> 300 points in `/state`.
 - Renamed: folder / repo / package are `goaladvent-dev`, display name is
-  `GoalAdvent 2026`. Deliberately unchanged: Cloudflare worker + D1 name `goalmas`,
+  `GoalEvent`. Deliberately unchanged: Cloudflare worker + D1 name `goalmas`,
   API URL, save file `GoalmasAdvent.json` and badge codes `GOALMAS-*` - changing
   those would break live data and saved progress.
 - AngelScript 1.29 rejects `&inout` on primitives (e.g. `bool`); use plain
@@ -68,7 +68,7 @@ editing code. The broader workspace rules also apply:
   menu item and writes one `[goaladvent][DBG]` line on load. `LogDebugState()` is
   the single place to extend when adding a new diagnostic field.
 - There is NO in-plugin settings window. All options are `[Setting]` globals in
-  `Config.as`, edited only in Openplanet -> Settings -> Plugins -> GoalAdvent 2026.
+  `Config.as`, edited only in Openplanet -> Settings -> Plugins -> GoalEvent.
   `Glass Opacity` uses min/max there; changing it updates the palette next frame.
 - `S_ShowOnStart` defaults to `true` - the dashboard opens by itself. There is
   deliberately no startup banner; banners are only for in-game Goal Hunt events.
@@ -105,7 +105,7 @@ editing code. The broader workspace rules also apply:
   Do not revert to `ubuntu-latest` or `checkout@v4` - GitHub warns about both.
 - `main` is the default branch and the source of releases. Merge feature work
   there first, then push a `v*` tag from `main`.
-- Display name is `GoalAdvent 2026` in the README and UI; folder/repo/package id is
+- Display name is `GoalEvent` in the README and UI; folder/repo/package id is
   lowercase `goaladvent-dev`. Keep uppercase data identifiers unchanged:
   `GoalmasAdvent.json` (save file, would reset progress) and badge codes such as
   `GOALMAS-2026`.
@@ -227,7 +227,7 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 
 - `Update(float dt)` receives **milliseconds** (timers are in seconds).
 - The dashboard opens on start (`S_ShowOnStart = true`); the only menu entry
-  is `Icons::Calendar + " GoalAdvent 2026"` in `RenderMenu()`. Do not add top-bar menus.
+  is `Icons::Calendar + " GoalEvent"` in `RenderMenu()`. Do not add top-bar menus.
 - Checkpoint count path (same as working chase-mode overlay):
   `app.CurrentPlayground.Players[i]` -> `cast<CTrackManiaPlayer>` ->
   `player.ScriptAPI.CurRace.Checkpoints.Length`.

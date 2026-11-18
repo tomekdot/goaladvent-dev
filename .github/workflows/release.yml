@@ -26,7 +26,7 @@ jobs:
         run: |
           PREV=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
           {
-            echo "**GoalAdvent 2026 ${GITHUB_REF_NAME}**"
+            echo "**GoalEvent ${GITHUB_REF_NAME}**"
             echo
             if [ -n "$PREV" ]; then
               git log --pretty=format:'- %s' "${PREV}..${GITHUB_REF_NAME}"
@@ -39,5 +39,5 @@ jobs:
           } > release_notes.md
           gh release create "${GITHUB_REF_NAME}" goaladvent-dev.op \
             --repo "${GITHUB_REPOSITORY}" \
-            --title "GoalAdvent 2026 ${GITHUB_REF_NAME}" \
+            --title "GoalEvent ${GITHUB_REF_NAME}" \
             --notes-file release_notes.md

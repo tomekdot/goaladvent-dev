@@ -1,4 +1,4 @@
-// GoalAdvent 2026 - one ImGui layout, two colour themes.
+// GoalEvent - one ImGui layout, two colour themes.
 // Only APIs verified against OpenplanetCore.json (1.29.14) are used.
 // Theme.as owns every colour and radius; these wrappers read the active one.
 
@@ -986,7 +986,7 @@ void RenderWorkspace() {
     UI::PopStyleColor();
 }
 
-// All options live in Openplanet -> Settings -> Plugins -> GoalAdvent 2026. There is no
+// All options live in Openplanet -> Settings -> Plugins -> GoalEvent. There is no
 // separate settings window: the [Setting] declarations in Config.as are the
 // single source of truth and are edited in the Openplanet menu.
 void RenderDashboard() {
@@ -1000,7 +1000,7 @@ void RenderDashboard() {
         UI::SetNextWindowPos(24, 40, UI::Cond::Always);
         g_windowSizeApplied = true;
     }
-    if (!UI::Begin("GoalAdvent 2026", g_showCalendar)) {
+    if (!UI::Begin("GoalEvent", g_showCalendar)) {
         UI::End();
         return;
     }

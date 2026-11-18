@@ -69,7 +69,7 @@ void RenderDebugWindow() {
 
     RefreshPalette();
     int flags = UI::WindowFlags::AlwaysAutoResize;
-    if (!UI::Begin(Icons::Info + " GoalAdvent 2026 debug", g_showDebug, flags)) {
+    if (!UI::Begin(Icons::Info + " GoalEvent debug", g_showDebug, flags)) {
         UI::End();
         return;
     }

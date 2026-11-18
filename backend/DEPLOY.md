@@ -73,7 +73,7 @@ the page returns 404. The token is never stored in the repository.
 
 ## 7. Point the plugin at the worker
 
-In game: Openplanet -> Settings -> Plugins -> GoalAdvent
+In game: Openplanet -> Settings -> Plugins -> GoalEvent
 
 - `Worker URL` = the URL from step 4 (no trailing slash)
 - `Sync mode` = `2`

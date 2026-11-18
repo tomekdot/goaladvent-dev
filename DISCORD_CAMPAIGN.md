@@ -1,4 +1,4 @@
-# GoalAdvent 2026 - Discord campaign plan
+# GoalEvent - Discord campaign plan
 
 All player-facing text is in English, matching the plugin UI and the event.
 Important: **1 December 2026 is a Tuesday**, which is a Pursuit bonus night
@@ -25,7 +25,7 @@ Installation instructions for testers:
 2. Copy the folder into `C:\Users\tomekdot\Openplanet4\Plugins\goaladvent-dev`
    (or install the `.op` through Openplanet).
 3. `F3 -> Developer -> Reload Scripts` (or restart the game).
-4. Open **GoalAdvent 2026** from the Openplanet menu. Requires Openplanet 1.29.14.
+4. Open **GoalEvent** from the Openplanet menu. Requires Openplanet 1.29.14.
 
 ---
 
@@ -67,18 +67,18 @@ Installation instructions for testers:
 ### Teaser - 21 Nov
 
 > ❄️ 25 maps. 25 days. One bounty nobody has beaten yet.
-> GoalAdvent 2026 lands December 1. Start warming up.
+> GoalEvent lands December 1. Start warming up.
 
 ### Announcement - 24 Nov (pin this)
 
-> **GoalAdvent 2026 - a 25-day Goal Hunt advent for ManiaPlanet 4**
+> **GoalEvent - a 25-day Goal Hunt advent for ManiaPlanet 4**
 > Collect checkpoints on the daily `#N Goal Hunt` map. 10 CP in one run completes a day.
 > • Beat GrinchBot's 15 CP record and steal the bounty (+150 pts)
 > • Premiere day pays x2 (server UTC decides)
 > • Best 15 of 24 days count - miss a day, keep the run
 > • Pursuit Tuesdays (1, 8, 15, 22): no Goal Hunt, your streak is safe
 > • 25/25 gifts = raffle ticket. Finale stays open until 5 January.
-> Install: [release link] → `Reload Scripts` → open **GoalAdvent 2026** from the Openplanet menu. Needs Openplanet 1.29.14.
+> Install: [release link] → `Reload Scripts` → open **GoalEvent** from the Openplanet menu. Needs Openplanet 1.29.14.
 > React with 🎁 to get the player role.
 
 ### Daily post - 2-24 Dec
@@ -95,15 +95,15 @@ Titles and hints are in `src/Calendar.as` (`g_titles`, `g_hints`).
 
 ### Install-check day - 28 Nov
 
-> 🔧 GoalAdvent 2026 install check: open the dashboard, confirm `SERVER ONLINE` in the debug panel, and make sure the map `#2 Goal Hunt` is detected on 2 December. Questions in #goalmas-help.
+> 🔧 GoalEvent install check: open the dashboard, confirm `SERVER ONLINE` in the debug panel, and make sure the map `#2 Goal Hunt` is detected on 2 December. Questions in #goalmas-help.
 
 ### Reminder - 30 Nov
 
-> ⏰ Tomorrow GoalAdvent 2026 starts. December 1 is a Pursuit night - no race, just install and get ready. First map: `#2 Goal Hunt` on 2 December.
+> ⏰ Tomorrow GoalEvent starts. December 1 is a Pursuit night - no race, just install and get ready. First map: `#2 Goal Hunt` on 2 December.
 
 ### Start - 1 Dec
 
-> ❄️ GoalAdvent 2026 is live. Tonight is Pursuit (day 1), so your streak is safe. Install, get the player role, and we race from day 2 tomorrow.
+> ❄️ GoalEvent is live. Tonight is Pursuit (day 1), so your streak is safe. Install, get the player role, and we race from day 2 tomorrow.
 
 ### Finale - 25 Dec
 
@@ -111,7 +111,7 @@ Titles and hints are in `src/Calendar.as` (`g_titles`, `g_hints`).
 
 ### Results - after 5 Jan
 
-> 🎉 GoalAdvent 2026 results are in. Top 3, bounty leaders and the raffle winner will be posted in #goalmas-leaderboard.
+> 🎉 GoalEvent results are in. Top 3, bounty leaders and the raffle winner will be posted in #goalmas-leaderboard.
 
 ---
 

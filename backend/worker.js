@@ -1,4 +1,4 @@
-// GoalAdvent 2026 backend - free Cloudflare Worker.
+// GoalEvent backend - free Cloudflare Worker.
 // Free tier: Cloudflare Workers + D1 (SQLite). No paid server, no card needed.
 //
 // SETUP (one time):
@@ -154,7 +154,7 @@ async function pushEvent(env, msg, extra) {
             { name: "Checkpoints", value: String(extra.cp || 0), inline: true },
             { name: "Points", value: "+" + String(extra.gained || 0), inline: true }
           ],
-          footer: { text: "GoalAdvent 2026" },
+          footer: { text: "GoalEvent" },
           timestamp: new Date().toISOString()
         }
       : null;
@@ -198,12 +198,12 @@ export default {
       const esc = (v) => String(v == null ? "" : v).replace(/[&<>\"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
       const rows = (items, cols) => (items.results || []).map(r =>
         "<tr>" + cols.map(c => "<td>" + esc(r[c]) + "</td>").join("") + "</tr>").join("");
-      const html = `<!doctype html><html><head><meta charset="utf-8"><title>GoalAdvent 2026 D1</title>
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>GoalEvent D1</title>
 <style>body{background:#141519;color:#e8e9ee;font:13px monospace;margin:24px}
 h1{color:#ffd166;font-size:20px}h2{color:#9fb4d0;font-size:14px;margin-top:28px}
 table{border-collapse:collapse;width:100%}td,th{border:1px solid #333642;padding:4px 7px;text-align:left}
 th{background:#242733}tr:nth-child(even){background:#1b1d24}a{color:#9ecbff}</style></head><body>
-<h1>GoalAdvent 2026 D1 | live data</h1>
+<h1>GoalEvent D1 | live data</h1>
 <p><a href="/admin?token=${encodeURIComponent(env.ADMIN_TOKEN)}">Refresh</a> &middot;
 <a href="https://dash.cloudflare.com/2975602b6ae7dc883884858d1b5ce4bf/database/d1">Cloudflare D1 dashboard</a></p>
 <p>Discord webhook: <strong>${env.DISCORD_WEBHOOK_URL ? "configured" : "not set"}</strong></p>
