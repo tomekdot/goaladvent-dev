@@ -330,8 +330,8 @@ string DayTileShort(int day) {
     return day < 10 ? "0" + tostring(day) : tostring(day);
 }
 
-// Bar caption suffix: exception words only (REST, x2, FINAL, DONE). The moon
-// percent stays in DAY DETAILS unless S_ShowMoonPct asks for it on the tile.
+// Bar caption suffix: exception words first (REST, x2, FINAL, DONE), then the
+// moon percent so the calendar itself carries the info. S_ShowMoonPct hides it.
 string DayTileStatus(int day, float tileW) {
     if (day == DAY_COUNT) return "FINAL";
     if (IsOffDay(day)) return "REST";
@@ -477,8 +477,18 @@ void RenderDayGrid() {
     UI::Dummy(vec2(0, 1));
 }
 
+// One thin label/value pair for the details strip - no card box, just type.
+void DetailLine(const string &in label, const string &in value, vec4 valueCol) {
+    UI::PushFontSize(FS_LABEL);
+    TextTone(TextMuted(), label);
+    UI::PopFontSize();
+    UI::PushFontSize(FS_LABEL);
+    TextToneWrapped(valueCol, value);
+    UI::PopFontSize();
+}
+
 // ---------------------------------------------------------------------------
-// Day details - compact monitor cards
+// Day details - thin info strip; the calendar tiles carry the rest
 // ---------------------------------------------------------------------------
 void RenderDayDetails() {
     int day = g_selectedDay;
@@ -515,25 +525,17 @@ void RenderDayDetails() {
     TextTone(statusCol, status);
     UI::PopFontSize();
 
-    // At most three quiet cards; ItemSpacing provides the breathing room.
-    // Pursuit nights skip the map card entirely - there is no race tonight.
+    // Thin label/value pairs instead of cards: the grid is the main surface,
+    // this strip only keeps the facts you need before joining a run.
     if (IsOffDay(day)) {
-        DrawStatCard(Icons::MoonO, "EVENT MODE",
-                     "Pursuit night | Bonus 20:00 CET (19:00 UTC)", Purple());
-        DrawStatCard(Icons::MoonO, "MOON PHASE",
-                     MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "%",
-                     IceBlue());
-        DrawStatCard(Icons::CheckCircle, "STREAK",
-                     "Protected | no Goal Hunt today", Emerald());
+        DetailLine("PURSUIT BONUS", "Bonus 20:00 CET (19:00 UTC)", Purple());
+        DetailLine("MOON", MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "%", TextMain());
+        DetailLine("STREAK", "Protected | no race tonight", Emerald());
     } else {
-        DrawStatCard(Icons::FlagCheckered, "GOAL TARGET",
-                     "Catch " + tostring(GOAL_CP) + " CP | best " + tostring(g_bests[day - 1]), Teal());
-        DrawStatCard(Icons::Crosshairs, "BOUNTY RECORD",
-                     tostring(g_bountyCp[day - 1]) + " CP | " +
-                     Text::StripFormatCodes(g_bountyHolder[day - 1]), Gold());
-        DrawStatCard(Icons::MoonO, "MOON PHASE",
-                     MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "%",
-                     IceBlue());
+        DetailLine("BOUNTY", tostring(g_bountyCp[day - 1]) + " CP | " +
+                   Text::StripFormatCodes(g_bountyHolder[day - 1]), Gold());
+        DetailLine("GOAL", "Catch " + tostring(GOAL_CP) + " CP | best " + tostring(g_bests[day - 1]), TextMain());
+        DetailLine("MOON", MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "%", TextMain());
     }
     if (locked) {
         UI::TextDisabled("This gift opens on December " + tostring(day) + ".");
@@ -556,8 +558,9 @@ void RenderDayAction(int day) {
         if (locked) {
             UI::Button("AVAILABLE DEC " + tostring(day), vec2(-1, rowH));
         } else {
-            UI::Button("No race | next Goal Hunt: Dec " + tostring(NextGoalHuntDay(day)),
-                       vec2(-1, rowH));
+            UI::Button("Next hunt: Dec " + tostring(NextGoalHuntDay(day)), vec2(-1, rowH));
+            UI::SetItemTooltip("No race tonight | next Goal Hunt: Dec " +
+                               tostring(NextGoalHuntDay(day)));
         }
         UI::PopStyleColor(2);
         UI::EndDisabled();
@@ -565,12 +568,12 @@ void RenderDayAction(int day) {
     }
 
     // One white CTA is the only high-contrast element in the whole dashboard.
-    // Width -96 leaves exactly 8 px gap + 88 px Sync button on the same row.
+    // Full width of the thin strip; manual sync lives in the header already.
     UI::PushStyleColor(UI::Col::Button, vec4(0.95, 0.95, 0.97, 1.00));
     UI::PushStyleColor(UI::Col::ButtonHovered, vec4(1.00, 1.00, 1.00, 1.00));
     UI::PushStyleColor(UI::Col::Text, vec4(0.06, 0.06, 0.08, 1.00));
-    string action = S_TestMode ? "SUBMIT TEST CP (12)" : "OPEN DAY " + tostring(day);
-    if (UI::Button(action, vec2(-104.0f * UiK(), rowH))) {
+    string action = S_TestMode ? "SUBMIT TEST (12)" : "OPEN DAY " + tostring(day);
+    if (UI::Button(action, vec2(-1, rowH))) {
         if (S_TestMode) {
             RequestCpSubmit(day, 12);
             g_status = "Test CP submitted for day " + tostring(day) + ".";
@@ -581,10 +584,6 @@ void RenderDayAction(int day) {
     UI::SetItemTooltip("Join #" + tostring(day) + " Goal Hunt | reach " + tostring(GOAL_CP) +
                        " CP in one run to complete this day.");
     UI::PopStyleColor(3);
-    UI::SameLine(0, 8.0f * UiK());
-    UI::BeginDisabled(g_syncing);
-    if (UI::Button(Icons::Refresh + "  Sync", vec2(96.0f * UiK(), rowH))) SyncNow();
-    UI::EndDisabled();
 }
 
 // ---------------------------------------------------------------------------
@@ -592,7 +591,8 @@ void RenderDayAction(int day) {
 // ---------------------------------------------------------------------------
 void RenderCalendarTab() {
     float width = UI::GetContentRegionAvail().x;
-    float leftW = width * 0.58f;
+    // The calendar is the star: wide grid, thin details strip on the right.
+    float leftW = width * 0.72f;
     float rightW = width - leftW - 8.0f * UiK();
 
     // Columns stay fully transparent - only the window and the cards tint.
