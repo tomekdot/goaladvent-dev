@@ -486,6 +486,20 @@ string FitLabel(const string &in longLabel, const string &in shortLabel, float m
     return shortLabel;
 }
 
+// Panel action button: FS_BODY, centred in the content region instead of
+// hugging the left edge.
+bool CenteredButton(const string &in label) {
+    UI::PushFontSize(FS_BODY);
+    float btnW = UI::MeasureString(label, null, FS_BODY).x + 16.0f * UiK();
+    float avail = UI::GetContentRegionAvail().x;
+    if (btnW < avail) {
+        UI::SetCursorPosX(UI::GetCursorPos().x + (avail - btnW) * 0.5f);
+    }
+    bool clicked = UI::Button(label);
+    UI::PopFontSize();
+    return clicked;
+}
+
 // One thin label/value pair for the optional details strip - no card box.
 void DetailLine(const string &in label, const string &in value, vec4 valueCol) {
     UI::PushFontSize(FS_LABEL);
@@ -840,7 +854,7 @@ void RenderLeaderboardTab() {
     if (g_boardNames.Length == 0) {
         UI::TextDisabled("No entries yet. They appear after the first submitted run.");
         UI::BeginDisabled(g_syncing);
-        if (UI::Button(Icons::Refresh + " Refresh")) SyncNow();
+        if (CenteredButton(Icons::Refresh + " Refresh")) SyncNow();
         UI::EndDisabled();
         return;
     }
@@ -890,7 +904,7 @@ void RenderLeaderboardTab() {
     UI::PopFontSize();
     UI::PopStyleColor(2);
     UI::BeginDisabled(g_syncing);
-    if (UI::Button(Icons::Refresh + " Refresh leaderboard")) SyncNow();
+    if (CenteredButton(Icons::Refresh + " Refresh leaderboard")) SyncNow();
     UI::EndDisabled();
 }
 
@@ -899,7 +913,7 @@ void RenderFeedTab() {
     if (g_liveFeed.Length == 0) {
         UI::TextDisabled("Nothing here yet | complete a day or take a bounty.");
         UI::BeginDisabled(g_syncing);
-        if (UI::Button(Icons::Refresh + " Refresh")) SyncNow();
+        if (CenteredButton(Icons::Refresh + " Refresh")) SyncNow();
         UI::EndDisabled();
         return;
     }
@@ -930,7 +944,7 @@ void RenderFeedTab() {
     UI::PopFontSize();
     UI::PopStyleColor(2);
     UI::BeginDisabled(g_syncing);
-    if (UI::Button(Icons::Refresh + " Refresh feed")) SyncNow();
+    if (CenteredButton(Icons::Refresh + " Refresh feed")) SyncNow();
     UI::EndDisabled();
 }
 
@@ -977,7 +991,7 @@ void RenderBountyTab() {
     UI::PopFontSize();
     UI::PopStyleColor(2);
     UI::BeginDisabled(g_syncing);
-    if (UI::Button(Icons::Refresh + " Refresh bounties")) SyncNow();
+    if (CenteredButton(Icons::Refresh + " Refresh bounties")) SyncNow();
     UI::EndDisabled();
 }
 
