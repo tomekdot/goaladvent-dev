@@ -38,7 +38,6 @@ vec4 Emerald()   { return g_palette.emerald; }
 vec4 Crimson()   { return g_palette.crimson; }
 vec4 Purple()    { return g_palette.purple; }
 vec4 Navy()      { return g_palette.navy; }
-vec4 CardBg()    { return g_palette.childBg; }
 vec4 InnerBg()   { return g_palette.innerBg; }
 vec4 Silver()    { return g_palette.silver; }
 vec4 Bronze()    { return g_palette.bronze; }
@@ -52,14 +51,6 @@ vec4 MixCol(vec4 a, vec4 b, float t) {
                 a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
 }
 
-// Tint the RGB of a surface but keep its alpha. In the glass theme every layer
-// is translucent; lerping alpha towards an opaque accent would stack into a
-// white wall and hide the game behind the dashboard.
-vec4 TintKeepAlpha(vec4 base, vec4 accent, float t) {
-    return vec4(base.x + (accent.x - base.x) * t,
-                base.y + (accent.y - base.y) * t,
-                base.z + (accent.z - base.z) * t, base.w);
-}
 vec4 TextMuted() { return MixCol(g_palette.textMuted, g_palette.text, 0.40f); }
 vec4 TileBg()    { return g_palette.tileBg; }
 vec4 TileSelectedBg() { return g_palette.tileSelectedBg; }
@@ -138,47 +129,31 @@ void DrawSectionHeader(const string &in title) {
     UI::Dummy(vec2(0, 5));
 }
 
-// One compact monitor-style card: square icon box, small label, clear value.
+// One quiet glass strip: accent edge on the left, icon + label row, value.
 void DrawStatCard(const string &in icon, const string &in label,
                   const string &in value, vec4 accent) {
     UI::PushStyleColor(UI::Col::ChildBg, InnerBg());
-    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(10.0f * UiK(), 6.0f * UiK()));
+    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(12.0f * UiK(), 6.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int flags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
-    if (UI::BeginChild("##stat" + label + icon, vec2(0, 76.0f * UiK()), UI::ChildFlags::Borders, flags)) {
+    if (UI::BeginChild("##stat" + label + icon, vec2(0, 76.0f * UiK()), UI::ChildFlags::None, flags)) {
         vec2 start = UI::GetCursorPos();
-
-        // A button with ButtonTextAlign centres the glyph reliably. Measuring
-        // an icon with MeasureString is not dependable across Openplanet fonts.
-        const float boxSize = 43.0f * UiK();
-        const float boxTop = 10.0f * UiK();   // centre the box in the padded card
-        vec4 boxCol = vec4(accent.x * 0.50f, accent.y * 0.50f, accent.z * 0.50f, 1.00f);
-        UI::SetCursorPos(vec2(start.x, start.y + boxTop));
-        UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.5f, 0.5f));
-        UI::PushStyleVar(UI::StyleVar::FrameRounding, 4.0f);
-        UI::PushStyleColor(UI::Col::Button, boxCol);
-        UI::PushStyleColor(UI::Col::ButtonHovered, boxCol);
-        UI::PushStyleColor(UI::Col::ButtonActive, boxCol);
-        UI::PushStyleColor(UI::Col::Text, accent);
-        UI::PushFontSize(FS_TITLE);
-        UI::Button(icon + "##statIcon" + label, vec2(boxSize, boxSize));
+        UI::PushFontSize(FS_LABEL);
+        TextTone(accent, icon);
         UI::PopFontSize();
-        UI::PopStyleColor(4);
-        UI::PopStyleVar(2);
-
-        // Label above a wrapped value; long values use two lines instead of
-        // being clipped at the card edge.
-        float textX = start.x + boxSize + 17.0f * UiK();
-        UI::SetCursorPos(vec2(textX, start.y + 7.0f * UiK()));
+        UI::SameLine(0, 6.0f * UiK());
         UI::PushFontSize(FS_LABEL);
         TextTone(TextMuted(), label);
         UI::PopFontSize();
-        UI::SetCursorPos(vec2(textX, start.y + 26.0f * UiK()));
+        UI::SetCursorPos(vec2(start.x, start.y + 22.0f * UiK()));
         UI::PushFontSize(FS_BODY);
         TextToneWrapped(TextMain(), value);
         UI::PopFontSize();
     }
     UI::EndChild();
+    // Subtle 2 px accent edge on the left, drawn once the rect is known.
+    vec4 r = UI::GetItemRect();
+    UI::GetWindowDrawList().AddRectFilled(vec4(r.x, r.y, 2.0f * UiK(), r.w), accent);
     UI::PopStyleVar(2);
     UI::PopStyleColor();
 }
@@ -197,6 +172,8 @@ void PushDashboardStyle() {
     UI::PushStyleVar(UI::StyleVar::TabRounding, g_palette.tabRounding);
     UI::PushStyleVar(UI::StyleVar::ChildBorderSize, 1.0f);
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, 1.0f);
+    UI::PushStyleVar(UI::StyleVar::TabBorderSize, 0.0f);
+    UI::PushStyleVar(UI::StyleVar::TabBarBorderSize, 0.0f);
 
     UI::PushStyleColor(UI::Col::WindowBg, g_palette.windowBg);
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.childBg);
@@ -204,9 +181,10 @@ void PushDashboardStyle() {
     UI::PushStyleColor(UI::Col::Border, g_palette.border);
     UI::PushStyleColor(UI::Col::Separator, g_palette.border);
     vec4 interaction = MixCol(g_palette.buttonHover, g_palette.iceBlue, 0.30f);
-    UI::PushStyleColor(UI::Col::TabActive, MixCol(g_palette.buttonBg, g_palette.iceBlue, 0.20f));
-    UI::PushStyleColor(UI::Col::TabSelected, MixCol(g_palette.buttonBg, g_palette.iceBlue, 0.20f));
-    UI::PushStyleColor(UI::Col::TabHovered, interaction);
+    UI::PushStyleColor(UI::Col::Tab, g_palette.tabBg);
+    UI::PushStyleColor(UI::Col::TabActive, g_palette.tabActiveBg);
+    UI::PushStyleColor(UI::Col::TabSelected, g_palette.tabActiveBg);
+    UI::PushStyleColor(UI::Col::TabHovered, g_palette.tabHoverBg);
     UI::PushStyleColor(UI::Col::TableHeaderBg, g_palette.tableHeaderBg);
     UI::PushStyleColor(UI::Col::Button, g_palette.buttonBg);
     UI::PushStyleColor(UI::Col::ButtonHovered, interaction);
@@ -216,21 +194,21 @@ void PushDashboardStyle() {
 }
 
 void PopDashboardStyle() {
-    UI::PopStyleColor(14);
-    UI::PopStyleVar(10);
+    UI::PopStyleColor(15);
+    UI::PopStyleVar(12);
 }
 
 // ---------------------------------------------------------------------------
 // Header card - identity, quick actions and event progress in one place
 // ---------------------------------------------------------------------------
 void RenderHeaderCard() {
-    UI::PushStyleColor(UI::Col::ChildBg, CardBg());
+    UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
     UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(14.0f * UiK(), 10.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(8.0f * UiK(), 7.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int flags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
     if (UI::BeginChild("##goaladventHeader", vec2(0, 0),
-                       UI::ChildFlags::AutoResizeY | UI::ChildFlags::Borders, flags)) {
+                       UI::ChildFlags::AutoResizeY, flags)) {
         // Row 1: snowflake + tagline on the left, icon actions on the right.
         // Brighter icon buttons so they read on both matte and glass backgrounds.
         vec4 btn = MixCol(g_palette.buttonBg, g_palette.text, 0.12f);
@@ -306,7 +284,7 @@ void RenderHeaderCard() {
         UI::SameLine(0, 10.0f * UiK());
         UI::PushStyleColor(UI::Col::FrameBg, g_palette.frameBg);
         UI::PushStyleColor(UI::Col::PlotHistogram, Emerald());
-        UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 8.0f * UiK()), "");
+        UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 6.0f * UiK()), "");
         UI::PopStyleColor(2);
     }
     UI::EndChild();
@@ -338,15 +316,6 @@ string DayTileIcon(int day) {
     return Icons::Gift;
 }
 
-vec4 MoonTint(int pct) {
-    float t = float(pct) / 100.0f;
-    vec4 a = g_palette.purple;      // new moon
-    vec4 b = g_palette.iceBlue;     // full moon
-    return vec4(a.x + (b.x - a.x) * t,
-                a.y + (b.y - a.y) * t,
-                a.z + (b.z - a.z) * t, 1.00);
-}
-
 // Next playable Goal Hunt day after `from`, skipping the Pursuit nights.
 int NextGoalHuntDay(int from) {
     for (int d = from + 1; d <= DAY_COUNT; d++) {
@@ -361,84 +330,68 @@ string DayTileShort(int day) {
     return day < 10 ? "0" + tostring(day) : tostring(day);
 }
 
-// Second tile line: exception words (REST, x2, FINAL, DONE) or a discreet
-// moon percentage. Locked tiles stay clean unless S_ShowMoonPct asks for it.
+// Bar caption suffix: exception words only (REST, x2, FINAL, DONE). The moon
+// percent stays in DAY DETAILS unless S_ShowMoonPct asks for it on the tile.
 string DayTileStatus(int day, float tileW) {
     if (day == DAY_COUNT) return "FINAL";
     if (IsOffDay(day)) return "REST";
     if (g_opened[day - 1]) return "DONE";
     if (IsPremiereDay(day)) return "x2";
-    if (tileW < 40.0f * UiK()) return "";
-    string pct = tostring(MoonIlluminationPct(day)) + "%";
-    if (!DayUnlocked(day)) return S_ShowMoonPct ? pct : "";
-    return pct;
+    if (S_ShowMoonPct && tileW >= 40.0f * UiK()) {
+        return tostring(MoonIlluminationPct(day)) + "%";
+    }
+    return "";
 }
 
+// Frosted-glass slot: large state icon in the glass area, dark status bar
+// along the bottom carrying the day number and an exception word. Sharp
+// corners, quiet edge; only the selected day gets a bright white frame.
 bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
-                         const string &in statusLine, vec4 bgCol, vec4 textCol,
-                         vec4 accent, bool isSelected, bool isToday, float tileW, float tileH) {
+                         const string &in statusLine, vec4 bgCol, vec4 _textCol,
+                         vec4 accent, bool isSelected, bool _isToday, float tileW, float tileH) {
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, isSelected ? 2.0f : 1.0f);
-    UI::PushStyleVar(UI::StyleVar::FrameRounding, 6.0f * UiK());
-    // Subtle theme border by default; only the selected day gets a bright
-    // accent frame, today a faint one. State lives in the icon and tint.
+    UI::PushStyleVar(UI::StyleVar::FrameRounding, 0.0f);
     vec4 borderCol = isSelected
-        ? vec4(accent.x, accent.y, accent.z, 0.95f)
-        : (isToday ? vec4(accent.x, accent.y, accent.z, 0.45f) : g_palette.border);
+        ? vec4(IceBlue().x, IceBlue().y, IceBlue().z, 0.95f)
+        : g_palette.tileEdge;
     UI::PushStyleColor(UI::Col::Border, borderCol);
     UI::PushStyleColor(UI::Col::Button, bgCol);
-    UI::PushStyleColor(UI::Col::ButtonHovered, Lift(bgCol));
-    UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(bgCol)));
-    UI::PushStyleColor(UI::Col::Text, textCol);
+    UI::PushStyleColor(UI::Col::ButtonHovered, g_palette.tileHover);
+    UI::PushStyleColor(UI::Col::ButtonActive, Lift(g_palette.tileHover));
+    UI::PushStyleColor(UI::Col::Text, g_palette.text);
 
-    // The button carries only its ID. Its lines are drawn separately so the
-    // icon + number group stays centred and the status never overlaps it.
+    // The button carries only its ID; every visual is drawn on the window
+    // draw list so the icon, bar and badge stay perfectly placed.
     bool clicked = UI::Button("##goaladventtile" + tostring(day), vec2(tileW, tileH));
     vec4 r = UI::GetItemRect();
     float cx = r.x + r.z * 0.5f;
-    vec4 bright = MixCol(textCol, vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.30f);
-    // The icon carries the state hue; the number stays near-white for reading.
+    UI::DrawList@ dl = UI::GetWindowDrawList();
+
+    // Dark status bar along the bottom edge (sharp corners match the tile).
+    float barH = 24.0f * UiK();
+    dl.AddRectFilled(vec4(r.x, r.y + r.w - barH, r.z, barH), g_palette.tileFooter);
+    string caption = label;
+    if (statusLine.Length > 0) caption += " | " + statusLine;
+    vec2 capSize = UI::MeasureString(caption, null, FS_LABEL);
+    dl.AddText(vec2(cx - capSize.x * 0.5f,
+                    r.y + r.w - barH + (barH - capSize.y) * 0.5f),
+               TextMain(), caption, null, FS_LABEL);
+
+    // Large state-coloured icon centred in the glass area above the bar.
+    vec2 iconSize = UI::MeasureString(icon, null, FS_TITLE);
+    float glassH = r.w - barH;
     vec4 iconCol = MixCol(accent, vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f);
+    dl.AddText(vec2(cx - iconSize.x * 0.5f, r.y + (glassH - iconSize.y) * 0.5f),
+               iconCol, icon, null, FS_TITLE);
 
-    // Thin status rule across the top, only for active states (premiere,
-    // completed, playable, finale). Rest and locked tiles stay quiet.
-    bool activeState = (day == DAY_COUNT) || IsPremiereDay(day) ||
-                       g_opened[day - 1] || (!IsOffDay(day) && DayPlayableNow(day));
-    if (activeState) {
-        float inset = 8.0f * UiK();
-        UI::GetWindowDrawList().AddRectFilled(
-            vec4(r.x + inset, r.y + 3.0f * UiK(), r.z - inset * 2.0f, 3.0f * UiK()),
-            accent, 1.5f * UiK());
-    }
-
-    // Row heights come from MeasureString so the layout stays correct under
-    // any Openplanet overlay scale (font sizes and geometry scale together).
-    float row1H = UI::MeasureString(label, null, FS_TITLE).y;
-    float row2H = UI::MeasureString(statusLine, null, FS_LABEL).y;
-    float contentH = row1H + 2.0f * UiK() + row2H;
-    float topPad = (tileH - contentH) * 0.5f;
-    if (topPad < 4.0f * UiK()) topPad = 4.0f * UiK();
-
-    // Row 1: icon and day number centred together as one group. Both use the
-    // named title size so they share a baseline at every UI scale.
-    float iconW = UI::MeasureString(icon, null, FS_TITLE).x;
-    float labelW = UI::MeasureString(label, null, FS_TITLE).x;
-    float groupW = iconW + 6.0f * UiK() + labelW;
-    float row1Y = r.y + topPad;
-    UI::GetWindowDrawList().AddText(vec2(cx - groupW * 0.5f, row1Y),
-                                    iconCol, icon, null, FS_TITLE);
-    UI::GetWindowDrawList().AddText(vec2(cx - groupW * 0.5f + iconW + 6.0f * UiK(), row1Y),
-                                    bright, label, null, FS_TITLE);
-
-    // Row 2: short status line on its own centred row below the number.
-    float statusW = UI::MeasureString(statusLine, null, FS_LABEL).x;
-    float row2Y = row1Y + row1H + 2.0f * UiK();
-    UI::GetWindowDrawList().AddText(vec2(cx - statusW * 0.5f, row2Y),
-                                    MixCol(accent, TextMuted(), 0.45f),
-                                    statusLine, null, FS_LABEL);
-    if (isSelected) {
-        // Thin accent underline: the selected day reads at a glance.
-        UI::GetWindowDrawList().AddRectFilled(
-            vec4(r.x + 10.0f * UiK(), r.y + r.w - 4.0f * UiK(), r.z - 20.0f * UiK(), 2.0f * UiK()), accent, 1.0f);
+    // Completed day: white circle with a dark check, bottom-right of the glass.
+    if (g_opened[day - 1]) {
+        float cr = 8.0f * UiK();
+        vec2 cc = vec2(r.x + r.z - 12.0f * UiK(), r.y + glassH - 12.0f * UiK());
+        dl.AddCircleFilled(cc, cr, vec4(IceBlue().x, IceBlue().y, IceBlue().z, 0.95f), 16);
+        vec2 checkSize = UI::MeasureString(Icons::Check, null, FS_LABEL);
+        dl.AddText(vec2(cc.x - checkSize.x * 0.5f, cc.y - checkSize.y * 0.5f),
+                   g_palette.tabActiveText, Icons::Check, null, FS_LABEL);
     }
 
     UI::PopStyleColor(5);
@@ -465,10 +418,9 @@ void RenderDayGrid() {
     vec2 origin = UI::GetCursorPos();
     vec2 avail = UI::GetContentRegionAvail();
     const float spacing = 6.0f * UiK();
-    // Minimum height from measured text rows, so the grid fits without a
-    // scrollbar at any overlay scale or UI scale.
-    float minTileH = UI::MeasureString("00", null, FS_TITLE).y +
-                     UI::MeasureString("100%", null, FS_LABEL).y + 10.0f * UiK();
+    // Minimum height: glass icon area + the dark status bar, measured so the
+    // grid fits without a scrollbar at any overlay scale or UI scale.
+    float minTileH = UI::MeasureString("00", null, FS_TITLE).y + 34.0f * UiK();
     float tileH = (avail.y - 4.0f * spacing) / 5.0f;
     if (tileH < minTileH) tileH = minTileH;
     if (tileH > 110.0f * UiK()) tileH = 110.0f * UiK();
@@ -495,15 +447,12 @@ void RenderDayGrid() {
         }
         vec4 textCol = MixCol(TextMain(), accent, 0.35f);
         if (IsOffDay(day) || lockedDay) textCol = MixCol(textCol, TextMuted(), 0.35f);
-        // Every tile carries a short status line; the tooltip always has the
-        // full moon phase and bounty record.
+        // Every tile carries a bar caption; the tooltip always has the full
+        // moon phase and bounty record.
         string statusLine = DayTileStatus(day, tileW);
+        // Uniform frosted glass: state lives in the icon colour and caption,
+        // not in a surface tint (keeps the HUD calm and consistent).
         vec4 bg = (day == g_selectedDay) ? TileSelectedBg() : TileBg();
-        // Status tint on the surface itself: locked days stay gray, every
-        // active state gets its own hue. TintKeepAlpha preserves glass.
-        float tint = 0.10f;
-        if (!IsOffDay(day) && DayUnlocked(day)) tint = 0.30f;
-        bg = TintKeepAlpha(bg, accent, tint);
         if (DrawCenteredDayTile(day, DayTileIcon(day), DayTileShort(day), statusLine,
                                 bg, textCol, accent, day == g_selectedDay,
                                 day == today && today > 0, tileW, tileH)) {
@@ -568,7 +517,7 @@ void RenderDayDetails() {
                      "Pursuit night | Bonus 20:00 CET (19:00 UTC)", Purple());
         DrawStatCard(Icons::MoonO, "MOON PHASE",
                      MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "%",
-                     MoonTint(MoonIlluminationPct(day)));
+                     IceBlue());
         DrawStatCard(Icons::CheckCircle, "STREAK",
                      "Protected | no Goal Hunt today", Emerald());
     } else {
@@ -579,7 +528,7 @@ void RenderDayDetails() {
                      Text::StripFormatCodes(g_bountyHolder[day - 1]), Gold());
         DrawStatCard(Icons::MoonO, "MOON PHASE",
                      MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "%",
-                     MoonTint(MoonIlluminationPct(day)));
+                     IceBlue());
     }
     if (locked) {
         UI::TextDisabled("This gift opens on December " + tostring(day) + ".");
@@ -648,7 +597,7 @@ void RenderCalendarTab() {
     UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(6.0f * UiK(), 4.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int gridFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
-    if (UI::BeginChild("##goaladventCalendarGrid", vec2(leftW, 0), UI::ChildFlags::Borders, gridFlags)) {
+    if (UI::BeginChild("##goaladventCalendarGrid", vec2(leftW, 0), UI::ChildFlags::None, gridFlags)) {
         DrawSectionHeader("ADVENT CALENDAR");
         // Legend on the header tooltip keeps the grid chrome to one line.
         UI::SetItemTooltip("REST = Pursuit night | FINAL = day 25 finale | DONE = completed | gray gift = opens later");
@@ -661,7 +610,7 @@ void RenderCalendarTab() {
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
     UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(10.0f * UiK(), 8.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(10.0f * UiK(), 6.0f * UiK()));
-    if (UI::BeginChild("##goaladventDayDetailsCard", vec2(rightW, 0), UI::ChildFlags::Borders)) {
+    if (UI::BeginChild("##goaladventDayDetailsCard", vec2(rightW, 0), UI::ChildFlags::None)) {
         DrawSectionHeader("DAY DETAILS");
         int day = g_selectedDay;
         if (day < 1 || day > DAY_COUNT) day = 1;
@@ -919,7 +868,7 @@ void RenderFinaleTab() {
     UI::TextWrapped("Final code: " + FinalCode());
     // A 10 px bar cannot fit overlay text - keep the label on its own line.
     UI::TextDisabled("GIFTS | " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " opened");
-    UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 12), "");
+    UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 6.0f * UiK()), "");
     UI::Dummy(vec2(0, 8));
     DrawStatCard(Icons::Trophy, "RESULT", "Score | " + tostring(TotalPoints()) + " pts", Gold());
     UI::Dummy(vec2(0, 5));
@@ -979,36 +928,48 @@ void RenderWorkspace() {
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
     if (UI::BeginChild("##goaladventWorkspace", vec2(0, -30), UI::ChildFlags::None)) {
         UI::PushFontSize(FS_BODY);
-        UI::PushStyleColor(UI::Col::Tab, vec4(0, 0, 0, 0));
+        // ARMAS-style tab strip: tight 2 px gaps, uppercase labels, white
+        // active rectangle with dark text, dark glass with white text else.
+        UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(2.0f * UiK(), 8.0f * UiK()));
         // BeginTabBar returns void in this build: never capture its result.
         UI::BeginTabBar("##goaladventTabs");
-        if (UI::BeginTabItem(Icons::Calendar + " Calendar")) {
+        UI::PushStyleColor(UI::Col::Text, g_activeTab == 0 ? g_palette.tabActiveText : g_palette.text);
+        if (UI::BeginTabItem(Icons::Calendar + " CALENDAR")) {
             if (g_activeTab != 0) { g_activeTab = 0; g_confirmReset = false; }
             RenderCalendarTab();
             UI::EndTabItem();
         }
-        if (UI::BeginTabItem(Icons::Trophy + " Leaderboard")) {
+        UI::PopStyleColor();
+        UI::PushStyleColor(UI::Col::Text, g_activeTab == 1 ? g_palette.tabActiveText : g_palette.text);
+        if (UI::BeginTabItem(Icons::Trophy + " LEADERBOARD")) {
             if (g_activeTab != 1) { g_activeTab = 1; g_confirmReset = false; }
             RenderLeaderboardTab();
             UI::EndTabItem();
         }
-        if (UI::BeginTabItem(Icons::Rss + " Live feed")) {
+        UI::PopStyleColor();
+        UI::PushStyleColor(UI::Col::Text, g_activeTab == 2 ? g_palette.tabActiveText : g_palette.text);
+        if (UI::BeginTabItem(Icons::Rss + " LIVE FEED")) {
             if (g_activeTab != 2) { g_activeTab = 2; g_confirmReset = false; }
             RenderFeedTab();
             UI::EndTabItem();
         }
-        if (UI::BeginTabItem(Icons::Crosshairs + " Bounties")) {
+        UI::PopStyleColor();
+        UI::PushStyleColor(UI::Col::Text, g_activeTab == 3 ? g_palette.tabActiveText : g_palette.text);
+        if (UI::BeginTabItem(Icons::Crosshairs + " BOUNTIES")) {
             if (g_activeTab != 3) { g_activeTab = 3; g_confirmReset = false; }
             RenderBountyTab();
             UI::EndTabItem();
         }
-        if (UI::BeginTabItem(Icons::Star + " Finale")) {
+        UI::PopStyleColor();
+        UI::PushStyleColor(UI::Col::Text, g_activeTab == 4 ? g_palette.tabActiveText : g_palette.text);
+        if (UI::BeginTabItem(Icons::Star + " FINALE")) {
             if (g_activeTab != 4) { g_activeTab = 4; g_confirmReset = false; }
             RenderFinaleTab();
             UI::EndTabItem();
         }
-        UI::EndTabBar();
         UI::PopStyleColor();
+        UI::EndTabBar();
+        UI::PopStyleVar();
         UI::PopFontSize();
     }
     UI::EndChild();

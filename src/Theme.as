@@ -32,6 +32,16 @@ class ThemePalette {
     vec4 tileSelectedBg;
     vec4 iceBlue;
 
+    // GTA-style HUD surfaces: sharp white/dark tab pair, frosted tiles with
+    // a dark status bar, and a quiet edge line around each tile.
+    vec4 tabBg;
+    vec4 tabActiveBg;
+    vec4 tabActiveText;
+    vec4 tabHoverBg;
+    vec4 tileEdge;
+    vec4 tileHover;
+    vec4 tileFooter;
+
     float windowRounding;
     float childRounding;
     float frameRounding;
@@ -71,10 +81,18 @@ class ThemePalette {
         tileSelectedBg = vec4(0.140, 0.140, 0.180, 1.00);
         iceBlue = vec4(0.92, 0.93, 0.96, 1.00);
 
-        windowRounding = 6.0f;
-        childRounding = 3.0f;
-        frameRounding = 3.0f;
-        tabRounding = 3.0f;
+        tabBg = vec4(0.000, 0.000, 0.000, 0.55);
+        tabActiveBg = vec4(0.96, 0.96, 0.97, 1.00);
+        tabActiveText = vec4(0.06, 0.06, 0.07, 1.00);
+        tabHoverBg = vec4(0.170, 0.170, 0.210, 1.00);
+        tileEdge = border;
+        tileHover = vec4(0.140, 0.140, 0.170, 1.00);
+        tileFooter = vec4(0.000, 0.000, 0.000, 0.52);
+
+        windowRounding = 0.0f;
+        childRounding = 0.0f;
+        frameRounding = 0.0f;
+        tabRounding = 0.0f;
     }
 
     void SetTransparentGlass() {
@@ -108,14 +126,22 @@ class ThemePalette {
         bronze = vec4(0.75, 0.70, 0.60, 1.00);
         teal = vec4(0.70, 0.86, 0.95, 1.00);          // playable now: cool cyan
         dimNavy = vec4(1.000, 1.000, 1.000, 0.07);
-        tileBg = vec4(1.000, 1.000, 1.000, 0.07);
-        tileSelectedBg = vec4(1.000, 1.000, 1.000, 0.18);
+        tileBg = vec4(1.000, 1.000, 1.000, 0.09);
+        tileSelectedBg = vec4(1.000, 1.000, 1.000, 0.22);
         iceBlue = vec4(1.000, 1.000, 1.000, 0.96);
 
+        tabBg = vec4(0.000, 0.000, 0.000, 0.55);
+        tabActiveBg = vec4(0.96, 0.96, 0.97, 1.00);
+        tabActiveText = vec4(0.06, 0.06, 0.07, 1.00);
+        tabHoverBg = vec4(1.000, 1.000, 1.000, 0.14);
+        tileEdge = vec4(1.000, 1.000, 1.000, 0.16);
+        tileHover = vec4(1.000, 1.000, 1.000, 0.15);
+        tileFooter = vec4(0.000, 0.000, 0.000, 0.52);
+
         windowRounding = 0.0f;
-        childRounding = 3.0f;
-        frameRounding = 3.0f;
-        tabRounding = 3.0f;
+        childRounding = 0.0f;
+        frameRounding = 0.0f;
+        tabRounding = 0.0f;
     }
 }
 
