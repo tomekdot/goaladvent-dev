@@ -102,11 +102,11 @@ class ThemePalette {
         gold = vec4(1.00, 0.86, 0.35, 1.00);          // leader star
         emerald = vec4(0.55, 1.00, 0.65, 1.00);       // completed
         crimson = vec4(1.00, 0.55, 0.65, 1.00);       // premium
-        purple = vec4(0.90, 0.90, 0.90, 1.00);        // rest day: neutral silver
+        purple = vec4(0.78, 0.74, 0.98, 1.00);        // rest day: soft lavender
         navy = vec4(0.60, 0.60, 0.60, 1.00);
         silver = vec4(0.90, 0.90, 0.90, 1.00);
         bronze = vec4(0.75, 0.70, 0.60, 1.00);
-        teal = vec4(0.80, 0.80, 0.80, 1.00);
+        teal = vec4(0.70, 0.86, 0.95, 1.00);          // playable now: cool cyan
         dimNavy = vec4(1.000, 1.000, 1.000, 0.07);
         tileBg = vec4(1.000, 1.000, 1.000, 0.07);
         tileSelectedBg = vec4(1.000, 1.000, 1.000, 0.18);

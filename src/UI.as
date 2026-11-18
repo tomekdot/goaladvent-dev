@@ -51,6 +51,15 @@ vec4 MixCol(vec4 a, vec4 b, float t) {
     return vec4(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
                 a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
 }
+
+// Tint the RGB of a surface but keep its alpha. In the glass theme every layer
+// is translucent; lerping alpha towards an opaque accent would stack into a
+// white wall and hide the game behind the dashboard.
+vec4 TintKeepAlpha(vec4 base, vec4 accent, float t) {
+    return vec4(base.x + (accent.x - base.x) * t,
+                base.y + (accent.y - base.y) * t,
+                base.z + (accent.z - base.z) * t, base.w);
+}
 vec4 TextMuted() { return MixCol(g_palette.textMuted, g_palette.text, 0.40f); }
 vec4 TileBg()    { return g_palette.tileBg; }
 vec4 TileSelectedBg() { return g_palette.tileSelectedBg; }
@@ -266,6 +275,14 @@ void RenderTopBar() {
                                       : "Reset local progress (press twice).");
     UI::PopStyleColor();
     UI::PopStyleColor(3);
+    UI::NewLine();
+
+    // Header progress line: the whole dashboard now reports completion at a
+    // glance, not only the sidebar card. No overlay text on a 5 px bar.
+    UI::PushStyleColor(UI::Col::FrameBg, g_palette.frameBg);
+    UI::PushStyleColor(UI::Col::PlotHistogram, Emerald());
+    UI::ProgressBar(float(OpenedCount()) / float(DAY_COUNT), vec2(-1, 5.0f * UiK()), "");
+    UI::PopStyleColor(2);
     UI::Separator();
 }
 
@@ -371,7 +388,9 @@ void RenderSidebar() {
 // ---------------------------------------------------------------------------
 // Calendar grid
 // ---------------------------------------------------------------------------
-// One dark tile per day; state is a small accent dot, never a coloured block.
+// Each day is a status tile: gold finale, emerald completed, crimson premiere,
+// lavender Pursuit rest, teal playable now, gray locked. The accent is carried
+// by the tile surface, border and top rule, not by a tiny dot.
 vec4 DayAccent(int day) {
     if (day == DAY_COUNT) return Gold();
     if (IsOffDay(day)) return Purple();
@@ -427,7 +446,11 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
                          const string &in moonLine, vec4 bgCol, vec4 textCol,
                          vec4 accent, bool isSelected, bool isToday, float tileW, float tileH) {
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, (isSelected || isToday) ? 2.0f : 1.0f);
-    UI::PushStyleColor(UI::Col::Border, (isSelected || isToday) ? IceBlue() : g_palette.borderWeak);
+    UI::PushStyleVar(UI::StyleVar::FrameRounding, 8.0f * UiK());
+    vec4 borderCol = (isSelected || isToday)
+        ? vec4(accent.x, accent.y, accent.z, 0.95f)
+        : vec4(accent.x, accent.y, accent.z, 0.45f);
+    UI::PushStyleColor(UI::Col::Border, borderCol);
     UI::PushStyleColor(UI::Col::Button, bgCol);
     UI::PushStyleColor(UI::Col::ButtonHovered, Lift(bgCol));
     UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(bgCol)));
@@ -438,26 +461,33 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
     const float iconF = 20.0f * UiK();
     const float labelF = 18.0f * UiK();
     const float pctF = 15.0f * UiK();
-    float top = (tileH - 68.0f * UiK()) * 0.5f;
+    float top = (tileH - 72.0f * UiK()) * 0.5f;
     if (top < 0.0f) top = 0.0f;
     bool clicked = UI::Button("##goaladventtile" + tostring(day), vec2(tileW, tileH));
     vec4 r = UI::GetItemRect();
     float cx = r.x + r.z * 0.5f;
     float iconW = UI::MeasureString(icon, null, iconF).x;
     float labelW = UI::MeasureString(label, null, labelF).x;
-    vec4 bright = MixCol(textCol, vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f);
-    UI::GetWindowDrawList().AddText(vec2(cx - iconW * 0.5f, r.y + 5.0f * UiK() + top),
+    vec4 bright = MixCol(textCol, vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.30f);
+
+    // Status rule across the top. The inset keeps it inside the rounded
+    // corners; the accent colour is the primary status signal now.
+    float inset = 8.0f * UiK();
+    UI::GetWindowDrawList().AddRectFilled(
+        vec4(r.x + inset, r.y + 3.0f * UiK(), r.z - inset * 2.0f, 3.0f * UiK()),
+        accent, 1.5f * UiK());
+
+    UI::GetWindowDrawList().AddText(vec2(cx - iconW * 0.5f, r.y + 8.0f * UiK() + top),
                                     bright, icon, null, iconF);
-    UI::GetWindowDrawList().AddText(vec2(cx - labelW * 0.5f, r.y + 27.0f * UiK() + top),
+    UI::GetWindowDrawList().AddText(vec2(cx - labelW * 0.5f, r.y + 30.0f * UiK() + top),
                                     bright, label, null, labelF);
 
     // Illumination goes on its own centred line under the status, so a narrow
     // tile can never push "45%" over the gift icon.
     float pctW = UI::MeasureString(moonLine, null, pctF).x;
-    UI::GetWindowDrawList().AddText(vec2(cx - pctW * 0.5f, r.y + 50.0f * UiK() + top),
-                                    MixCol(TextMuted(), vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.35f),
+    UI::GetWindowDrawList().AddText(vec2(cx - pctW * 0.5f, r.y + 53.0f * UiK() + top),
+                                    MixCol(accent, TextMuted(), 0.45f),
                                     moonLine, null, pctF);
-    DrawDot(vec2(r.x + 5.0f * UiK(), r.y + 5.0f * UiK()), 2.5f * UiK(), accent);
     if (isSelected) {
         // Thin accent underline: the selected day reads at a glance.
         UI::GetWindowDrawList().AddRectFilled(
@@ -465,7 +495,7 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
     }
 
     UI::PopStyleColor(5);
-    UI::PopStyleVar();
+    UI::PopStyleVar(2);
     return clicked;
 }
 
@@ -520,20 +550,28 @@ void RenderDayGrid() {
         UI::SetCursorPos(vec2(gridX + col * (tileW + spacing),
                               origin.y + row * (tileH + spacing)));
 
-        vec4 textCol = (day == DAY_COUNT || IsPremiereDay(day)) ? Gold() : TextMain();
-        if (IsOffDay(day) || !DayUnlocked(day)) textCol = MixCol(textCol, TextMuted(), 0.45f);
+        vec4 accent = DayAccent(day);
+        bool lockedDay = !IsOffDay(day) && !DayUnlocked(day);
+        if (lockedDay) {
+            // A muted, low-alpha gray keeps locked days visibly inactive
+            // instead of giving them the same bright rule as playable days.
+            accent = vec4(g_palette.textMuted.x, g_palette.textMuted.y,
+                          g_palette.textMuted.z, 0.35f);
+        }
+        vec4 textCol = MixCol(TextMain(), accent, 0.35f);
+        if (IsOffDay(day) || lockedDay) textCol = MixCol(textCol, TextMuted(), 0.35f);
         // By default show the percentage only on Pursuit days and the selected
         // tile; S_ShowMoonPct forces it everywhere. The tooltip always has it.
         bool showPct = S_ShowMoonPct || IsOffDay(day) || day == g_selectedDay;
         string moonLine = DayTileStatus(day, showPct, tileW);
         vec4 bg = (day == g_selectedDay) ? TileSelectedBg() : TileBg();
-        // A subtle accent wash separates playable / completed days from the
-        // locked ones without turning the whole grid into coloured blocks.
-        if (g_opened[day - 1] || DayPlayableNow(day)) {
-            bg = MixCol(bg, DayAccent(day), 0.15f);
-        }
+        // Status tint on the surface itself: locked days stay gray, every
+        // active state gets its own hue. TintKeepAlpha preserves glass.
+        float tint = 0.10f;
+        if (!IsOffDay(day) && DayUnlocked(day)) tint = 0.34f;
+        bg = TintKeepAlpha(bg, accent, tint);
         if (DrawCenteredDayTile(day, DayTileIcon(day), DayTileShort(day), moonLine,
-                                bg, textCol, DayAccent(day), day == g_selectedDay,
+                                bg, textCol, accent, day == g_selectedDay,
                                 day == today && today > 0, tileW, tileH)) {
             g_selectedDay = day;
             g_confirmReset = false;
