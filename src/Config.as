@@ -36,7 +36,7 @@ int S_MapDayOverride = 0;
 
 
 
-const string PLUGIN_VERSION = "0.5.12-dev";
+const string PLUGIN_VERSION = "0.5.14-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning

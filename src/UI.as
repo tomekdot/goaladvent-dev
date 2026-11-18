@@ -84,12 +84,29 @@ vec4 Tone(vec4 col) {
 }
 
 vec4 Lift(vec4 col) {
-    return vec4(col.x + 0.08, col.y + 0.08, col.z + 0.08, 1.00);
+    // Preserve alpha: in the glass theme a tile is white with alpha 0.07 and
+    // forcing alpha to 1 made the hovered tile an opaque white block with
+    // invisible text. Translucent colours get a small alpha bump instead.
+    float a = col.w;
+    if (a < 0.99f) {
+        a += 0.10f;
+        if (a > 1.00f) a = 1.00f;
+    }
+    float r = col.x + 0.08f; if (r > 1.00f) r = 1.00f;
+    float g = col.y + 0.08f; if (g > 1.00f) g = 1.00f;
+    float b = col.z + 0.08f; if (b > 1.00f) b = 1.00f;
+    return vec4(r, g, b, a);
 }
 
 void TextTone(const vec4 &in col, const string &in text) {
     UI::PushStyleColor(UI::Col::Text, col);
     UI::Text(text);
+    UI::PopStyleColor();
+}
+
+void TextToneWrapped(const vec4 &in col, const string &in text) {
+    UI::PushStyleColor(UI::Col::Text, col);
+    UI::TextWrapped(text);
     UI::PopStyleColor();
 }
 
@@ -119,13 +136,13 @@ void DrawStatCard(const string &in icon, const string &in label,
     UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(10.0f * UiK(), 7.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int flags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
-    if (UI::BeginChild("##stat" + label + icon, vec2(0, 66.0f * UiK()), UI::ChildFlags::Borders, flags)) {
+    if (UI::BeginChild("##stat" + label + icon, vec2(0, 88.0f * UiK()), UI::ChildFlags::Borders, flags)) {
         vec2 start = UI::GetCursorPos();
 
         // A button with ButtonTextAlign centres the glyph reliably. Measuring
         // an icon with MeasureString is not dependable across Openplanet fonts.
         const float boxSize = 38.0f * UiK();
-        const float boxTop = 7.0f * UiK();   // centre the box in the padded card
+        const float boxTop = 10.0f * UiK();   // centre the box in the padded card
         vec4 boxCol = vec4(accent.x * 0.50f, accent.y * 0.50f, accent.z * 0.50f, 1.00f);
         UI::SetCursorPos(vec2(start.x, start.y + boxTop));
         UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.5f, 0.5f));
@@ -140,15 +157,16 @@ void DrawStatCard(const string &in icon, const string &in label,
         UI::PopStyleColor(4);
         UI::PopStyleVar(2);
 
-        // Compact gap after the box; both lines fit the 66 px card.
+        // Label above a wrapped value; long values use two lines instead of
+        // being clipped at the card edge.
         float textX = start.x + boxSize + 12.0f * UiK();
-        UI::SetCursorPos(vec2(textX, start.y + 8.0f * UiK()));
+        UI::SetCursorPos(vec2(textX, start.y + 7.0f * UiK()));
         UI::PushFontSize(FS_LABEL);
         TextTone(TextMuted(), label);
         UI::PopFontSize();
-        UI::SetCursorPos(vec2(textX, start.y + 30.0f * UiK()));
+        UI::SetCursorPos(vec2(textX, start.y + 29.0f * UiK()));
         UI::PushFontSize(FS_BODY);
-        TextTone(TextMain(), value);
+        TextToneWrapped(TextMain(), value);
         UI::PopFontSize();
     }
     UI::EndChild();
@@ -286,14 +304,15 @@ void RenderSidebar() {
         UI::Separator();   // thin divider using the theme border colour
 
         // Mini summary fills the otherwise empty middle of the sidebar.
-        float remain = UI::GetContentRegionAvail().y - 220.0f * UiK();
+        float remain = UI::GetContentRegionAvail().y - 235.0f * UiK();
         if (remain > 0) UI::Dummy(vec2(0, remain));
 
         UI::PushFontSize(FS_LABEL);
         UI::TextDisabled("POINTS");
         UI::PopFontSize();
         UI::PushFontSize(FS_BODY);
-        UI::Text(tostring(TotalPoints()) + " pts | " + tostring(g_badges.Length) + " badges");
+        string badgeWord = g_badges.Length == 1 ? "badge" : "badges";
+        UI::Text(tostring(TotalPoints()) + " pts | " + tostring(g_badges.Length) + " " + badgeWord);
         UI::PopFontSize();
         if (g_liveFeed.Length > 0) {
             string last = Text::StripFormatCodes(g_liveFeed[0]);
@@ -319,7 +338,7 @@ void RenderSidebar() {
         UI::PushStyleColor(UI::Col::ChildBg, InnerBg());
         UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(8.0f * UiK(), 6.0f * UiK()));
         int statusFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
-        if (UI::BeginChild("##goaladventSidebarStatus", vec2(0, 68.0f * UiK()), UI::ChildFlags::Borders, statusFlags)) {
+        if (UI::BeginChild("##goaladventSidebarStatus", vec2(0, 86.0f * UiK()), UI::ChildFlags::Borders, statusFlags)) {
             string status;
             string detail;
             vec4 col;
@@ -338,7 +357,7 @@ void RenderSidebar() {
             }
             TextTone(col, Icons::Circle + "  " + status);
             UI::PushFontSize(FS_LABEL);
-            UI::TextDisabled(detail);
+            TextToneWrapped(TextMuted(), detail);
             UI::PopFontSize();
         }
         UI::EndChild();
@@ -568,7 +587,7 @@ void RenderDayDetails() {
     int detectedDay = DetectGoalHuntDay();
     DrawStatCard(detectedDay > 0 ? Icons::FlagCheckered : Icons::Crosshairs,
                  "GOAL HUNT MAP",
-                 detectedDay > 0 ? ("#" + tostring(detectedDay) + " detected") : "No Goal Hunt map detected",
+                 detectedDay > 0 ? ("#" + tostring(detectedDay) + " detected") : "No map detected",
                  detectedDay > 0 ? Emerald() : TextMuted());
     UI::Dummy(vec2(0, 5));
 
@@ -578,7 +597,7 @@ void RenderDayDetails() {
     UI::Dummy(vec2(0, 5));
 
     if (IsOffDay(day)) {
-        DrawStatCard(Icons::MoonO, "DAY MODE", "Pursuit night | no Goal Hunt", Purple());
+        DrawStatCard(Icons::MoonO, "DAY MODE", "No race tonight", Purple());
         UI::Dummy(vec2(0, 5));
         DrawStatCard(Icons::CheckCircle, "STREAK STATUS", "Streak protected", Emerald());
     } else {
