@@ -99,19 +99,19 @@ void SortBoard() {
         int points = g_boardPoints[i];
         int bounties = g_boardBounties[i];
         string name = g_boardNames[i];
-        string accountId = i < g_boardAccountIds.Length ? g_boardAccountIds[i] : "";
+        string accountId = i < int(g_boardAccountIds.Length) ? g_boardAccountIds[uint(i)] : "";
         int j = i - 1;
         while (j >= 0 && g_boardPoints[j] < points) {
             g_boardPoints[j + 1] = g_boardPoints[j];
             g_boardBounties[j + 1] = g_boardBounties[j];
             g_boardNames[j + 1] = g_boardNames[j];
-            if (j < g_boardAccountIds.Length) g_boardAccountIds[j + 1] = g_boardAccountIds[j];
+            if (j >= 0 && uint(j) < g_boardAccountIds.Length) g_boardAccountIds[uint(j) + 1] = g_boardAccountIds[uint(j)];
             j--;
         }
         g_boardPoints[j + 1] = points;
         g_boardBounties[j + 1] = bounties;
         g_boardNames[j + 1] = name;
-        if (i < g_boardAccountIds.Length) g_boardAccountIds[j + 1] = accountId;
+        if (i < int(g_boardAccountIds.Length)) g_boardAccountIds[uint(j) + 1] = accountId;
     }
 }
 

@@ -996,7 +996,7 @@ void RenderDashboard() {
     // Apply once per plugin load: the saved ImGui size can be taller than a
     // 1024x768 game window and leave the footer off-screen.
     if (!g_windowSizeApplied) {
-        UI::SetNextWindowSize(1040.0f * UiK(), 660.0f * UiK(), UI::Cond::FirstUseEver);
+        UI::SetNextWindowSize(int(1040.0f * UiK()), int(660.0f * UiK()), UI::Cond::FirstUseEver);
         UI::SetNextWindowPos(24, 40, UI::Cond::Always);
         g_windowSizeApplied = true;
     }
