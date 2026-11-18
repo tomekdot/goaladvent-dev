@@ -72,9 +72,9 @@ class ThemePalette {
         iceBlue = vec4(0.92, 0.93, 0.96, 1.00);
 
         windowRounding = 6.0f;
-        childRounding = 5.0f;
-        frameRounding = 4.0f;
-        tabRounding = 4.0f;
+        childRounding = 3.0f;
+        frameRounding = 3.0f;
+        tabRounding = 3.0f;
     }
 
     void SetTransparentGlass() {
@@ -89,14 +89,14 @@ class ThemePalette {
         innerBg        = vec4(1.000, 1.000, 1.000, 0.07);  // stat cards
         headerBg       = vec4(0.000, 0.000, 0.000, 0.30);  // top / footer
         frameBg        = vec4(1.000, 1.000, 1.000, 0.10);
-        border         = vec4(1.000, 1.000, 1.000, 0.16);
+        border         = vec4(1.000, 1.000, 1.000, 0.09);
         borderStrong   = vec4(1.000, 1.000, 1.000, 0.75);
-        borderWeak     = vec4(1.000, 1.000, 1.000, 0.12);
+        borderWeak     = vec4(1.000, 1.000, 1.000, 0.08);
         buttonBg       = vec4(1.000, 1.000, 1.000, 0.07);
         buttonHover    = vec4(1.000, 1.000, 1.000, 0.14);
         buttonActive   = vec4(1.000, 1.000, 1.000, 0.18);
         text           = vec4(1.000, 1.000, 1.000, 0.96);
-        textMuted      = vec4(1.000, 1.000, 1.000, 0.65);
+        textMuted      = vec4(1.000, 1.000, 1.000, 0.50);
         tableHeaderBg  = headerBg;
 
         gold = vec4(1.00, 0.86, 0.35, 1.00);          // leader star
@@ -113,9 +113,9 @@ class ThemePalette {
         iceBlue = vec4(1.000, 1.000, 1.000, 0.96);
 
         windowRounding = 0.0f;
-        childRounding = 0.0f;
-        frameRounding = 0.0f;
-        tabRounding = 0.0f;
+        childRounding = 3.0f;
+        frameRounding = 3.0f;
+        tabRounding = 3.0f;
     }
 }
 
