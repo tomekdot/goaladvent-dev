@@ -373,6 +373,11 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
     string caption = label;
     if (statusLine.Length > 0) caption += " | " + statusLine;
     vec2 capSize = UI::MeasureString(caption, null, FS_LABEL);
+    // Narrow tiles keep just the number; the icon already carries the state.
+    if (capSize.x > tileW - 6.0f * UiK() && statusLine.Length > 0) {
+        caption = label;
+        capSize = UI::MeasureString(caption, null, FS_LABEL);
+    }
     dl.AddText(vec2(cx - capSize.x * 0.5f,
                     r.y + r.w - barH + (barH - capSize.y) * 0.5f),
                TextMain(), caption, null, FS_LABEL);
@@ -983,10 +988,11 @@ void RenderDashboard() {
     ApplyUiScale();      // the setting scales text and containers together
     RefreshPalette();   // one layout, colours chosen by the active theme
 
-    // Apply once per plugin load: the saved ImGui size can be taller than a
-    // 1024x768 game window and leave the footer off-screen.
+    // Apply once per plugin load: compact default matching the preferred
+    // layout (~524x588 on screen at OverlayScale 0.85). One-shot Always
+    // overrides the saved size; afterwards the window drags and resizes freely.
     if (!g_windowSizeApplied) {
-        UI::SetNextWindowSize(980, 620, UI::Cond::Always);
+        UI::SetNextWindowSize(616, 692, UI::Cond::Always);
         UI::SetNextWindowPos(24, 40, UI::Cond::Always);
         g_windowSizeApplied = true;
     }
