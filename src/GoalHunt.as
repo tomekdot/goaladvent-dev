@@ -245,9 +245,30 @@ void AssignCurrentMapToDay(int day) {
 // ---------------------------------------------------------------------------
 // Checkpoint tracking
 // ---------------------------------------------------------------------------
+// Server warmup flag, read through the same null-safe nod chain as the server
+// name. Community modes may not set it; the 15 s race gate covers those.
+bool ServerIsWarmUp() {
+    auto app = cast<CGameManiaPlanet>(GetApp());
+    if (app is null || app.CurrentPlayground is null) return false;
+    auto pgInterface = app.CurrentPlayground.Interface;
+    if (pgInterface is null || pgInterface.ServerInfo is null) return false;
+    return pgInterface.ServerInfo.IsWarmUp;
+}
+
+// True while the current race is inside the warmup gate. Single source for
+// the tracker and the HUD, so both always agree.
+bool InWarmupGate() {
+    if (g_activeDay <= 0) return false;
+    if (ServerIsWarmUp()) return true;
+    return Time::Stamp - g_raceStartStamp < WARMUP_GRACE_SEC;
+}
+
 // Checkpoints collected by the local player in the current race.
 // Uses the same path as the working chase-mode overlay (CTrackManiaPlayer.ScriptAPI).
+// Also refreshes g_curRaceState and g_curRaceNbCp for the warmup/finish logic.
 int CurrentCpCount() {
+    g_curRaceState = RACE_BEFORE_START;
+    g_curRaceNbCp = 0;
     auto app = cast<CGameManiaPlanet>(GetApp());
     if (app is null || app.CurrentPlayground is null) return 0;
 
@@ -259,6 +280,10 @@ int CurrentCpCount() {
         if (player is null || player.User is null) continue;
         if (login.Length > 0 && player.User.Login != login) continue;
         if (player.ScriptAPI is null || player.ScriptAPI.CurRace is null) return 0;
+        g_curRaceState = int(player.ScriptAPI.RaceState);
+        if (player.ScriptAPI.Score !is null) {
+            g_curRaceNbCp = int(player.ScriptAPI.Score.LapsNbCheckpoint);
+        }
         return int(player.ScriptAPI.CurRace.Checkpoints.Length);
     }
     return 0;
@@ -331,11 +356,19 @@ void ResetSession() {
     g_lastSentCp = 0;
     g_submitPending = false;
     g_submitTimer = 0.0f;
+    g_lastRaceState = -1;
+    g_lastCpBuffer = 0;
+    g_warmupCpBaseline = 0;
+    g_raceStartStamp = 0;
 }
 
 void TrackGoalHunt(float dt) {
     string uid = GetCurrentMapUid();
     if (uid != g_lastMapUid) {
+        // Flush a finished run before the map change drops it from the queue.
+        if (g_submitPending && g_activeDay > 0 && g_sessionCp > g_lastSentCp) {
+            RequestCpSubmit(g_activeDay, g_sessionCp);
+        }
         g_lastMapUid = uid;
         ResetSession();
         g_activeDay = DetectGoalHuntDay();
@@ -353,10 +386,46 @@ void TrackGoalHunt(float dt) {
     if (g_activeDay <= 0) return;
 
     int cp = CurrentCpCount();
-    if (cp > g_sessionCp) {
-        g_sessionCp = cp;
-        if (cp >= GOAL_CP) CompleteDay(g_activeDay, cp);
-        if (cp > g_bountyCp[g_activeDay - 1]) ClaimBounty(g_activeDay, cp);
+    int raceState = g_curRaceState;
+
+    // A new race starts when the state enters Running, or when the checkpoint
+    // buffer drops: arena respawn can recycle CurRace without a state flip.
+    bool newRace = false;
+    if (raceState == RACE_RUNNING && g_lastRaceState != RACE_RUNNING) newRace = true;
+    if (cp < g_lastCpBuffer) newRace = true;
+    if (newRace) {
+        // The previous run is over: flush its final CP before resetting.
+        if (g_submitPending && g_sessionCp > g_lastSentCp) {
+            RequestCpSubmit(g_activeDay, g_sessionCp);
+        }
+        ResetSession();
+        g_raceStartStamp = Time::Stamp;
+        g_warmupCpBaseline = cp;
+    }
+    g_lastRaceState = raceState;
+    g_lastCpBuffer = cp;
+
+    // Warmup never counts. Track the buffer while gated so CP passed during
+    // warmup are subtracted afterwards instead of counted retroactively.
+    if (InWarmupGate()) {
+        if (cp > g_warmupCpBaseline) g_warmupCpBaseline = cp;
+        return;
+    }
+
+    int effective = cp - g_warmupCpBaseline;
+    if (effective < 0) effective = 0;
+
+    // The finish line is the map's last checkpoint. Arena mode can recycle
+    // CurRace before the buffer shows it, so a finished race credits the full
+    // map checkpoint count (Score.LapsNbCheckpoint) - never more.
+    if (raceState == RACE_FINISHED && g_curRaceNbCp > effective) {
+        effective = g_curRaceNbCp;
+    }
+
+    if (effective > g_sessionCp) {
+        g_sessionCp = effective;
+        if (effective >= GOAL_CP) CompleteDay(g_activeDay, effective);
+        if (effective > g_bountyCp[g_activeDay - 1]) ClaimBounty(g_activeDay, effective);
         g_submitPending = true;
         g_submitTimer = 0.0f;
     }

@@ -36,7 +36,7 @@ int S_MapDayOverride = 0;
 
 
 
-const string PLUGIN_VERSION = "0.5.16-dev";
+const string PLUGIN_VERSION = "0.5.17-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -173,6 +173,22 @@ bool g_submitPending = false;
 bool g_submitQueued = false;
 int g_submitRetries = 0;
 float g_submitTimer = 0.0f;
+
+// Warmup gate: the first seconds of a race never count checkpoints, and any
+// server warmup phase is excluded too. CP passed during warmup are subtracted
+// via a baseline, so they cannot leak into the count when the gate lifts.
+const int64 WARMUP_GRACE_SEC = 15;
+// CTrackManiaScriptPlayer::ERaceState values (BeforeStart, Running, Finished,
+// Eliminated) as ints, so the tracker does not depend on enum scope syntax.
+const int RACE_BEFORE_START = 0;
+const int RACE_RUNNING = 1;
+const int RACE_FINISHED = 2;
+int64 g_raceStartStamp = 0;   // Time::Stamp when the local race last started
+int g_lastRaceState = -1;     // previous ERaceState snapshot
+int g_lastCpBuffer = 0;       // previous raw Checkpoints.Length
+int g_warmupCpBaseline = 0;   // buffer value accumulated during warmup
+int g_curRaceState = 0;       // refreshed by CurrentCpCount()
+int g_curRaceNbCp = 0;        // map checkpoints per lap (Score.LapsNbCheckpoint)
 
 // Digits used by the "#N Goal Hunt" name parser.
 array<string> g_digits = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };

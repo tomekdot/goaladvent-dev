@@ -8,6 +8,7 @@ bool g_windowSizeApplied = false;
 bool g_qaPreview = true;   // QA-TEMP: preview tile states, remove before commit
 bool g_qaGeomLogged = false;   // QA-TEMP
 int g_qaForceTab = -1;   // QA-TEMP: force a tab selected for the matrix
+float g_qaLastBeat = 0.0f;   // QA-TEMP
 
 // One type scale for the whole dashboard - every text call uses one of these.
 // They are refreshed from S_UiScale so the setting scales text and cards
@@ -1064,6 +1065,14 @@ void RenderDashboard() {
         UI::End();
         return;
     }
+    if (Time::Stamp - g_qaLastBeat > 5.0f) {   // QA-TEMP
+        g_qaLastBeat = Time::Stamp;
+        vec2 wp = UI::GetWindowPos();
+        vec2 wz = UI::GetWindowSize();
+        print("[goaladvent][QA] beat pos=" + tostring(int(wp.x)) + "," + tostring(int(wp.y)) +
+              " size=" + tostring(int(wz.x)) + "x" + tostring(int(wz.y)) +
+              " show=" + tostring(g_showCalendar));
+    }
 
     PushDashboardStyle();
     if (!g_qaGeomLogged) {   // QA-TEMP
@@ -1237,6 +1246,7 @@ void RenderGoalHuntHud() {
         TextTone(TextMain(), Icons::FlagCheckered + " #" + tostring(day) + " GOAL HUNT");
         if (IsPremiereDay(day)) TextTone(Gold(), "Premiere | x2 points");
         else UI::TextDisabled("Catch-up | x1 points");
+        if (InWarmupGate()) UI::TextDisabled("Warmup | CP counting paused");
         UI::Text("Goal " + tostring(GOAL_CP) + " CP | session " + tostring(g_sessionCp) + " CP");
         UI::Text("Bounty " + tostring(g_bountyCp[day - 1]) + " CP | " + g_bountyHolder[day - 1]);
         UI::Text("Best | " + tostring(g_bests[day - 1]) + " CP");

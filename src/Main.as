@@ -7,6 +7,7 @@
 const string AGENT_RELOAD_MARKER = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload";
 const string AGENT_RELOAD_PURSUIT = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-pursuit";
 const string AGENT_RELOAD_VEHICLE = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-vehicle";
+const string AGENT_RELOAD_CALENDAR = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-calendar";
 Meta::Plugin@ g_selfPlugin;
 
 void ReloadPluginById(const string &in id) {
@@ -68,6 +69,10 @@ void AgentReloadLoop() {
         if (IO::FileExists(AGENT_RELOAD_VEHICLE)) {
             IO::Delete(AGENT_RELOAD_VEHICLE);
             ReloadPluginById("czatsky-vehicle-dev");
+        }
+        if (IO::FileExists(AGENT_RELOAD_CALENDAR)) {
+            IO::Delete(AGENT_RELOAD_CALENDAR);
+            ReloadPluginById("event-calendar-dev");
         }
     }
 }
