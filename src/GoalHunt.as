@@ -372,6 +372,12 @@ void TrackGoalHunt(float dt) {
         g_lastMapUid = uid;
         ResetSession();
         g_activeDay = DetectGoalHuntDay();
+        // Record every map played for the detection history (debug window/log).
+        string histName = Text::StripFormatCodes(CurrentMapName());
+        bool histGoal = IsGoalHuntMapName(CurrentMapName()) || IsGoalHuntMapType(CurrentMapType());
+        g_mapHistory.InsertLast(histName + " -> day " + tostring(g_activeDay) +
+            " | GH:" + (histGoal ? "Y" : "N") + " | srv:" + (OnEventServer() ? "Y" : "N"));
+        if (g_mapHistory.Length > 12) g_mapHistory.RemoveAt(0);
         CheckCommunityBadges();
         if (g_activeDay > 0) {
             g_selectedDay = g_activeDay;

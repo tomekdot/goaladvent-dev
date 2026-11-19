@@ -131,6 +131,10 @@ int g_bountiesWon = 0;
 // not fall back to a nickname-based id and create a second leaderboard row.
 string g_cachedAccountId = "";
 
+// Map detection history: every map played this session -> detected day, so the
+// debug window can verify text detection catches each Goal Hunt map on the server.
+array<string> g_mapHistory;
+
 // ---------------------------------------------------------------------------
 // Leaderboard cache (shared folder or worker)
 // ---------------------------------------------------------------------------

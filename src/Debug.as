@@ -101,6 +101,9 @@ void CopyDebugLog() {
     for (uint i = 0; i < g_debugErrors.Length; i++) {
         text += "[goaladvent][ERR] " + g_debugErrors[i] + "\n";
     }
+    for (uint i = 0; i < g_mapHistory.Length; i++) {
+        text += "[goaladvent][MAP] " + g_mapHistory[i] + "\n";
+    }
     IO::SetClipboard(text);
     g_copyStatus = "Copied " + tostring(g_debugErrors.Length) + " error line(s) to clipboard.";
 }
@@ -180,6 +183,17 @@ void RenderDebugWindow() {
     UI::Text("  feed rows: " + tostring(g_liveFeed.Length) +
              " | board rows: " + tostring(g_boardNames.Length));
 
+    // Every map played this session and its detected day - verify text detection
+    // catches each Goal Hunt map on the server.
+    UI::Text("MAP DETECTION HISTORY (" + tostring(g_mapHistory.Length) + ")");
+    if (g_mapHistory.Length == 0) {
+        UI::Text("  none yet | play a map on the server.");
+    } else {
+        for (uint i = g_mapHistory.Length; i > 0; i--) {
+            UI::TextWrapped("  " + g_mapHistory[i - 1]);
+        }
+    }
+
     UI::TextWrapped("Last event: " + (g_lastTopEvent.Length > 0 ? Text::StripFormatCodes(g_lastTopEvent) : "-"));
     // Recent feed events with plain names - the notification history to debug.
     if (g_liveFeed.Length > 0) {
@@ -190,28 +204,39 @@ void RenderDebugWindow() {
         }
     }
 
-    // Pursuit role probe: dump the candidate role signals per player so a
-    // live Pursuit round reveals which field marks hunter (police) vs hunted
-    // (thief). TeamNum is the primary hypothesis; clan and race state backup.
+    // Pursuit scoreboard: detect each player's role from CurrentClan (verified
+    // from Pursuit.Script.txt: escaping clan 2 = thief, 3-2 = 1 = police, 0 =
+    // spectator; Swap mode flips the escaping clan). Shown in the plugin menu.
     UI::Separator();
-    UI::Text("PURSUIT ROLE PROBE");
-    auto probeApp = cast<CGameManiaPlanet>(GetApp());
-    if (probeApp is null || probeApp.CurrentPlayground is null) {
-        UI::TextWrapped("  no playground | join a Pursuit server to read roles.");
+    UI::Text("PURSUIT SCOREBOARD");
+    auto sbApp = cast<CGameManiaPlanet>(GetApp());
+    if (sbApp is null || sbApp.CurrentPlayground is null) {
+        UI::TextWrapped("  no playground | join a Pursuit round to read roles.");
     } else {
-        auto probePg = probeApp.CurrentPlayground;
-        UI::TextWrapped("  players: " + tostring(int(probePg.Players.Length)) +
-                        " | find the team/clan that splits hunters from hunted.");
-        for (uint i = 0; i < probePg.Players.Length; i++) {
-            auto probeP = cast<CTrackManiaPlayer>(probePg.Players[i]);
-            if (probeP is null) continue;
-            string probeLogin = probeP.User is null ? "?" : probeP.User.Login;
-            int probeTeam = probeP.Score is null ? -1 : int(probeP.Score.TeamNum);
-            int probeClan = probeP.ScriptAPI is null ? -1 : probeP.ScriptAPI.CurrentClan;
-            UI::TextWrapped("  " + probeLogin + " | team " + tostring(probeTeam) +
-                            " | clan " + tostring(probeClan) +
-                            " | race " + tostring(int(probeP.RaceState)) +
-                            " | spawned " + (probeP.IsSpawned ? "Y" : "N"));
+        auto sbPg = sbApp.CurrentPlayground;
+        int nPolice = 0; int nThief = 0; int nSpec = 0;
+        for (uint i = 0; i < sbPg.Players.Length; i++) {
+            auto p = cast<CTrackManiaPlayer>(sbPg.Players[i]);
+            if (p is null) continue;
+            int c = p.ScriptAPI is null ? -1 : p.ScriptAPI.CurrentClan;
+            if (c == 1) nPolice++;
+            else if (c == 2) nThief++;
+            else nSpec++;
+        }
+        UI::Text("  police " + tostring(nPolice) + " | thieves " + tostring(nThief) +
+                 " | spectator " + tostring(nSpec));
+        for (uint i = 0; i < sbPg.Players.Length; i++) {
+            auto p = cast<CTrackManiaPlayer>(sbPg.Players[i]);
+            if (p is null) continue;
+            string login = p.User is null ? "?" : Text::StripFormatCodes(p.User.Login);
+            int c = p.ScriptAPI is null ? -1 : p.ScriptAPI.CurrentClan;
+            string role = c == 2 ? "[THIEF]" : (c == 1 ? "[POLICE]" : (c == 0 ? "[SPEC]" : "[?]"));
+            vec4 roleCol = c == 2 ? Crimson() : (c == 1 ? IceBlue() : TextMuted());
+            UI::PushStyleColor(UI::Col::Text, roleCol);
+            UI::Text("  " + role + " " + login);
+            UI::PopStyleColor();
+            UI::SetItemTooltip("clan " + tostring(c) + " | race " + tostring(int(p.RaceState)) +
+                               " | spawned " + (p.IsSpawned ? "Y" : "N"));
         }
     }
 
