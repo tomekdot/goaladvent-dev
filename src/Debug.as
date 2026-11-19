@@ -139,7 +139,15 @@ void RenderDebugWindow() {
     UI::Text("  feed rows: " + tostring(g_liveFeed.Length) +
              " | board rows: " + tostring(g_boardNames.Length));
 
-    UI::TextWrapped("Last event: " + (g_lastTopEvent.Length > 0 ? g_lastTopEvent : "-"));
+    UI::TextWrapped("Last event: " + (g_lastTopEvent.Length > 0 ? Text::StripFormatCodes(g_lastTopEvent) : "-"));
+    // Recent feed events with plain names - the notification history to debug.
+    if (g_liveFeed.Length > 0) {
+        UI::Text("RECENT EVENTS");
+        uint n = g_liveFeed.Length < 5 ? g_liveFeed.Length : 5;
+        for (uint i = 0; i < n; i++) {
+            UI::TextWrapped("  " + Text::StripFormatCodes(g_liveFeed[i]));
+        }
+    }
 
     UI::Separator();
     UI::Text("LAST ERRORS (" + tostring(g_debugErrors.Length) + ")");

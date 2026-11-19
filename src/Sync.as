@@ -4,10 +4,13 @@
 // Banner and feed
 // ---------------------------------------------------------------------------
 void ShowBanner(const string &in text) {
-    g_bannerText = text;
+    // Player names arrive with ManiaPlanet colour codes ($fff$s...$z);
+    // banners and toasts must show plain names, never the raw escapes.
+    string clean = Text::StripFormatCodes(text);
+    g_bannerText = clean;
     g_bannerTimer = 6.0f;
     if (S_Notifications) {
-        UI::ShowNotification("GoalAdvent 2026", text, 5000);
+        UI::ShowNotification("GoalAdvent 2026", clean, 5000);
     }
 }
 
