@@ -46,9 +46,20 @@ developer mode) browses a pack's tree and extracts files, but extraction is
 third-party pack (domino54) can be browsed, not extracted. Filenames inside packs
 are often hashed and resolve only after the game loads them (`FileHashes.txt`).
 System -> **Drives/Folders** (Fid Explorer) shows currently mounted files; a
-loaded titlepack's scripts are mounted there. The `Fids::Extract` AngelScript
-handle classes (`CSystemFidFile`, `CSystemFidsFolder`) are **not** exposed in
-`OpenplanetCore.json`, so scripted extraction is not possible either.
+loaded titlepack's scripts are mounted there.
+
+**Live extraction test (verified):** the Fids AngelScript API *is* accessible -
+`CSystemFidsFolder` / `CSystemFidFile` are defined in `Openplanet4.json` (not
+`OpenplanetCore.json`) and callable, with `CSystemFids.Trees` (subfolders) /
+`.Leaves` (files) enumeration, `Fids::GetGameFolder/GetUserFolder`,
+`Fids::GetFullPath`, `Fids::Extract(fid)` and `CSystemFidFile.CopyToFileRelative`.
+A probe walking the Game and User drives found **no loose `.Script.txt` files**
+(the scripts live inside the compressed pack containers, not as extractable
+loose fids), and `Fids::Extract` on a pack path returned **BLOCKED/FAIL**. So
+scripted extraction of a third-party titlepack does not work in practice: the
+engine restricts extraction to own/official packs and the code is not exposed as
+loose files. (Note: AngelScript 1.29 rejects `&inout` on primitives - use a
+global counter, not an `int&` recursion parameter.)
 
 **Consequence:** the literal Pursuit ManiaScript source is unavailable without
 the author. This document describes the **engine architecture Pursuit builds on**
