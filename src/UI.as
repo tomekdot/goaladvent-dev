@@ -1044,6 +1044,16 @@ void RenderFooter() {
     // Thin status strip: connection health with a bright head + muted detail
     // on the left, three colour-coded stat chips on the right.
     UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(8.0f * UiK(), 1.0f * UiK()));
+    // Hairline rule above the strip, like the moon card's separator: one
+    // quiet pixel with side margins, not a thick band.
+    UI::Dummy(vec2(0, 1.0f * UiK()));
+    vec2 rulePos = UI::GetWindowPos();
+    float ruleY = rulePos.y + UI::GetCursorPos().y;
+    float rulePad = 16.0f * UiK();
+    UI::DrawList@ ruleDl = UI::GetWindowDrawList();
+    ruleDl.AddLine(vec2(rulePos.x + rulePad, ruleY),
+                   vec2(rulePos.x + UI::GetWindowSize().x - rulePad, ruleY),
+                   MixCol(g_palette.border, g_palette.text, 0.25f), 1.0f);
     UI::Dummy(vec2(0, 2.0f * UiK()));
 
     string head;
