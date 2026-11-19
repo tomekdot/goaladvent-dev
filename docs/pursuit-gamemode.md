@@ -238,5 +238,92 @@ the role split (team/clan) to attribute the catch and assists.
 2. Implement real `DetermineRole()` in GoalAdvent from the confirmed signal.
 3. Add a role indicator (per-player icon/badge, hunter count, hunted highlight).
 4. Optionally sync roles to the Cloudflare worker for the live feed.
-5. If the literal gamemode source is ever needed, request it from domino54 -
-   it cannot be extracted from the closed titlepack.
+5. The literal gamemode source IS obtainable: ManiaPlanet's in-game script
+   editor (Ctrl+G) opens the running gamemode script. Fids extraction of a
+   third-party pack is blocked, but the editor route works. See section 9.
+
+## 9. Verified mechanics (from Pursuit.Script.txt, domino54, 2018-06-22)
+
+Source obtained via the in-game script editor (Ctrl+G), not Fids extraction.
+Extends `Modes/TrackMania/ModePursuit.Script.txt`; compatible map types:
+`PursuitArena`, `GoalHuntArena`, `HuntersArena`, `PursuitProArena`. This section
+supersedes the TeamNum hypothesis in sections 4-6: the role signal is the CLAN.
+
+### 9.1 Roles = clans (not teams)
+
+- `UseClans = True`, `PUR_CurEscapingClan = 2`. Thieves = the escaping clan
+  (default **2**), Police = `3 - PUR_CurEscapingClan` (default **1**). Clan 0 =
+  spectator / unassigned.
+- The role field is `Player.CurrentClan`, exposed to Openplanet as
+  `CTrackManiaPlayer.ScriptAPI.CurrentClan` (int). **This is the role signal,
+  not `Score.TeamNum`.**
+- Swap mode flips the escaping clan (1 <-> 2); detect it dynamically (the
+  minority clan at round start is police, or read the clan labels). Default
+  mapping: CurrentClan 2 = thief (Hunted), 1 = police (Hunter), 0 = spectator.
+- Round start: everyone is a thief, one random policeman is tossed. A caught
+  thief becomes police (Survival mode). Round ends when all thieves are caught
+  or the time limit is reached.
+
+### 9.2 Catching
+
+- Primary: `PUR_AreTouching(Thief, Policeman)` -> `CatchThief(Thief, Policeman)`
+  (reason `C_CaptureReason_Policeman = 0`). A TOUCH / collision test, not a fixed
+  radius - approximate client-side with a small distance threshold.
+- Environmental catches (thief, after the safe phase): OffZone(1), Boundary(2),
+  Void(3), Command(4), Water(5), Ceiling(6), DangerZone(7), PoliceZone(8),
+  ThiefZone(9), Speedbomb(10), GoalTimeout(11), Spectator(12).
+- On catch: thief respawns (`TM::WaitRace`), `Captured.wav` plays, killfeed
+  `Killfeed::SendNotice(thiefName, policemanName, icon, assistantLogin)`.
+- Safe phase: `S_SafePhaseDuration` (default 15 s, max 60) before police pursue.
+- Respawn: thieves respawn after capture (5000 ms min -> 15000 ms max as thieves
+  dwindle; GoalHunt 5000 ms); cancel by driving > 8 m at > 10 speed.
+
+### 9.3 Assists ("asysta")
+
+`C_PointsForAssist = 1` (+1 Lagoon-car bonus). Two mechanisms build
+`PotentialCaptureAssistants` on catch:
+
+1. **Scare-off** (highest priority), `ThiefScaredOffByPolicemanId`:
+   - Camping: thief speed <= 15 (`C_ScareDetectionRunningSpeed`) for >= 3000 ms
+     (`C_ScareDetectionCampingDuration`) while a police is within 48 m horizontal
+     (`C_ScareDetectionCampingDistMax`) and 7 m vertical
+     (`C_ScareDetectionCampingHeightMax`); when the thief runs again, the nearest
+     such police is credited with scaring them.
+   - Fall: thief drops >= 2 m from an altitude peak with a police above within
+     48 m horizontal -> nearest police credited.
+   - Credit expires after 15000 ms (`C_ScareDetectionFallTimeout`).
+2. **Chase**, `ThiefChasedByPolicemen*`: a police is chasing when
+   - both speeds >= 25 km/h (`C_ChaseDetectionSpeedMin` / 3.6),
+   - slower speed >= 0.5 x faster (`C_ChaseDetectionSpeedDiffPercMax`),
+   - aim yaw difference <= 60 deg (`C_ChaseDetectionAimAngleDiffMax`),
+   - distance <= 96 m (`C_ChaseDetectionDistanceMax`),
+   - sustained >= 1000 ms (`C_ChaseDetectionStartingDelay`); status kept 15000 ms
+     (`C_ChaseDetectionStatusKeepTime`).
+   - Chasing assistants are sorted by nearest distance to the thief.
+
+On catch: assistants = [scare-off police] + [chasing police by distance]; the
+catching police is removed; the first assistant shows in the killfeed; each
+assistant gets 1 point. If no police caught (environmental) but an assist exists,
+the first assistant gets the capture credit.
+
+### 9.4 Points
+
+- Thief survival: +1 per other thief caught (streak max 3, `C_MaxSurvivalStreak`).
+- Police capture: base = remaining-thief survival points; last thief up to 5
+  (`C_PointsForLastCapMax`); capture streak up to 5 (`C_MaxCaptureStreak`);
+  Lagoon-car bonus +1 (`C_PointsForLagoonCar`).
+- Assist: 1 (+1 Lagoon). First police: 5 (`C_PointsForFirstPolice`). Last thief:
+  5 (`C_PointsForLastThief`). Thief surviving to end: up to 5
+  (`C_PointsForThiefEndMax`).
+- TopScores categories: `Pursuit_Survival` (best survivor), `Pursuit_Capture`
+  (most captures), `Pursuit_Stunts` (most stunts).
+
+### 9.5 Client-side detection (Openplanet)
+
+- Role: `ScriptAPI.CurrentClan` (2 thief / 1 police / 0 spec, default escaping=2).
+- Position / speed / aim: `ScriptAPI.Position`, `.Speed`, aim yaw for chase math.
+- Catch: watch a thief's clan flip to police (Survival) or respawn with a police
+  within touching distance; environmental catches via respawn + zone state.
+- Assist: replicate the scare / chase thresholds above from live positions/speeds.
+- Killfeed / points notices are ManiaScript UI events in the client app
+  (`PursuitClientApp.Script.txt`); reading them needs the UI layer / custom events.

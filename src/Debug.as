@@ -65,6 +65,9 @@ void DumpPursuitRoles() {
         string login = p.User is null ? "?" : p.User.Login;
         int team = p.Score is null ? -1 : int(p.Score.TeamNum);
         int clan = p.ScriptAPI is null ? -1 : p.ScriptAPI.CurrentClan;
+        // Pursuit roles are clans: escaping clan 2 = thief, 3-2 = 1 = police
+        // (default; Swap mode flips the escaping clan). 0 = spectator.
+        string role = clan == 2 ? "THIEF" : (clan == 1 ? "POLICE" : (clan == 0 ? "SPEC" : "?"));
         // Proximity to the nearest other spawned player: a catch drops this
         // toward zero, revealing the gamemode catch radius in a live round.
         string near = "-";
@@ -80,7 +83,7 @@ void DumpPursuitRoles() {
             if (best >= 0.0f) near = tostring(int(best)) + "m";
         }
         print("[goaladvent][DBG] ROLE " + login + " team=" + tostring(team) +
-              " clan=" + tostring(clan) + " race=" + tostring(int(p.RaceState)) +
+              " clan=" + tostring(clan) + " role=" + role + " race=" + tostring(int(p.RaceState)) +
               " spawned=" + (p.IsSpawned ? "Y" : "N") + " near=" + near);
     }
 }
