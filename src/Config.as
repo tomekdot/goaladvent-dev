@@ -28,6 +28,9 @@ bool S_ShowMoonPct = true;
 [Setting category="Appearance" name="Show day details" description="Show the day details strip next to the calendar. Off = full-width calendar only."]
 bool S_ShowDayDetails = false;
 
+[Setting category="Appearance" name="Traditional tiles" description="Colour each calendar tile surface by its state: gold premiere/finale, emerald completed, crimson action, purple rest, gray locked. Off = uniform frosted glass."]
+bool S_TraditionalTiles = false;
+
 [Setting category="Sync" name="Auto sync" description="Refresh the leaderboard every 20 seconds in the background."]
 bool S_AutoSync = true;
 

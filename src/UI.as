@@ -341,11 +341,23 @@ string DayTileStatus(int day, float tileW) {
 bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
                          const string &in statusLine, vec4 bgCol, vec4 _textCol,
                          vec4 accent, bool isSelected, bool _isToday, float tileW, float tileH) {
+    // Traditional tiles (opt-in): the surface and edge carry the state colour
+    // - gold premiere/finale, emerald done, crimson action, purple rest,
+    // gray locked. Default stays uniform frosted glass.
+    if (S_TraditionalTiles) {
+        // Tint the RGB fully toward the state colour, keep a fixed glass
+        // alpha - mixing the low-alpha base would wash the hue out to gray.
+        vec4 tint = MixCol(vec4(bgCol.x, bgCol.y, bgCol.z, 1.0f),
+                           vec4(accent.x, accent.y, accent.z, 1.0f), 0.85f);
+        bgCol = vec4(tint.x, tint.y, tint.z, 0.30f);
+    }
     UI::PushStyleVar(UI::StyleVar::FrameBorderSize, isSelected ? 2.0f : 1.0f);
     UI::PushStyleVar(UI::StyleVar::FrameRounding, 0.0f);
+    vec4 edgeCol = S_TraditionalTiles ? MixCol(g_palette.tileEdge, accent, 0.65f)
+                                      : g_palette.tileEdge;
     vec4 borderCol = isSelected
         ? vec4(IceBlue().x, IceBlue().y, IceBlue().z, 0.95f)
-        : g_palette.tileEdge;
+        : edgeCol;
     UI::PushStyleColor(UI::Col::Border, borderCol);
     UI::PushStyleColor(UI::Col::Button, bgCol);
     UI::PushStyleColor(UI::Col::ButtonHovered, g_palette.tileHover);
