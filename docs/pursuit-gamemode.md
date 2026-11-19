@@ -435,3 +435,33 @@ per-user storage.
 - Native `AnimMgr.Add(control, "<manialink xml>", duration, Easing)` animations
   (e.g. `SineOut`) alongside LibManialink; `Brightness(Vec3, Real)` color helper;
   `ComputeWidth(label)` for layout.
+
+## 12. Porting ML:: / TL:: to Openplanet (verified mapping)
+
+The gamemode uses ManiaScript `MathLib` (`ML::`) and `TextLib` (`TL::`). To port
+the catch / assist logic to Openplanet AngelScript, map them to `Math::` / `Text::`
+(verified against `OpenplanetCore.json`):
+
+| ManiaScript | Openplanet | Notes |
+|---|---|---|
+| `ML::Distance(a, b)` | `Math::Distance(a, b)` | vec3 overload exists |
+| `ML::Min(a, b)` / `ML::Max` | `Math::Min` / `Math::Max` | int + float overloads |
+| `ML::Abs(x)` | `Math::Abs(x)` | int + float |
+| `ML::Clamp(x, min, max)` | `Math::Clamp(x, min, max)` | int + float |
+| `ML::PI()` | `Math::PI` | **property (float), no parentheses** |
+| `ML::NearestInteger(x)` | `Math::Round(x)` | returns float -> cast `int` |
+| `ML::FloorInteger(x)` | `int(Math::Floor(x))` | Floor returns float |
+| `ML::ToReal(x)` | `float(x)` | cast |
+| `TL::ToText(x)` | `tostring(x)` | `tostring(uint)` ambiguous -> cast int |
+| `TL::ToInteger(s)` | `Text::ParseInt(s)` | verified |
+| `TL::Compose("%1", x)` | `Text::Format("%s", x)` | **printf-style %s/%d, NOT positional %1/%2** |
+| `TL::FormatInteger(x, n)` | `Text::Format("%0Nd", x)` | zero-pad width N |
+| `TL::FormatReal(x, ...)` | `Text::Format("%.Nf", x)` | decimals N |
+| `TL::Split(s, sep)` | **no `Text::Split`** | manual split (find/substr loop) |
+| `TL::TimeToText(ms)` | custom | format ms -> m:ss.cc |
+
+Pitfalls carried over: `&inout` on primitives is rejected (use a global or `&in`/
+`&out`); `tostring(uint)` needs an int cast; `Math::Round`/`Floor` return float.
+With this mapping the section 9 thresholds (scare 48 m / 7 m / 3 s / speed 15,
+chase 96 m / 25 km/h / 60 deg / 1 s) port directly to `Math::Distance`,
+`Math::Clamp`, `Math::Abs` and angle math via `Math::PI`.
