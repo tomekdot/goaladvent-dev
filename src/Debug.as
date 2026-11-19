@@ -48,8 +48,32 @@ string DebugStateLine() {
            " eventServer=" + tostring(OnEventServer());
 }
 
+// Dump candidate Pursuit role signals per player to Openplanet.log so a live
+// round can be read from the log file (no UI needed). TeamNum is the primary
+// hunter/hunted hypothesis; clan and race state are backups.
+void DumpPursuitRoles() {
+    auto app = cast<CGameManiaPlanet>(GetApp());
+    if (app is null || app.CurrentPlayground is null) {
+        print("[goaladvent][DBG] ROLE no playground");
+        return;
+    }
+    auto pg = app.CurrentPlayground;
+    print("[goaladvent][DBG] ROLE players=" + tostring(int(pg.Players.Length)));
+    for (uint i = 0; i < pg.Players.Length; i++) {
+        auto p = cast<CTrackManiaPlayer>(pg.Players[i]);
+        if (p is null) continue;
+        string login = p.User is null ? "?" : p.User.Login;
+        int team = p.Score is null ? -1 : int(p.Score.TeamNum);
+        int clan = p.ScriptAPI is null ? -1 : p.ScriptAPI.CurrentClan;
+        print("[goaladvent][DBG] ROLE " + login + " team=" + tostring(team) +
+              " clan=" + tostring(clan) + " race=" + tostring(int(p.RaceState)) +
+              " spawned=" + (p.IsSpawned ? "Y" : "N"));
+    }
+}
+
 void LogDebugState() {
     print("[goaladvent][DBG] " + DebugStateLine());
+    DumpPursuitRoles();
 }
 
 // Everything a support report needs, as one pasteable block.
@@ -146,6 +170,31 @@ void RenderDebugWindow() {
         uint n = g_liveFeed.Length < 5 ? g_liveFeed.Length : 5;
         for (uint i = 0; i < n; i++) {
             UI::TextWrapped("  " + Text::StripFormatCodes(g_liveFeed[i]));
+        }
+    }
+
+    // Pursuit role probe: dump the candidate role signals per player so a
+    // live Pursuit round reveals which field marks hunter (police) vs hunted
+    // (thief). TeamNum is the primary hypothesis; clan and race state backup.
+    UI::Separator();
+    UI::Text("PURSUIT ROLE PROBE");
+    auto probeApp = cast<CGameManiaPlanet>(GetApp());
+    if (probeApp is null || probeApp.CurrentPlayground is null) {
+        UI::TextWrapped("  no playground | join a Pursuit server to read roles.");
+    } else {
+        auto probePg = probeApp.CurrentPlayground;
+        UI::TextWrapped("  players: " + tostring(int(probePg.Players.Length)) +
+                        " | find the team/clan that splits hunters from hunted.");
+        for (uint i = 0; i < probePg.Players.Length; i++) {
+            auto probeP = cast<CTrackManiaPlayer>(probePg.Players[i]);
+            if (probeP is null) continue;
+            string probeLogin = probeP.User is null ? "?" : probeP.User.Login;
+            int probeTeam = probeP.Score is null ? -1 : int(probeP.Score.TeamNum);
+            int probeClan = probeP.ScriptAPI is null ? -1 : probeP.ScriptAPI.CurrentClan;
+            UI::TextWrapped("  " + probeLogin + " | team " + tostring(probeTeam) +
+                            " | clan " + tostring(probeClan) +
+                            " | race " + tostring(int(probeP.RaceState)) +
+                            " | spawned " + (probeP.IsSpawned ? "Y" : "N"));
         }
     }
 
