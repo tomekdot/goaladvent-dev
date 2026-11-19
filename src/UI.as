@@ -1013,7 +1013,10 @@ void RenderFinaleTab() {
 // Dashboard and footer
 // ---------------------------------------------------------------------------
 void RenderFooter() {
-    UI::Separator();
+    // A thin rule keeps the status line compact; a full Separator added
+    // another row of padding and made the footer read as a thick bar.
+    UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(8.0f * UiK(), 1.0f * UiK()));
+    UI::Dummy(vec2(0, 2.0f * UiK()));
     // The footer is the single status line: live connection health on the
     // left, points / gifts / badges on the right. The selected day lives in
     // the day bar above, so it is not repeated here.
@@ -1048,6 +1051,7 @@ void RenderFooter() {
     UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f * UiK());
     TextTone(MixCol(TextMuted(), TextMain(), 0.50f), right);
     UI::PopFontSize();
+    UI::PopStyleVar();
 }
 
 void RenderWorkspace() {
