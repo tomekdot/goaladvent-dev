@@ -388,3 +388,50 @@ main() {
 - `InputPlayer.Score.PrevRace.Time` / `BestRace.Time` for last/best time.
 - `GetModeName() = Playground.ServerInfo.ModeName`; `ServerInfo.ServerName` for the
   header; `Map.MapInfo.MapUid` detects map changes.
+
+## 11. Map selection / voting UI (LibMapSelection2)
+
+The map-vote screen module. Confirms the bidirectional net channel and persistent
+per-user storage.
+
+### 11.1 Data
+
+- `SMapCard` struct: `UID`, `Name`, `AuthorName`, `ThumbnailURL`.
+- Map collection `Net_LibMapSelection2_MapsCollectionName`; voteable maps list +
+  `SMapCard[Text]` data dictionary.
+
+### 11.2 Net channel (bidirectional)
+
+- **Server -> client** (`netread for Teams[0]`): `VotingScreenCurState` (0 hidden /
+  1 voting / 2 results), `VotingEndTime`, `ResultsEndTime`, `VoteableMapsList`,
+  `VoteableMapsData`, `CurMapsNbVotes` (`Integer[Text]`), `CurWinningMapUID`,
+  `TotalNbPlayers`, `TotalNbVotes`, `LastUIUpdate`, `VotingUniqueID`.
+- **Client -> server** (`netwrite for UI`): `CurSelectedMapUID` (the vote),
+  `LastVotingUniqueID`, `RecentlyPlayedMaps`.
+- **Per-player** (`netread for InputPlayer`): `IsSpectatorServer`,
+  `LastRegisterMapRequest`, `NewMapUIDToRegister`.
+- So `netwrite` is bidirectional: the server publishes state `for Teams[0]`, the
+  client publishes actions `for UI`. A vote is just the client setting
+  `Net_LibMapSelection2_CurSelectedMapUID`.
+
+### 11.3 Persistent storage
+
+- `declare persistent Integer / Text[][Text] ... for LocalUser`: recently-played
+  maps per collection, capped at 15 (oldest removed), survives sessions and is
+  sent back via `Net_LibMapSelection2_RecentlyPlayedMaps`.
+
+### 11.4 Voting logic / UI
+
+- Shown when `!IsInGameMenuDisplayed && state > 0 && GameTime <= voting/results
+  end`; `SendCustomEvent("VisibilityChange", Text[])` notifies other layers.
+- Map cards in a 2-row grid (80 + 2 px spacing); the current map is shifted to the
+  front and rendered as a "Replay current map" card.
+- Vote: MouseClick / MenuNavigation Select on `Quad_MapCardButton` sets
+  `CurSelectedMapUID` (blocked for spectators or after `VotingEndTime`); arrow
+  navigation walks a 2-row `DisplayedMapsNavigationGrid`.
+- Results (state 2): per-map vote counts, winning map green; win reason
+  "Selected at random" (0 votes) / "Selected by everyone" (all votes) /
+  "Selected first" (draw) / "Selected by majority".
+- Native `AnimMgr.Add(control, "<manialink xml>", duration, Easing)` animations
+  (e.g. `SineOut`) alongside LibManialink; `Brightness(Vec3, Real)` color helper;
+  `ComputeWidth(label)` for layout.
