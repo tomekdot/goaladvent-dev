@@ -6,10 +6,15 @@
 // ---------------------------------------------------------------------------
 // Appearance
 // ---------------------------------------------------------------------------
-enum UiTheme { ObsidianMinimal, TransparentGlass }
+enum UiTheme { Light, Classic, GoalAdvent, Galaxy }
 
-[Setting category="Appearance" name="UI Theme" description="Obsidian Minimal is matte carbon; Transparent Glass is neutral smoke with white frosted cards."]
-UiTheme g_Theme = UiTheme::ObsidianMinimal;
+[Setting category="Appearance" name="UI Theme" description="Light = soft white cards; Classic = blue accents; GoalAdvent = matte carbon; Galaxy = transparent glass."]
+UiTheme g_Theme = UiTheme::GoalAdvent;
+
+// Openplanet caches enum settings until a full game restart. This switch makes
+// the new Galaxy theme active immediately; turn it off to use the selector.
+[Setting category="Appearance" name="Galaxy theme" description="ON = transparent Galaxy look now. OFF = follow the UI Theme selector."]
+bool S_GalaxyOn = true;
 
 [Setting category="Appearance" name="UI scale" description="Scales every font and the cards around it. 1.25 is the default; adjust it to taste." min=1.0 max=2.0]
 float S_UiScale = 1.25f;
@@ -17,7 +22,7 @@ float S_UiScale = 1.25f;
 [Setting category="Appearance" name="Glass Opacity" description="Window tint strength. Lower values let more of the game show through." min=0.15 max=0.80]
 float S_GlassOpacity = 0.55f;
 
-bool GlassTheme() { return g_Theme == UiTheme::TransparentGlass; }
+bool GlassTheme() { return S_GalaxyOn || g_Theme == UiTheme::Galaxy; }
 
 [Setting category="Advanced" name="Debug overlay" description="Admin-only diagnostics: live plugin state and a button that writes one readable line to Openplanet.log."]
 bool S_Debug = false;

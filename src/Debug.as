@@ -18,7 +18,7 @@ string DebugStateLine() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    return "version=" + PLUGIN_VERSION + " theme=" + (GlassTheme() ? "glass" : "obsidian") +
+    return "version=" + PLUGIN_VERSION + " theme=" + (GlassTheme() ? "galaxy" : "goaladvent") +
            " localDate=" + localDate +
            " eventSeason=" + tostring(eventSeason) +
            " errors=" + tostring(g_debugErrors.Length) +
@@ -102,7 +102,7 @@ void RenderDebugWindow() {
     UI::Text("VERSION | VIEW");
     UI::Text("  version: " + PLUGIN_VERSION);
     UI::Text("  local date: " + localDate + " | event season: " + tostring(eventSeason));
-    UI::Text("  theme: " + string(GlassTheme() ? "Transparent Glass" : "Obsidian Minimal"));
+    UI::Text("  theme: " + string(GlassTheme() ? "Galaxy transparent" : "GoalAdvent dark"));
     UI::Text("  glass opacity: " + tostring(S_GlassOpacity));
     UI::Text("  dashboard visible: " + tostring(g_showCalendar));
 

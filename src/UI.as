@@ -203,8 +203,8 @@ void PopDashboardStyle() {
 // ---------------------------------------------------------------------------
 void RenderHeaderCard() {
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
-    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(14.0f * UiK(), 10.0f * UiK()));
-    UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(8.0f * UiK(), 7.0f * UiK()));
+    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(16.0f * UiK(), 12.0f * UiK()));
+    UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(10.0f * UiK(), 9.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int flags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
     if (UI::BeginChild("##goaladventHeader", vec2(0, 0),
@@ -215,6 +215,10 @@ void RenderHeaderCard() {
         UI::PushStyleColor(UI::Col::Button, btn);
         UI::PushStyleColor(UI::Col::ButtonHovered, Lift(btn));
         UI::PushStyleColor(UI::Col::ButtonActive, Lift(Lift(btn)));
+        UI::PushStyleColor(UI::Col::Border, g_palette.border);
+        UI::PushStyleVar(UI::StyleVar::FrameRounding, 4.0f * UiK());
+        UI::PushStyleVar(UI::StyleVar::FrameBorderSize, 1.0f);
+        UI::PushStyleVar(UI::StyleVar::ButtonTextAlign, vec2(0.5f, 0.5f));
 
         // Save the row origin BEFORE any text: after Text the cursor drops to
         // the next line, so GetContentRegionAvail() there is the full width
@@ -222,6 +226,16 @@ void RenderHeaderCard() {
         vec2 rowStart = UI::GetCursorPos();
         float contentW = UI::GetContentRegionAvail().x;
 
+        // Button geometry first: the tagline is vertically co-centered against
+        // the button row height so text and icons share one optical midline
+        // (top-aligned text sat visibly high next to the 34 px chips).
+        float btnW = 40.0f * UiK();
+        float btnH = 34.0f * UiK();
+        float gap = 8.0f * UiK();
+        float textH = FS_BODY * UiK() * 1.30f;
+        float textY = rowStart.y + (btnH - textH) * 0.5f;
+
+        UI::SetCursorPos(vec2(rowStart.x, textY));
         UI::PushFontSize(FS_TITLE);
         TextTone(IceBlue(), Icons::SnowflakeO);
         UI::PopFontSize();
@@ -232,13 +246,18 @@ void RenderHeaderCard() {
 
         // Right-align the button group on the SAME row by restoring the saved
         // row baseline, never by a SameLine offset measured after the text.
-        float btnW = 30.0f * UiK();
-        float btnH = 26.0f * UiK();
-        float gap = 4.0f * UiK();
         float groupW = btnW * 4.0f + gap * 3.0f;
+        float taglineW = UI::MeasureString("25 days of checkpoints, bounties and badges",
+                                           null, FS_BODY).x + 16.0f * UiK();
         float btnX = rowStart.x + contentW - groupW;
-        if (btnX < rowStart.x) btnX = rowStart.x;
-        UI::SetCursorPos(vec2(btnX, rowStart.y));
+        if (btnX < rowStart.x + taglineW) {
+            // Too narrow for one row: drop the icon row below the tagline
+            // instead of letting the buttons cover the text.
+            btnX = rowStart.x + contentW - groupW;
+            UI::SetCursorPos(vec2(btnX, rowStart.y + btnH + 4.0f * UiK()));
+        } else {
+            UI::SetCursorPos(vec2(btnX, rowStart.y));
+        }
 
         UI::BeginDisabled(g_syncing);
         if (UI::Button(Icons::Refresh + "##headerSync", vec2(btnW, btnH))) SyncNow();
@@ -256,7 +275,7 @@ void RenderHeaderCard() {
         vec4 trashBg = g_confirmReset ? MixCol(g_palette.buttonBg, Crimson(), 0.60f)
                                       : MixCol(g_palette.buttonBg, Crimson(), 0.10f);
         UI::PushStyleColor(UI::Col::Button, trashBg);
-        UI::PushStyleColor(UI::Col::ButtonHovered, Crimson());
+        UI::PushStyleColor(UI::Col::ButtonHovered, MixCol(Crimson(), btn, 0.65f));
         UI::PushStyleColor(UI::Col::Text, g_confirmReset ? TextMain() : Crimson());
         if (UI::Button(Icons::Trash + "##headerReset", vec2(btnW, btnH))) {
             if (g_confirmReset) {
@@ -273,11 +292,13 @@ void RenderHeaderCard() {
         UI::PopStyleColor(3);
         UI::SameLine(0, gap);
         if (UI::Button(Icons::Cog + "##headerTheme", vec2(btnW, btnH))) {
-            g_Theme = (g_Theme == UiTheme::TransparentGlass)
-                ? UiTheme::ObsidianMinimal : UiTheme::TransparentGlass;
+            S_GalaxyOn = !S_GalaxyOn;
+            g_Theme = S_GalaxyOn ? UiTheme::Galaxy : UiTheme::GoalAdvent;
         }
-        UI::SetItemTooltip("Switch theme | Obsidian / Transparent Glass");
-        UI::PopStyleColor(3);
+        UI::SetItemTooltip("Switch theme | GoalAdvent / Galaxy");
+        UI::Dummy(vec2(0, 4.0f * UiK()));
+        UI::PopStyleVar(3);
+        UI::PopStyleColor(4);
     }
     UI::EndChild();
     UI::PopStyleVar(3);
@@ -576,8 +597,8 @@ void RenderDayAction(int day) {
 
     if (locked || IsOffDay(day)) {
         UI::BeginDisabled(true);
-        UI::PushStyleColor(UI::Col::Button, MixCol(g_palette.buttonBg, g_palette.text, 0.04f));
-        UI::PushStyleColor(UI::Col::Text, MixCol(TextMuted(), g_palette.text, 0.20f));
+        UI::PushStyleColor(UI::Col::Button, MixCol(g_palette.buttonBg, g_palette.text, 0.02f));
+        UI::PushStyleColor(UI::Col::Text, MixCol(TextMuted(), g_palette.text, 0.12f));
         if (locked) {
             UI::Button(FitLabel("AVAILABLE DEC " + tostring(day),
                                 "OPENS DEC " + tostring(day), maxW), vec2(-1, rowH));
@@ -646,7 +667,7 @@ void RenderDayBar(int day) {
     // and GetContentRegionAvail would report the full width.
     vec2 rowStart = UI::GetCursorPos();
     float contentW = UI::GetContentRegionAvail().x;
-    float rowH = 36.0f * UiK();
+    float rowH = 30.0f * UiK();
 
     // Size the button to its label so the text never touches the edges.
     float maxBtnW = contentW * 0.5f;
@@ -661,7 +682,7 @@ void RenderDayBar(int day) {
                          S_TestMode ? "TEST (12)" : "OPEN " + tostring(day), maxBtnW);
     }
     float btnW = UI::MeasureString(label, null, FS_BODY).x + 24.0f * UiK();
-    if (btnW < 150.0f * UiK()) btnW = 150.0f * UiK();
+    if (btnW < 130.0f * UiK()) btnW = 130.0f * UiK();
     if (btnW > maxBtnW) btnW = maxBtnW;
 
     string dayTitle = "DAY " + tostring(day) + " | " + g_titles[day - 1];
@@ -689,8 +710,8 @@ void RenderDayBar(int day) {
     if (locked || IsOffDay(day)) {
         // Clearly disabled: no hover, low contrast, no CTA styling.
         UI::BeginDisabled(true);
-        UI::PushStyleColor(UI::Col::Button, MixCol(g_palette.buttonBg, g_palette.text, 0.04f));
-        UI::PushStyleColor(UI::Col::Text, MixCol(TextMuted(), g_palette.text, 0.20f));
+        UI::PushStyleColor(UI::Col::Button, MixCol(g_palette.buttonBg, g_palette.text, 0.02f));
+        UI::PushStyleColor(UI::Col::Text, MixCol(TextMuted(), g_palette.text, 0.12f));
         UI::Button(label, vec2(btnW, rowH));
         if (!locked) {
             UI::SetItemTooltip("No race tonight | next Goal Hunt: Dec " +

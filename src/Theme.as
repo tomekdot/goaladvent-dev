@@ -103,9 +103,9 @@ class ThemePalette {
         if (a > 0.80f) a = 0.80f;
         windowBg       = vec4(0.030, 0.030, 0.030, a);
         containerBg    = vec4(0.000, 0.000, 0.000, 0.00);  // columns: no extra layer
-        childBg        = vec4(0.000, 0.000, 0.000, 0.22);  // sidebar only
-        innerBg        = vec4(1.000, 1.000, 1.000, 0.07);  // stat cards
-        headerBg       = vec4(0.000, 0.000, 0.000, 0.30);  // top / footer
+        childBg        = vec4(0.000, 0.000, 0.000, 0.10);  // sidebar only
+        innerBg        = vec4(1.000, 1.000, 1.000, 0.05);  // stat cards
+        headerBg       = vec4(0.000, 0.000, 0.000, 0.16);  // top / footer
         frameBg        = vec4(1.000, 1.000, 1.000, 0.10);
         border         = vec4(1.000, 1.000, 1.000, 0.09);
         borderStrong   = vec4(1.000, 1.000, 1.000, 0.75);
@@ -130,24 +130,66 @@ class ThemePalette {
         tileSelectedBg = vec4(1.000, 1.000, 1.000, 0.22);
         iceBlue = vec4(1.000, 1.000, 1.000, 0.96);
 
-        tabBg = vec4(0.000, 0.000, 0.000, 0.55);
+        tabBg = vec4(0.000, 0.000, 0.000, 0.20);
         tabActiveBg = vec4(0.00, 0.00, 0.00, 0.60);
         tabActiveText = vec4(0.98, 0.98, 1.00, 1.00);
         tabHoverBg = vec4(1.000, 1.000, 1.000, 0.14);
         tileEdge = vec4(1.000, 1.000, 1.000, 0.16);
         tileHover = vec4(1.000, 1.000, 1.000, 0.15);
-        tileFooter = vec4(0.000, 0.000, 0.000, 0.52);
+        tileFooter = vec4(0.000, 0.000, 0.000, 0.20);
 
         windowRounding = 0.0f;
         childRounding = 0.0f;
         frameRounding = 0.0f;
         tabRounding = 0.0f;
     }
+
+    void SetLight() {
+        SetObsidian();
+        windowBg       = vec4(0.94, 0.94, 0.96, 1.00);
+        childBg        = vec4(0.98, 0.98, 0.99, 1.00);
+        containerBg    = vec4(0.96, 0.96, 0.98, 1.00);
+        innerBg        = vec4(0.90, 0.90, 0.90, 1.00);
+        headerBg       = vec4(0.88, 0.88, 0.92, 1.00);
+        frameBg        = vec4(0.86, 0.86, 0.90, 1.00);
+        border         = vec4(0.78, 0.78, 0.82, 1.00);
+        borderStrong   = vec4(0.30, 0.30, 0.34, 1.00);
+        borderWeak     = vec4(0.80, 0.80, 0.84, 1.00);
+        buttonBg       = vec4(0.90, 0.90, 0.90, 1.00);
+        buttonHover    = vec4(0.82, 0.82, 0.82, 1.00);
+        buttonActive   = vec4(0.74, 0.74, 0.74, 1.00);
+        text           = vec4(0.10, 0.10, 0.12, 1.00);
+        textMuted      = vec4(0.34, 0.34, 0.38, 1.00);
+        tileBg         = vec4(0.90, 0.90, 0.90, 1.00);
+        tileSelectedBg = vec4(1.00, 1.00, 1.00, 1.00);
+        iceBlue        = vec4(0.20, 0.36, 0.62, 1.00);
+        tabActiveBg    = vec4(0.20, 0.36, 0.62, 1.00);
+        tabActiveText  = vec4(1.00, 1.00, 1.00, 1.00);
+        tileEdge       = border;
+        tileHover      = vec4(0.82, 0.82, 0.82, 1.00);
+        tileFooter     = vec4(0.00, 0.00, 0.00, 0.08);
+    }
+
+    void SetClassic() {
+        SetObsidian();
+        buttonBg       = vec4(0.26, 0.59, 0.98, 1.00);
+        buttonHover    = vec4(0.36, 0.66, 1.00, 1.00);
+        buttonActive   = vec4(0.20, 0.48, 0.84, 1.00);
+        iceBlue        = vec4(0.45, 0.68, 1.00, 1.00);
+        tabActiveBg    = vec4(0.26, 0.59, 0.98, 1.00);
+        tabActiveText  = vec4(1.00, 1.00, 1.00, 1.00);
+        tileBg         = vec4(0.12, 0.16, 0.22, 1.00);
+        tileSelectedBg = vec4(0.26, 0.59, 0.98, 1.00);
+        tileEdge       = vec4(0.26, 0.59, 0.98, 1.00);
+        tileHover      = vec4(0.20, 0.42, 0.70, 1.00);
+    }
 }
 
 ThemePalette g_palette;
 
 void RefreshPalette() {
-    if (g_Theme == UiTheme::TransparentGlass) g_palette.SetTransparentGlass();
+    if (GlassTheme()) g_palette.SetTransparentGlass();
+    else if (g_Theme == UiTheme::Light) g_palette.SetLight();
+    else if (g_Theme == UiTheme::Classic) g_palette.SetClassic();
     else g_palette.SetObsidian();
 }
