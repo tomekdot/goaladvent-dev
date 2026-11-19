@@ -163,7 +163,7 @@ void DrawStatCard(const string &in icon, const string &in label,
 // ---------------------------------------------------------------------------
 void PushDashboardStyle() {
     UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(16.0f * UiK(), 14.0f * UiK()));
-    UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(10.0f * UiK(), 10.0f * UiK()));
+    UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(10.0f * UiK(), 8.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(8.0f * UiK(), 4.0f * UiK()));
     UI::PushStyleVar(UI::StyleVar::WindowRounding, g_palette.windowRounding);
     UI::PushStyleVar(UI::StyleVar::ChildRounding, g_palette.childRounding);
@@ -652,13 +652,23 @@ void RenderDayBar(int day) {
     if (btnW < 150.0f * UiK()) btnW = 150.0f * UiK();
     if (btnW > maxBtnW) btnW = maxBtnW;
 
+    string dayTitle = "DAY " + tostring(day) + " | " + g_titles[day - 1];
+    float leftAvail = contentW - btnW - 12.0f * UiK();
+    float titleW = UI::MeasureString(dayTitle, null, FS_BODY).x;
+    float statusW = UI::MeasureString(status, null, FS_LABEL).x + 8.0f * UiK();
     UI::PushFontSize(FS_BODY);
-    TextTone(TextMain(), "DAY " + tostring(day) + " | " + g_titles[day - 1]);
+    TextTone(TextMain(), dayTitle);
     UI::PopFontSize();
-    UI::SameLine(0, 8.0f * UiK());
-    UI::PushFontSize(FS_LABEL);
-    TextTone(statusCol, status);
-    UI::PopFontSize();
+    if (titleW + statusW <= leftAvail) {
+        UI::SameLine(0, 8.0f * UiK());
+        UI::PushFontSize(FS_LABEL);
+        TextTone(statusCol, status);
+        UI::PopFontSize();
+    } else {
+        // Narrow window: the status moves to the tooltip instead of
+        // colliding with the action button.
+        UI::SetItemTooltip(status);
+    }
 
     float btnX = rowStart.x + contentW - btnW;
     if (btnX < rowStart.x) btnX = rowStart.x;
@@ -727,7 +737,7 @@ void RenderCalendarTab() {
     // Default: calendar only, 25 tiles and a thin day bar. The details strip
     // is opt-in (Settings -> Appearance -> Show day details).
     if (!S_ShowDayDetails) {
-        RenderCalendarGrid(0, -46.0f * UiK());
+        RenderCalendarGrid(0, -44.0f * UiK());
         RenderDayBar(day);
         return;
     }
@@ -858,10 +868,10 @@ void RenderLeaderboardTab() {
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     UI::PushFontSize(FS_BODY);
     if (UI::BeginTable("##goaladventBoardTable", 4, flags)) {
-        UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 46.0f * UiK());
+        UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 36.0f * UiK());
         UI::TableSetupColumn("PLAYER", UI::TableColumnFlags::WidthStretch);
-        UI::TableSetupColumn("POINTS", UI::TableColumnFlags::WidthFixed, 104.0f * UiK());
-        UI::TableSetupColumn("BOUNTIES", UI::TableColumnFlags::WidthFixed, 104.0f * UiK());
+        UI::TableSetupColumn("POINTS", UI::TableColumnFlags::WidthFixed, 84.0f * UiK());
+        UI::TableSetupColumn("BOUNTIES", UI::TableColumnFlags::WidthFixed, 88.0f * UiK());
         UI::TableHeadersRow();
         for (uint i = 0; i < g_boardNames.Length; i++) {
             UI::TableNextRow();
@@ -886,6 +896,8 @@ void RenderLeaderboardTab() {
                 UI::SameLine(0, 6);
                 TextTone(TextMuted(), "(you)");
             }
+            // Full name on hover: long nicknames can clip at the column edge.
+            UI::SetItemTooltip(Text::StripFormatCodes(g_boardNames[i]));
             UI::TableSetColumnIndex(2);
             TextTone(Gold(), tostring(g_boardPoints[i]));
             UI::TableSetColumnIndex(3);
@@ -915,7 +927,7 @@ void RenderFeedTab() {
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     UI::PushFontSize(FS_BODY);
     if (UI::BeginTable("##goaladventFeedTable", 2, flags)) {
-        UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 46.0f * UiK());
+        UI::TableSetupColumn("#", UI::TableColumnFlags::WidthFixed, 36.0f * UiK());
         UI::TableSetupColumn("EVENT", UI::TableColumnFlags::WidthStretch);
         UI::TableHeadersRow();
         for (uint i = 0; i < g_liveFeed.Length; i++) {
@@ -955,10 +967,10 @@ void RenderBountyTab() {
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
     UI::PushFontSize(FS_BODY);
     if (UI::BeginTable("##goaladventBountyTable", 4, flags, vec2(0, -34))) {
-        UI::TableSetupColumn("DAY", UI::TableColumnFlags::WidthFixed, 72.0f * UiK());
+        UI::TableSetupColumn("DAY", UI::TableColumnFlags::WidthFixed, 68.0f * UiK());
         UI::TableSetupColumn("MAP", UI::TableColumnFlags::WidthStretch);
-        UI::TableSetupColumn("RECORD", UI::TableColumnFlags::WidthFixed, 96.0f * UiK());
-        UI::TableSetupColumn("HOLDER", UI::TableColumnFlags::WidthFixed, 164.0f * UiK());
+        UI::TableSetupColumn("RECORD", UI::TableColumnFlags::WidthFixed, 80.0f * UiK());
+        UI::TableSetupColumn("HOLDER", UI::TableColumnFlags::WidthFixed, 128.0f * UiK());
         UI::TableHeadersRow();
         for (int day = 1; day <= DAY_COUNT; day++) {
             UI::TableNextRow();
@@ -972,11 +984,15 @@ void RenderBountyTab() {
             UI::TableSetColumnIndex(1);
             if (IsOffDay(day)) UI::TextDisabled("Pursuit night");
             else UI::Text(g_titles[day - 1]);
+            UI::SetItemTooltip(IsOffDay(day) ? "Pursuit night | no Goal Hunt today."
+                                             : g_titles[day - 1]);
             UI::TableSetColumnIndex(2);
             TextTone(Gold(), tostring(g_bountyCp[day - 1]) + " CP");
             UI::TableSetColumnIndex(3);
             if (g_bountyHolder[day - 1] == LocalName()) TextTone(Gold(), "you");
             else DrawMpName(g_bountyHolder[day - 1], TextMain());
+            // Full holder name on hover: long nicknames can clip in the cell.
+            UI::SetItemTooltip("Holder: " + Text::StripFormatCodes(g_bountyHolder[day - 1]));
         }
         UI::EndTable();
     }
