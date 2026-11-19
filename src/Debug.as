@@ -65,9 +65,23 @@ void DumpPursuitRoles() {
         string login = p.User is null ? "?" : p.User.Login;
         int team = p.Score is null ? -1 : int(p.Score.TeamNum);
         int clan = p.ScriptAPI is null ? -1 : p.ScriptAPI.CurrentClan;
+        // Proximity to the nearest other spawned player: a catch drops this
+        // toward zero, revealing the gamemode catch radius in a live round.
+        string near = "-";
+        if (p.IsSpawned) {
+            float best = -1.0f;
+            for (uint j = 0; j < pg.Players.Length; j++) {
+                if (j == i) continue;
+                auto q = cast<CTrackManiaPlayer>(pg.Players[j]);
+                if (q is null || !q.IsSpawned) continue;
+                float d = Math::Distance(p.Position, q.Position);
+                if (best < 0.0f || d < best) best = d;
+            }
+            if (best >= 0.0f) near = tostring(int(best)) + "m";
+        }
         print("[goaladvent][DBG] ROLE " + login + " team=" + tostring(team) +
               " clan=" + tostring(clan) + " race=" + tostring(int(p.RaceState)) +
-              " spawned=" + (p.IsSpawned ? "Y" : "N"));
+              " spawned=" + (p.IsSpawned ? "Y" : "N") + " near=" + near);
     }
 }
 

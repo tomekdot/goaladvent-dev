@@ -167,7 +167,47 @@ means police vs thief.
    a role indicator in GoalAdvent (icon/badge per player, hunter count, who is
    hunted). Optionally mirror the role to the worker for the event feed.
 
-## 6. Pitfalls / what matters
+## 6. Catching and assist mechanic
+
+How police catch the thief, and how a plugin detects it.
+
+**Mechanic (engine model; exact thresholds unverified - confirm in-game):**
+Pursuit is proximity-based. The gamemode's `PlayLoop` (10 ms tick) measures the
+distance between each hunter and the hunted; when a hunter comes within the
+catch radius, the thief is caught (tagged), the round ends or roles reset, and
+the caught player typically respawns / changes `RaceState`. An **assist** is
+credited to hunters close enough to the catch at that moment (assist radius >=
+catch radius). The literal catch/assist radii and rules live in the closed
+gamemode script - observe them in a live round, do not assume values.
+
+**Openplanet detection (verified API):**
+- Positions: `CTrackManiaPlayer.Position` (vec3).
+- Distance: `Math::Distance(const vec3&in a, const vec3&in b)` -> float (vec3
+  overload verified in `OpenplanetCore.json`; `Distance2` = squared, cheaper for
+  radius comparisons).
+- Distance to hunted: `Math::Distance(hunter.Position, hunted.Position)` once
+  the hunted is identified via role detection (section 5).
+- Catch signal: distance to hunted drops below the catch radius; corroborate
+  with `RaceState` / `IsSpawned` / `NbRespawns` changes on the hunted.
+- Time gap: from checkpoint race times (`ScriptAPI.CurCheckpointRaceTime`,
+  `CurCheckpointLapTime`), NOT `CSmPlayer` (absent). The archived
+  `pursuit-suite` `CalculateTimeGap` used `CSmPlayer` and was a stub.
+- Assist: at the catch instant, hunters within the assist radius of the hunted
+  get assist credit; snapshot all hunter distances when the catch fires.
+
+**Probe support:** `DumpPursuitRoles()` logs `near=<dist>m` per player - the
+distance to the nearest other spawned player. In a live Pursuit round, watch
+`near` collapse toward zero at a catch to read the catch radius; combine with
+the role split (team/clan) to attribute the catch and assists.
+
+**Detection plugin sketch:**
+1. Each tick (or throttled), read all players' roles + positions.
+2. Identify the hunted; compute every hunter's distance to it.
+3. Detect a catch when min distance < catch radius AND the hunted's state
+   changes (respawn / race state). Log the catch + nearby hunters (assists).
+4. Surface in GoalAdvent: catch feed event, assist badges, hunter proximity HUD.
+
+## 7. Pitfalls / what matters
 
 - **`CSmPlayer` missing** -> use `CTrackManiaPlayer` + `Score.TeamNum`.
 - **`pursuit-suite-dev` archived** to `Openplanet4\_quarantine\pursuit-suite-dev`
@@ -181,7 +221,7 @@ means police vs thief.
 - The Node Explorer is the fastest way to inspect a live field value
   (`CTrackMania -> CurrentPlayground -> Players -> [i] -> Score -> TeamNum`).
 
-## 7. Next steps
+## 8. Next steps
 
 1. Validate `TeamNum` / `CurrentClan` in a live Pursuit round (probe + log).
 2. Implement real `DetermineRole()` in GoalAdvent from the confirmed signal.
