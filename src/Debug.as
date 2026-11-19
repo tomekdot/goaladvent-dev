@@ -108,6 +108,21 @@ void CopyDebugLog() {
     g_copyStatus = "Copied " + tostring(g_debugErrors.Length) + " error line(s) to clipboard.";
 }
 
+// Readability helpers for the debug window: a spaced gold section header with
+// a rule, and an aligned label/value row (muted label, bright value in a column).
+void DebugSection(const string &in title) {
+    UI::Dummy(vec2(0, 7.0f));
+    UI::PushStyleColor(UI::Col::Text, Gold());
+    UI::Text(title);
+    UI::PopStyleColor();
+    UI::Separator();
+}
+void DebugKV(const string &in label, const string &in value) {
+    UI::TextDisabled(label);
+    UI::SameLine(150.0f);
+    UI::Text(value);
+}
+
 void RenderDebugWindow() {
     if (!S_Debug || !g_showDebug) return;
 
@@ -143,49 +158,48 @@ void RenderDebugWindow() {
     UI::Text("  server test: " + g_selfTestResult);
     UI::Separator();
 
-    UI::Text("VERSION | VIEW");
-    UI::Text("  version: " + PLUGIN_VERSION);
-    UI::Text("  local date: " + localDate + " | event season: " + tostring(eventSeason));
-    UI::Text("  theme: " + string(GlassTheme() ? "Galaxy transparent" : "GoalAdvent dark"));
-    UI::Text("  glass opacity: " + tostring(S_GlassOpacity));
-    UI::Text("  dashboard visible: " + tostring(g_showCalendar));
+    DebugSection("VERSION | VIEW");
+    DebugKV("version", PLUGIN_VERSION);
+    DebugKV("local date", localDate + " | event season: " + tostring(eventSeason));
+    DebugKV("theme", string(GlassTheme() ? "Galaxy transparent" : "GoalAdvent dark"));
+    DebugKV("glass opacity", tostring(S_GlassOpacity));
+    DebugKV("dashboard visible", tostring(g_showCalendar));
 
-    UI::Text("DAY | SCORING");
-    UI::Text("  selected: " + tostring(g_selectedDay) + " | active: " + tostring(g_activeDay));
-    UI::Text("  unlocked: " + tostring(DayUnlocked(g_selectedDay)) +
-             " | playable: " + tostring(DayPlayableNow(g_selectedDay)));
-    UI::Text("  opened: " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) +
-             " | score: " + tostring(ScoreDays()) + " | total: " + tostring(TotalPoints()));
-    UI::Text("  session CP: " + tostring(g_sessionCp) + "/" + tostring(GOAL_CP) +
-             " | last sent: " + tostring(g_lastSentCp));
+    DebugSection("DAY | SCORING");
+    DebugKV("selected", tostring(g_selectedDay) + " | active: " + tostring(g_activeDay));
+    DebugKV("unlocked", tostring(DayUnlocked(g_selectedDay)) +
+            " | playable: " + tostring(DayPlayableNow(g_selectedDay)));
+    DebugKV("opened", tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) +
+            " | score: " + tostring(ScoreDays()) + " | total: " + tostring(TotalPoints()));
+    DebugKV("session CP", tostring(g_sessionCp) + "/" + tostring(GOAL_CP) +
+            " | last sent: " + tostring(g_lastSentCp));
 
-    UI::Text("SUBMIT QUEUE");
-    UI::Text("  pending: " + tostring(g_submitPending) +
-             " | day: " + tostring(g_pendingDay) + " | cp: " + tostring(g_pendingCp));
-    UI::Text("  debounce timer: " + tostring(g_submitTimer));
+    DebugSection("SUBMIT QUEUE");
+    DebugKV("pending", tostring(g_submitPending) +
+            " | day: " + tostring(g_pendingDay) + " | cp: " + tostring(g_pendingCp));
+    DebugKV("debounce timer", tostring(g_submitTimer));
 
-    UI::Text("SYNC | SERVER");
-    UI::Text("  mode: " + tostring(S_SyncMode) + " | busy: " + tostring(g_syncing));
-    UI::Text("  api: " + ApiUrl());
-    UI::Text("  event keyword: " + S_EventServerKeyword +
-             " | on event server: " + tostring(OnEventServer()));
-    UI::Text("  status: " + g_status);
+    DebugSection("SYNC | SERVER");
+    DebugKV("mode", tostring(S_SyncMode) + " | busy: " + tostring(g_syncing));
+    DebugKV("api", ApiUrl());
+    DebugKV("event keyword", S_EventServerKeyword +
+            " | on event server: " + tostring(OnEventServer()));
+    DebugKV("status", g_status);
 
-    UI::Text("IDENTITY | MAP");
-    UI::Text("  login: " + LocalLogin());
-    UI::Text("  name: " + LocalName());
-    UI::Text("  server: " + CurrentServerName());
-    UI::Text("  map name: " + CurrentMapName());
-    UI::Text("  map type: " + CurrentMapType());
-    UI::Text("  map UID: " + GetCurrentMapUid());
-    UI::Text("  detected day now: " + tostring(DetectGoalHuntDay()) +
-             " | (name parse: " + tostring(ParseDayFromMapName(CurrentMapName())) + ")");
-    UI::Text("  feed rows: " + tostring(g_liveFeed.Length) +
-             " | board rows: " + tostring(g_boardNames.Length));
+    DebugSection("IDENTITY | MAP");
+    DebugKV("login", LocalLogin());
+    DebugKV("name", LocalName());
+    DebugKV("server", CurrentServerName());
+    DebugKV("map name", CurrentMapName());
+    DebugKV("map type", CurrentMapType());
+    DebugKV("map UID", GetCurrentMapUid());
+    DebugKV("detected day", tostring(DetectGoalHuntDay()) +
+            " | name parse: " + tostring(ParseDayFromMapName(CurrentMapName())));
+    DebugKV("feed / board rows", tostring(g_liveFeed.Length) + " / " + tostring(g_boardNames.Length));
 
     // Every map played this session and its detected day - verify text detection
     // catches each Goal Hunt map on the server.
-    UI::Text("MAP DETECTION HISTORY (" + tostring(g_mapHistory.Length) + ")");
+    DebugSection("MAP DETECTION HISTORY (" + tostring(g_mapHistory.Length) + ")");
     if (g_mapHistory.Length == 0) {
         UI::Text("  none yet | play a map on the server.");
     } else {
@@ -197,7 +211,7 @@ void RenderDebugWindow() {
     UI::TextWrapped("Last event: " + (g_lastTopEvent.Length > 0 ? Text::StripFormatCodes(g_lastTopEvent) : "-"));
     // Recent feed events with plain names - the notification history to debug.
     if (g_liveFeed.Length > 0) {
-        UI::Text("RECENT EVENTS");
+        DebugSection("RECENT EVENTS");
         uint n = g_liveFeed.Length < 5 ? g_liveFeed.Length : 5;
         for (uint i = 0; i < n; i++) {
             UI::TextWrapped("  " + Text::StripFormatCodes(g_liveFeed[i]));
@@ -207,8 +221,7 @@ void RenderDebugWindow() {
     // Pursuit scoreboard: detect each player's role from CurrentClan (verified
     // from Pursuit.Script.txt: escaping clan 2 = thief, 3-2 = 1 = police, 0 =
     // spectator; Swap mode flips the escaping clan). Shown in the plugin menu.
-    UI::Separator();
-    UI::Text("PURSUIT SCOREBOARD");
+    DebugSection("PURSUIT SCOREBOARD");
     auto sbApp = cast<CGameManiaPlanet>(GetApp());
     if (sbApp is null || sbApp.CurrentPlayground is null) {
         UI::TextWrapped("  no playground | join a Pursuit round to read roles.");
@@ -240,8 +253,7 @@ void RenderDebugWindow() {
         }
     }
 
-    UI::Separator();
-    UI::Text("LAST ERRORS (" + tostring(g_debugErrors.Length) + ")");
+    DebugSection("LAST ERRORS (" + tostring(g_debugErrors.Length) + ")");
     if (g_debugErrors.Length == 0) {
         UI::Text("  none");
     } else {
