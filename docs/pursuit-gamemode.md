@@ -327,3 +327,64 @@ the first assistant gets the capture credit.
 - Assist: replicate the scare / chase thresholds above from live positions/speeds.
 - Killfeed / points notices are ManiaScript UI events in the client app
   (`PursuitClientApp.Script.txt`); reading them needs the UI layer / custom events.
+
+## 10. ManiaLink client UI architecture (pause menu / map info script)
+
+The titlepack UI is ManiaLink (`CMlScript`), separate from the gamemode
+(`CSmMode`). The in-game menu script shows the standard structure.
+
+### 10.1 Layers
+
+- **LibManialink** - animation library. Per-control anim queues (`declare ... for
+  Control`), `LibManialink_SetTarget{Position,Size,Scale,Rotation,Opacity,Colorize,
+  BgColor,TextColor,Ratio,GaugeColor}`, `PresetAnim`/`AnimChain`/`AnimInsert`, and
+  `LibManialink_AnimLoop()` easing via `AL::Ease(easing, t, start, diff, duration)`.
+  Styles: -1 = new anim, 0 = chain, 1 = insert. Active flags per property (0..9).
+- **DesignManialinks** - button/design system. Control classes `MainButton`,
+  `SecondaryButton`, `ScrollFrame`, `FloatingButtonFrame`, `EntryEntry`,
+  `ExpandingButton`; MouseOver/MouseOut/MouseClick handlers; platform-aware pad
+  glyphs (PC/PS4/XB1) chosen from `Input.PendingEvents` pad type.
+- **SoloMapInfosBase** - medal + best-time + mode/map-info panel.
+
+### 10.2 Event loop
+
+```
+main() {
+  Init();
+  while (True) {
+    yield;
+    if (PageIsVisible) { ShowPage(); } else { HidePage(); continue; }
+    DesignManialinks_Loop();
+    LibManialink_AnimLoop();
+    foreach (Event in PendingEvents) { MouseClick / MouseOver / MenuNavigation / KeyPress }
+    foreach (Event in Input.PendingEvents) { pad buttons }
+  }
+}
+```
+
+- `PageIsVisible` drives ShowPage/HidePage; `SetUIHidden` toggles `ClientUI`
+  score table / chat / alt menu.
+- In-game menu buttons: Resume / Help / Spectator / Advanced options / Manage
+  server / Quit via `CloseInGameMenu(CMlScriptIngame::EInGameMenuResult::*)`;
+  `G_ButtonFocus` navigation (Up/Down/Select), mouse click selects a button.
+
+### 10.3 Server -> client state: netread / netwrite (KEY for detection)
+
+- The gamemode publishes state with `declare netwrite T X for Teams[0]` / `for UI`
+  (e.g. `Net_Pursuit_OvertimeIsTicking`, `Net_Pursuit_GameOvertimeStart`,
+  `Net_Pursuit_GameOvertimeDuration`).
+- The UI reads it with `declare netread T X for UI` (e.g. `BestTimePlayer`,
+  `Net_BestMedal`, `Net_ModeName`).
+- This is the authoritative server -> client channel. The Pursuit client app
+  (`PursuitClientApp.Script.txt`) reads Pursuit-specific net vars (thief/police
+  counts, overtime, start time). Openplanet reads the exposed player fields
+  (`CurrentClan`, `Position`, `Score`) directly; reading ManiaScript net vars
+  themselves needs the UI layer / custom events, not the player API.
+
+### 10.4 Medals / times
+
+- `GetMedalForTime`: 0 Author (`<= Map.TMObjective_AuthorTime`), 1 Gold, 2 Silver,
+  3 Bronze, 4 none; colors `C_QuadMedalImgColor`.
+- `InputPlayer.Score.PrevRace.Time` / `BestRace.Time` for last/best time.
+- `GetModeName() = Playground.ServerInfo.ModeName`; `ServerInfo.ServerName` for the
+  header; `Map.MapInfo.MapUid` detects map changes.
