@@ -250,8 +250,14 @@ void RenderHeaderCard() {
             g_status = "Progress saved locally.";
         }
         UI::SetItemTooltip("Save progress to this PC.");
-        UI::SameLine(0, gap);
+        UI::SameLine(0, gap * 2.0f);
+        // Destructive action: crimson icon at rest, solid crimson when armed
+        // (first press), so the two-step reset is impossible to mistake.
+        vec4 trashBg = g_confirmReset ? MixCol(g_palette.buttonBg, Crimson(), 0.60f)
+                                      : MixCol(g_palette.buttonBg, Crimson(), 0.10f);
+        UI::PushStyleColor(UI::Col::Button, trashBg);
         UI::PushStyleColor(UI::Col::ButtonHovered, Crimson());
+        UI::PushStyleColor(UI::Col::Text, g_confirmReset ? TextMain() : Crimson());
         if (UI::Button(Icons::Trash + "##headerReset", vec2(btnW, btnH))) {
             if (g_confirmReset) {
                 ResetProgress();
@@ -264,7 +270,7 @@ void RenderHeaderCard() {
         }
         UI::SetItemTooltip(g_confirmReset ? "Press again to confirm | this clears local progress."
                                           : "Reset local progress (press twice).");
-        UI::PopStyleColor();
+        UI::PopStyleColor(3);
         UI::SameLine(0, gap);
         if (UI::Button(Icons::Cog + "##headerTheme", vec2(btnW, btnH))) {
             g_Theme = (g_Theme == UiTheme::TransparentGlass)
