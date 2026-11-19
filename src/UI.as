@@ -1041,43 +1041,72 @@ void RenderFinaleTab() {
 // Dashboard and footer
 // ---------------------------------------------------------------------------
 void RenderFooter() {
-    // A thin rule keeps the status line compact; a full Separator added
-    // another row of padding and made the footer read as a thick bar.
+    // Thin status strip: connection health with a bright head + muted detail
+    // on the left, three colour-coded stat chips on the right.
     UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(8.0f * UiK(), 1.0f * UiK()));
     UI::Dummy(vec2(0, 2.0f * UiK()));
-    // The footer is the single status line: live connection health on the
-    // left, points / gifts / badges on the right. The selected day lives in
-    // the day bar above, so it is not repeated here.
-    string link;
+
+    string head;
+    string detail;
     vec4 linkCol;
     if (S_SyncMode == 0) {
-        link = "Offline | saved locally";
-        linkCol = TextMuted();
+        head = "Offline"; detail = " | saved locally"; linkCol = TextMuted();
     } else if (g_syncing) {
-        link = "Syncing results...";
-        linkCol = IceBlue();
+        head = "Syncing results..."; detail = ""; linkCol = IceBlue();
     } else if (g_debugErrors.Length > 0 || g_status.Contains("failed")) {
-        link = "Results error | open Debug";
-        linkCol = Crimson();
+        head = "Results error"; detail = " | open Debug"; linkCol = Crimson();
     } else if (g_lastSyncStamp > 0) {
-        link = "Connected | " + tostring(g_boardCount) + " players | synced " +
-               tostring(int(Time::Stamp) - g_lastSyncStamp) + "s";
+        head = "Connected";
+        detail = " | " + tostring(g_boardCount) + " players | synced " +
+                 tostring(int(Time::Stamp) - g_lastSyncStamp) + "s";
         linkCol = Emerald();
     } else {
-        link = "Connecting to results...";
-        linkCol = TextMuted();
+        head = "Connecting to results..."; detail = ""; linkCol = TextMuted();
     }
     UI::PushFontSize(FS_LABEL);
-    TextTone(linkCol, Icons::Circle + "  " + link);
-    UI::SameLine(0, 0);
+    TextTone(linkCol, Icons::Circle + "  " + head);
+    if (detail.Length > 0) {
+        UI::SameLine(0, 0);
+        TextTone(TextMuted(), detail);
+    }
+
+    // Stat chips: quiet framed pills, state-coloured icon, bright value.
     string badgeWord = g_badges.Length == 1 ? "badge" : "badges";
-    string right = Icons::Trophy + " " + tostring(TotalPoints()) + " pts | " +
-                   Icons::Gift + " " + tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " gifts | " +
-                   Icons::Star + " " + tostring(g_badges.Length) + " " + badgeWord;
-    float w = UI::MeasureString(right, null, FS_LABEL, 0.0f).x + 8.0f * UiK();
-    if (w < 1.0f) w = 320.0f * UiK();
-    UI::SetCursorPosX(UI::GetWindowSize().x - w - 16.0f * UiK());
-    TextTone(MixCol(TextMuted(), TextMain(), 0.50f), right);
+    string[] vals = { tostring(TotalPoints()) + " pts",
+                      tostring(OpenedCount()) + "/" + tostring(DAY_COUNT) + " gifts",
+                      tostring(g_badges.Length) + " " + badgeWord };
+    string[] icons = { Icons::Trophy, Icons::Gift, Icons::Star };
+    vec4[] cols = { Gold(), Emerald(), IceBlue() };
+    float padX = 8.0f * UiK();
+    float gap = 6.0f * UiK();
+    float iconGap = 5.0f * UiK();
+    float chipH = UI::MeasureString("0", null, FS_LABEL).y + 6.0f * UiK();
+    float[] widths = { 0.0f, 0.0f, 0.0f };
+    float totalW = gap * 2.0f;
+    for (int i = 0; i < 3; i++) {
+        widths[i] = UI::MeasureString(icons[i], null, FS_LABEL).x + iconGap +
+                    UI::MeasureString(vals[i], null, FS_LABEL).x + padX * 2.0f;
+        totalW += widths[i];
+    }
+    UI::SameLine(0, 0);
+    float startX = UI::GetWindowSize().x - totalW - 16.0f * UiK();
+    float cursorY = UI::GetCursorPos().y;
+    UI::SetCursorPosX(startX);
+    UI::Dummy(vec2(totalW, chipH));
+    vec2 wp = UI::GetWindowPos();
+    float x = wp.x + startX;
+    float y = wp.y + cursorY;
+    UI::DrawList@ dl = UI::GetWindowDrawList();
+    for (int i = 0; i < 3; i++) {
+        dl.AddRectFilled(vec4(x, y, widths[i], chipH), g_palette.frameBg, g_palette.frameRounding);
+        dl.AddRect(vec4(x, y, widths[i], chipH), g_palette.borderWeak, g_palette.frameRounding);
+        vec2 isz = UI::MeasureString(icons[i], null, FS_LABEL);
+        dl.AddText(vec2(x + padX, y + (chipH - isz.y) * 0.5f), cols[i], icons[i], null, FS_LABEL);
+        vec2 tsz = UI::MeasureString(vals[i], null, FS_LABEL);
+        dl.AddText(vec2(x + padX + isz.x + iconGap, y + (chipH - tsz.y) * 0.5f),
+                   TextMain(), vals[i], null, FS_LABEL);
+        x += widths[i] + gap;
+    }
     UI::PopFontSize();
     UI::PopStyleVar();
 }
