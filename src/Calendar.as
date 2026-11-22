@@ -64,10 +64,19 @@ Time::Info Today() {
     return Time::ParseUTC();
 }
 
+// A fresh /state response is the authority for the event calendar. Offline or
+// after a long outage, the local UTC clock is the only clock available.
+bool ServerClockFresh() {
+    if (g_serverClockStamp <= 0) return false;
+    int age = int(Time::Stamp) - g_serverClockStamp;
+    return age >= 0 && age <= SERVER_CLOCK_TTL_SEC;
+}
+
 bool IsPremiereDay(int day) {
     // The worker awards x2 from the server UTC clock. Use the same clock here
     // so the local badge/preview never disagrees with the leaderboard.
-    Time::Info now = Time::ParseUTC();
+    if (ServerClockFresh()) return g_serverMonth == 12 && g_serverDate == day;
+    Time::Info now = Today();
     return now.Month == 12 && now.Day == day;
 }
 
@@ -112,15 +121,29 @@ int DayMultiplier(int day) {
 
 // The finale stays open until 5 January so nobody has to be online on the 25th.
 bool FinaleOpen() {
+    if (ServerClockFresh()) {
+        if (g_serverMonth == 12) return g_serverDate >= DAY_COUNT;
+        return g_serverMonth == 1 && g_serverDate <= FINALE_GRACE_DAYS;
+    }
     Time::Info now = Today();
-    if (now.Month == 12) return now.Day >= 25;
+    if (now.Month == 12) return now.Day >= DAY_COUNT;
     if (now.Month == 1) return now.Day <= FINALE_GRACE_DAYS;
+    return false;
+}
+
+// Day unlock (and the premiere shown on a tile) follows the worker clock when
+// it was heard recently. A changed PC clock can still unlock tiles offline,
+// but /submit re-checks the day against server UTC before it counts anything.
+bool ServerDayUnlocked(int day) {
+    if (g_serverCatchUp) return true;
+    if (g_serverMonth == 12) return g_serverDate >= day;
     return false;
 }
 
 // Event day from the server-side UTC clock, used when a Goal Hunt map has no
 // day number in its name. Returns 0 outside 1-25 December / finale window.
 int CurrentEventDayUtc() {
+    if (ServerClockFresh()) return g_serverDay;
     Time::Info now = Time::ParseUTC();
     if (now.Month == 12) {
         // 26-31 December are still the finale window.
@@ -133,7 +156,8 @@ int CurrentEventDayUtc() {
 bool DayUnlocked(int day) {
     if (S_TestMode) return true;
     if (day < 1 || day > DAY_COUNT) return false;
-    if (day == 25) return FinaleOpen();
+    if (day == DAY_COUNT) return FinaleOpen();
+    if (ServerClockFresh()) return ServerDayUnlocked(day);
     Time::Info now = Today();
     if (now.Month == 12) return now.Day >= day;
     return now.Month == 1 && now.Day <= FINALE_GRACE_DAYS;   // catch-up after the event
@@ -144,10 +168,46 @@ bool DayUnlocked(int day) {
 bool DayPlayableNow(int day) {
     if (S_TestMode) return true;
     if (IsOffDay(day)) return false;
-    if (day == 25) return FinaleOpen();
+    if (day == DAY_COUNT) return FinaleOpen();
+    if (ServerClockFresh()) return ServerDayUnlocked(day);
     Time::Info now = Today();
     if (now.Month == 12) return now.Day >= day;
     return now.Month == 1 && now.Day <= FINALE_GRACE_DAYS;
+}
+
+// ---------------------------------------------------------------------------
+// Checkpoint tiers (visual only, never a scoring rule)
+// ---------------------------------------------------------------------------
+// The tracker, the HUD and the tiles all read the same numbers: a run can
+// never show more CP than the server accepts, and never a negative count.
+int ClampCp(int cp) {
+    if (cp < 0) return 0;
+    if (cp > MAX_CP) return MAX_CP;
+    return cp;
+}
+
+// 0 = below the goal, 1 = day complete, 2 = silver, 3 = gold.
+int CpTier(int cp) {
+    if (cp >= GOLD_CP) return 3;
+    if (cp >= SILVER_CP) return 2;
+    if (cp >= GOAL_CP) return 1;
+    return 0;
+}
+
+string CpTierLabel(int tier) {
+    if (tier >= 3) return "gold";
+    if (tier == 2) return "silver";
+    if (tier == 1) return "completed";
+    return "no run";
+}
+
+// Best known run for one day. While that day's Goal Hunt is active the live
+// session wins, so the tile, the details pane and the HUD always agree.
+int BestCp(int day) {
+    if (day < 1 || day > DAY_COUNT) return 0;
+    int best = ClampCp(g_bests[day - 1]);
+    if (g_activeDay == day && g_sessionCp > best) best = ClampCp(g_sessionCp);
+    return best;
 }
 
 // ---------------------------------------------------------------------------
@@ -164,12 +224,12 @@ int OpenedCount() {
 // Best 15 of the 24 regular days - a missed day never kills the run.
 int ScoreDays() {
     array<int> vals;
-    for (int d = 1; d <= 24; d++) {
+    for (int d = 1; d < DAY_COUNT; d++) {
         if (g_opened[d - 1]) vals.InsertLast(g_points[d - 1]);
     }
     vals.SortAsc();
     int total = 0;
-    int start = int(vals.Length) > 15 ? int(vals.Length) - 15 : 0;
+    int start = int(vals.Length) > BEST_OF_DAYS ? int(vals.Length) - BEST_OF_DAYS : 0;
     for (int i = start; i < int(vals.Length); i++) total += vals[i];
     return total;
 }
@@ -234,6 +294,43 @@ void ResetProgress() {
     g_bountiesWon = 0;
 }
 
+// Dev-only preview of a complete season. It changes in-memory arrays so the
+// tiles, details, board and HUD can be reviewed before release; SaveProgress()
+// and the submit path are disabled while it is on, so the real save is safe.
+void ApplyQaPreview() {
+    if (S_QaPreview <= 0) return;
+    g_badges.Resize(0);
+    g_bountiesWon = 0;
+    for (int i = 0; i < DAY_COUNT; i++) {
+        bool finale = (i == DAY_COUNT - 1);
+        bool open = S_QaPreview == 3 ? finale : true;
+        g_opened[i] = open;
+        g_bountyClaimed[i] = false;
+        g_bountyHolder[i] = "QA Bot";
+        g_bountyCp[i] = S_QaPreview == 3 ? DEFAULT_BOUNTY_CP : GOLD_CP;
+        if (!open) {
+            g_bests[i] = 0;
+            g_points[i] = 0;
+            continue;
+        }
+        if (S_QaPreview == 2) {
+            int mode = i % 3;
+            g_bests[i] = mode == 0 ? GOAL_CP : (mode == 1 ? SILVER_CP : GOLD_CP);
+        } else {
+            g_bests[i] = S_QaPreview == 3 ? GOLD_CP : SILVER_CP;
+        }
+        g_points[i] = finale ? FINALE_POINTS : BASE_POINTS;
+    }
+    AddBadge("GOALMAS-2026");
+    AddBadge("GOALMAS-PLAYER");
+    AddBadge("BOUNTY-HUNTER");
+    AddBadge("ELF-VETERAN");
+    AddBadge("GOALMAS-24");
+    AddBadge("FINALIST");
+    AddBadge("PURSUIT");
+    AddBadge("MP-GALAXY");
+}
+
 void LoadArrayBool(Json::Value@ root, const string &in key, array<bool> &inout target) {
     if (root is null || !root.HasKey(key)) return;
     Json::Value@ arr = root[key];
@@ -261,6 +358,12 @@ void LoadProgress() {
 
     if (root.HasKey("accountId")) g_cachedAccountId = string(root["accountId"]);
     if (root.HasKey("bounties")) g_bountiesWon = int(root["bounties"]);
+    if (root.HasKey("resetEpoch")) {
+        Json::Value@ epoch = root["resetEpoch"];
+        if (epoch !is null && epoch.GetType() == Json::Type::Number) {
+            g_resetEpoch = int(epoch);
+        }
+    }
     LoadArrayBool(root, "opened", g_opened);
     LoadArrayInt(root, "bests", g_bests);
     LoadArrayInt(root, "points", g_points);
@@ -281,13 +384,16 @@ void LoadProgress() {
             for (uint i = 0; i < arr.Length; i++) AddBadge(string(arr[i]));
         }
     }
+    ApplyQaPreview();
 }
 
 void SaveProgress() {
+    if (S_QaPreview > 0) return;   // never write mock data over a real save
     Json::Value@ root = Json::Object();
     root["version"] = 2;
     root["accountId"] = AccountId();
     root["bounties"] = g_bountiesWon;
+    root["resetEpoch"] = g_resetEpoch;
 
     Json::Value@ opened = Json::Array();
     Json::Value@ bests = Json::Array();

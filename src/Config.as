@@ -6,10 +6,21 @@
 // ---------------------------------------------------------------------------
 // Appearance
 // ---------------------------------------------------------------------------
-enum UiTheme { Light, Classic, GoalAdvent, Galaxy }
+enum UiTheme { Classic, GoalAdvent, Galaxy }
 
-[Setting category="Appearance" name="UI Theme" description="Light = soft white cards; Classic = blue accents; GoalAdvent = matte carbon; Galaxy = transparent glass."]
-UiTheme g_Theme = UiTheme::GoalAdvent;
+[Setting category="Appearance" name="UI Theme" description="Classic = blue accents; GoalAdvent = matte carbon; Galaxy = transparent glass."]
+UiTheme g_Theme = UiTheme::Classic;
+
+// Button palette, edited directly in Openplanet's settings panel (same style
+// as the Event Calendar plugin). No extra window is needed.
+[Setting category="Appearance" name="Button colour" description="Dashboard button base colour (RGBA)."]
+vec4 S_ButtonColour = vec4(0.11, 0.11, 0.14, 1.0);
+[Setting category="Appearance" name="Button hover colour" description="Dashboard button hover colour (RGBA)."]
+vec4 S_ButtonHoverColour = vec4(0.17, 0.17, 0.21, 1.0);
+[Setting category="Appearance" name="Button active colour" description="Dashboard button pressed colour (RGBA)."]
+vec4 S_ButtonActiveColour = vec4(0.21, 0.21, 0.26, 1.0);
+[Setting category="Appearance" name="Text colour" description="Dashboard text colour (RGBA)."]
+vec4 S_ButtonTextColour = vec4(0.92, 0.92, 0.95, 1.0);
 
 // Openplanet caches enum settings until a full game restart. This switch makes
 // the new Galaxy theme active immediately; turn it off to use the selector.
@@ -23,6 +34,9 @@ float S_UiScale = 1.25f;
 float S_GlassOpacity = 0.55f;
 
 bool GlassTheme() { return S_GalaxyOn || g_Theme == UiTheme::Galaxy; }
+
+[Setting category="Advanced" name="QA preview (0 off, 1 all days, 2 CP tiers, 3 finale only)" description="Dev only: fills the dashboard with a mock 25-day season so the finished layout can be reviewed. Preview data is never saved or submitted." min=0 max=3]
+int S_QaPreview = 0;
 
 [Setting category="Advanced" name="Debug overlay" description="Admin-only diagnostics: live plugin state and a button that writes one readable line to Openplanet.log."]
 bool S_Debug = false;
@@ -47,20 +61,29 @@ int S_MapDayOverride = 0;
 
 
 
-const string PLUGIN_VERSION = "0.5.17-dev";
+// Debug overlay only. info.toml is the real version source; keep this in sync.
+const string PLUGIN_VERSION = "0.6.0-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
 // ---------------------------------------------------------------------------
 const int DAY_COUNT = 25;
+const int BEST_OF_DAYS = 15;       // best days 1..24 count toward the score
 const int GOAL_CP = 10;            // checkpoints needed to complete a day
 const int BASE_POINTS = 100;       // days 1..24
 const int FINALE_POINTS = 300;     // day 25
 const int BOUNTY_POINTS = 150;
 const int DEFAULT_BOUNTY_CP = 15;  // starting GrinchBot record
+// Run tiers are cosmetic only - points stay 100 / 300 / bounty 150.
+const int SILVER_CP = DEFAULT_BOUNTY_CP;   // 15 CP, the starting bounty record
+const int GOLD_CP = 30;            // top-tier run
+const int MAX_CP = 250;            // must match MAX_CP in backend/worker.js
 const float SUBMIT_DEBOUNCE_SEC = 6.0f;
 const int SYNC_INTERVAL_SEC = 20;
+const int SERVER_CLOCK_TTL_SEC = 180;      // server day mirror stays valid 3x the sync interval
 const int FINALE_GRACE_DAYS = 5;   // finale / catch-up window after Christmas
+const int MAX_FEED_EVENTS = 15;    // must match MAX_EVENTS in backend/worker.js
+const int ELF_VETERAN_DAYS = 10;   // badge threshold, both client and server
 
 // ---------------------------------------------------------------------------
 // Settings
@@ -95,10 +118,15 @@ string S_SharedFolder = "";
 [Setting category="Event" name="Event server keyword" description="Part of the event server name or login. Empty = accept any server (testing)."]
 string S_EventServerKeyword = "pursuit";
 
+[Setting category="Event" name="Allowed titlepacks" description="Comma-separated TitleIds where detection may run, e.g. Pursuit,PursuitStadium. Empty = allow any titlepack."]
+string S_AllowedTitlepacks = "Pursuit,PursuitStadium";
+
 // ---------------------------------------------------------------------------
 // Storage
 // ---------------------------------------------------------------------------
 const string SAVE_FILE = IO::FromStorageFolder("GoalmasAdvent.json");
+// Written by tests/qa_checks.js; the debug panel shows PASS/FAIL from it.
+const string QA_RESULT_FILE = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/tests/qa-result.json";
 const string SYNC_SUBFOLDER = "GoalAdvent";
 
 // Deployed worker URL. Paste it here once and every player syncs with no setup:
@@ -174,6 +202,15 @@ string g_selfTestResult = "not run";
 // UID->day pairs learned from the server (shared by all players).
 array<string> g_serverMapUids;
 array<int> g_serverMapDays;
+// Server clock mirror. The worker decides which day is open and which day is a
+// premiere; these four values only let the UI show the same answer. They go
+// stale on purpose so a long offline session falls back to the local clock.
+int g_serverMonth = 0;
+int g_serverDate = 0;
+int g_serverDay = 0;
+bool g_serverCatchUp = false;
+int g_serverClockStamp = 0;
+int g_resetEpoch = 0;      // server reset counter; 0 until the first /state
 
 // ---------------------------------------------------------------------------
 // Goal Hunt state

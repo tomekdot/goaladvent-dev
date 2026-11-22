@@ -14,6 +14,9 @@ editing code. The broader workspace rules also apply:
   active feature branch `ui-layout-fixes`.
 - Version: `info.toml` is the single source of truth and is bumped with every
   release tag - never hardcode the current version number in this file.
+  Every build here is a dev build: tags and `info.toml` use the `-dev` suffix
+  (`v0.6.0-dev`, not `v0.6.0`). The tag must equal `info.toml` exactly; keep the
+  debug-only `PLUGIN_VERSION` in `Config.as` in sync with it.
 - Leaderboard points come from `scoreFromBests(bests)`: best 15 of days 1-24
   plus finale. Each day stores `pts` and a one-time bounty flag `b` in `bests`.
   Verified with 3x100 CP submits -> 300 points in `/state`.
@@ -76,6 +79,17 @@ editing code. The broader workspace rules also apply:
 - There is NO in-plugin settings window. All options are `[Setting]` globals in
   `Config.as`, edited only in Openplanet -> Settings -> Plugins -> GoalAdvent 2026.
   `Glass Opacity` uses min/max there; changing it updates the palette next frame.
+- `S_QaPreview` (Advanced, 0 off / 1 all days / 2 CP tiers / 3 finale only)
+  fills the in-memory arrays with a mock 25-day season for release review.
+  `ApplyQaPreview()` runs after `LoadProgress()` and after every `ApplyState()`;
+  while it is on, `SaveProgress()`, `TrackGoalHunt()` and the submit path are
+  disabled so the real save and D1 are untouched. Openplanet caches newly
+  added settings until a full restart - to test a variant before that, change
+  the default in `Config.as` and reload. Restore it to 0 afterwards.
+- QA gate: `node tests/qa_checks.js` (add `--live` for worker checks). It writes
+  `tests/qa-result.json` with `status: passed|failed`; the debug panel shows
+  it as `qa=passed` through `QaResultText()` in `Debug.as`. Keep it green
+  before tagging a release.
 - `S_ShowOnStart` defaults to `true` - the dashboard opens by itself. There is
   deliberately no startup banner; banners are only for in-game Goal Hunt events.
 - Reward feedback: `StartOpenAnimation()` / `RenderOpenAnimation()` in `UI.as`
@@ -88,6 +102,16 @@ editing code. The broader workspace rules also apply:
   stay silent. `/admin` shows `Discord webhook: configured / not set`.
 - The worker has a read-only `/admin?token=<ADMIN_TOKEN>` HTML page (secret is
   never committed) and D1 can be browsed in the Cloudflare dashboard.
+- Admin reset: `POST /admin/reset?token=<ADMIN_TOKEN>` with JSON
+  `{ "accountId": "tomek_k.", "confirm": "RESET" }`. It requires the secret
+  **and** the fixed `OWNER_ACCOUNT_ID`, so only the owner's test data can be
+  wiped; no token in the request means 404, any other account or confirm value
+  means 403. The route deletes that player's row and bounty bonuses, resets any
+  bounty they hold to GrinchBot and bumps `meta.reset_epoch` (Unix seconds,
+  must fit an AngelScript int). `/state` returns `resetEpoch`; the plugin
+  clears its local save once when the value changes. The admin page has a
+  button that calls this route after a confirmation. Use it to clean test
+  data before the event starts.
 - `[Setting]` entries carry user-facing `description` (and `min`/`max` for
   numbers), following the style of `event-calendar-dev`.
 - Stat-card icons are centred with a borderless `Button` + `ButtonTextAlign`;
@@ -107,6 +131,11 @@ editing code. The broader workspace rules also apply:
   `RefreshPalette()`. UI code reads colours only through `Gold()`, `TextMain()`,
   `g_palette.*` wrappers - never hard-code a colour in a layout function.
   `Render()` and `RenderDashboard()` call `RefreshPalette()` before drawing.
+  The default glass look keeps the original grey tiles (`S_GalaxyOn = true`);
+  the grey active-tab look is unchanged. Tabs read their
+  colours from `g_palette.tab*`; there are no white hardcoded tab colours.
+  Calendar tiles carry **no corner checkmarks or tier dots** - the centre
+  icon, the `DONE` caption and the border colour carry that state.
 - Release workflow pins `ubuntu-24.04` and `actions/checkout@v6` (Node 24).
   Do not revert to `ubuntu-latest` or `checkout@v4` - GitHub warns about both.
 - `main` is the default branch and the source of releases. Merge feature work
@@ -141,6 +170,7 @@ editing code. The broader workspace rules also apply:
 | `backend/wrangler.toml` | Worker/D1 config (fill in `database_id`) |
 | `backend/DEPLOY.md` | Free-tier deployment guide |
 | `README.md` | Player-facing overview and install steps |
+| `tests/qa_checks.js` | Dependency-free release QA gate, writes `tests/qa-result.json` |
 | `DOCS.md` | Full technical reference (rules, architecture, troubleshooting) |
 | `goaladvent-dev.op` | Built package - **not** tracked in git; rebuild after changes |
 
@@ -160,7 +190,19 @@ Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
 - Map detection uses UID mappings learned by the worker first, then the name
   parser (`#N Goal Hunt`, `Goal Hunt Day N`, `GH N`, `goalhuntarena`), then the
   UTC event day. The old "name only" rule is obsolete.
-- Premiere x2 is decided by the **server UTC** clock, never the client clock.
+- Premiere x2, day unlock and the finale window are decided by the **server
+  UTC** clock. `/state` returns `serverMonth`, `serverDate`, `serverDay` and
+  `serverCatchUp`; `Config.as` keeps a `SERVER_CLOCK_TTL_SEC = 180` mirror and
+  `Calendar.as` only falls back to the local clock when offline or stale.
+  `/submit` re-checks the day against server UTC and answers HTTP 403
+  `day-not-open` for a future day. Never let the client clock decide a day.
+- Run tiers are cosmetic: `SILVER_CP` (15) and `GOLD_CP` (30) in `Config.as`
+  colour the tile border/dot, the day details, tooltip and HUD. Points stay
+  100 / 300 / 150. `ClampCp()` in `Calendar.as` keeps every display inside
+  0..`MAX_CP` (250), the same limit the worker accepts.
+- Bounty record: higher CP wins, equal CP goes to the lower `timeMs`. The D1
+  `bounty_bonus(day, account_id)` primary key grants the +150 only once per
+  player per day; two simultaneous submits cannot double-grant it.
 - Optional anti-cheat gate: `S_EventServerKeyword` matches part of the server
   name/login; empty accepts every server (test mode).
 
@@ -199,8 +241,19 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
   `UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse` plus
   `UI::StyleVar::ScrollbarSize = 0.0f`.
 - Every `PushStyleColor` / `PushStyleVar` needs a matching pop in the same
-  function. `PushDashboardStyle()` = 14 colours + 10 vars,
+  function. `PushDashboardStyle()` = 15 colours + 12 vars,
   `PopDashboardStyle()` pops exactly those counts.
+- Json enum member is `Json::Type::Boolean` (not `Bool`). `goaladvent_check.js`
+  and `goalmas_check.js` verify all `Json::Type::*` members against the
+  whitelist; a wrong one fails compile with `No matching symbol`.
+- The dashboard is manually resizable: `SetNextWindowSize(..., FirstUseEver)`
+  seeds the layout (820x620 with day details, 650x620 without, times `UiK()`)
+  and `SetNextWindowSizeConstraints()` sets a 700/560 px minimum (460/400 px
+  high). No `NoResize`. The tab row drops its icons when the measured row does
+  not fit, so a narrow window clips nothing.
+- `ApplyState()` treats `/state` as hostile: every leaf goes through
+  `JsonIntOr()` / `JsonStrOr()` / `JsonBoolOr()` with a type check and a CP
+  clamp. A malformed response must never throw a script exception.
 - `UI::BeginDisabled(bool)` / `UI::EndDisabled()` are available.
 - `UI::BeginTabBar(id)` takes only the id. `UI::ListBox(label, int& item,
   string[] items)` exists (value array).
@@ -212,8 +265,13 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
   an unused strip after column five). Draw the icon and status with `AddText()`
   at the measured centre so a short glyph stays aligned with a wider label.
 - Panel refresh buttons are centred (`CenteredButton`, FS_BODY); day action
-  buttons size to their measured label (`FitLabel`). The footer alone shows
-  connection status and totals.
+  buttons size to their measured label (`FitLabel` / `FitLabel3`, which has a
+  third stub fallback for narrow windows). The day bar keeps the title on the
+  left and reserves up to 70% of the row for the button, with a 6 px inset at
+  the right border. The button is lifted 8 px so its label lines up with the
+  title text, and the grid reserve grows by 10 px to make room. Rest days show no "Pursuit night" line under the title -
+  the tile says REST and the details card carries the bonus info.
+  The footer alone shows connection status and totals.
 
 ### UI text and typography
 

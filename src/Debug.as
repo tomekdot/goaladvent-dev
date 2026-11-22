@@ -14,14 +14,27 @@ void DebugError(const string &in source, const string &in detail) {
     print("[goaladvent][ERR] " + line);
 }
 
+string QaResultText() {
+    if (!IO::FileExists(QA_RESULT_FILE)) return "not-run";
+    Json::Value@ root = Json::FromFile(QA_RESULT_FILE);
+    if (root is null || !root.HasKey("status")) return "invalid";
+    Json::Value@ status = root["status"];
+    if (status is null || status.GetType() != Json::Type::String) return "invalid";
+    return string(status);
+}
+
 string DebugStateLine() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
     bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
-    return "version=" + PLUGIN_VERSION + " theme=" + (GlassTheme() ? "galaxy" : "goaladvent") +
+    string themeName = GlassTheme() ? "galaxy" :
+                       (g_Theme == UiTheme::Classic ? "classic" : "goaladvent");
+    return "version=" + PLUGIN_VERSION + " theme=" + themeName +
            " localDate=" + localDate +
            " eventSeason=" + tostring(eventSeason) +
            " errors=" + tostring(g_debugErrors.Length) +
+           " qa=" + QaResultText() +
+           " qaPreview=" + tostring(S_QaPreview) +
            " opacity=" + tostring(S_GlassOpacity) +
            " selected=" + tostring(g_selectedDay) +
            " active=" + tostring(g_activeDay) +

@@ -39,13 +39,17 @@ const COMMUNITY_BADGES = {
 };
 
 const DAY_COUNT = 25;
+const BEST_OF_DAYS = 15;   // must match BEST_OF_DAYS in src/Config.as
 const GOAL_CP = 10;
+const OWNER_ACCOUNT_ID = "tomek_k.";   // only this account may be admin-reset
 const BASE_POINTS = 100;
 const FINALE_POINTS = 300;
 const BASE_BOUNTY_POINTS = 150;
 const BASE_BOUNTY_CP = 15;
 const STARTER_BADGE = "GOALMAS-2026";
+const FINALE_GRACE_DAYS = 5;   // must match FINALE_GRACE_DAYS in src/Config.as
 const MAX_EVENTS = 15;
+const ELF_VETERAN_DAYS = 10;   // must match ELF_VETERAN_DAYS in src/Config.as
 const MAX_CP = 250;   // reject forged/huge values without imposing a real limit
 
 // Older D1 databases had only (day, ms, holder). Add cp idempotently at runtime.
@@ -65,6 +69,18 @@ async function ensureSchema(env) {
       await env.DB.prepare(
         "CREATE TABLE IF NOT EXISTS map_days (uid TEXT PRIMARY KEY, day INTEGER NOT NULL, " +
         "first_seen INTEGER NOT NULL)"
+      ).run();
+      // One bounty bonus per player per day. The primary key makes the grant
+      // race-free: exactly one of two simultaneous submissions can insert.
+      await env.DB.prepare(
+        "CREATE TABLE IF NOT EXISTS bounty_bonus (day INTEGER NOT NULL, " +
+        "account_id TEXT NOT NULL, created_at INTEGER NOT NULL, " +
+        "PRIMARY KEY (day, account_id))"
+      ).run();
+      // Monotonic reset counter. A new value tells every client to drop its
+      // local save after an admin reset without touching other players.
+      await env.DB.prepare(
+        "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
       ).run();
     })();
   }
@@ -91,7 +107,7 @@ function scoreFromBests(bests) {
     if (b && (b.cp || 0) >= GOAL_CP && (b.pts || 0) > 0) vals.push(b.pts);
   }
   vals.sort((a, b) => b - a);
-  let total = vals.slice(0, 15).reduce((a, b) => a + b, 0);
+  let total = vals.slice(0, BEST_OF_DAYS).reduce((a, b) => a + b, 0);
   const finale = bests[DAY_COUNT];
   if (finale && (finale.cp || 0) >= GOAL_CP) total += (finale.pts || FINALE_POINTS);
   return total;
@@ -174,6 +190,18 @@ function isPremiere(day, now) {
   return now.getUTCMonth() + 1 === 12 && now.getUTCDate() === day;
 }
 
+// The event calendar is decided by the server clock, never by a client clock.
+// December opens one day per day (a day from the future is refused), January
+// 1..FINALE_GRACE_DAYS is the catch-up window for every day, and outside the
+// event the route stays open so QA and archived data keep working.
+function dayAllowedByServer(day, now) {
+  const month = now.getUTCMonth() + 1;
+  const date = now.getUTCDate();
+  if (month === 12) return day <= date;
+  if (month === 1 && date <= FINALE_GRACE_DAYS) return true;
+  return true;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -181,6 +209,49 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/") {
       return Response.json({ ok: true, service: "goalmas", goalCp: GOAL_CP, days: DAY_COUNT });
+    }
+
+    // Admin-only reset of the owner's test data. Needs the secret token AND a
+    // fixed owner account, so no player can wipe anyone else's progress.
+    if (request.method === "POST" && url.pathname === "/admin/reset") {
+      if (!env.ADMIN_TOKEN || url.searchParams.get("token") !== env.ADMIN_TOKEN) {
+        return new Response("Not found", { status: 404 });
+      }
+      let body;
+      try {
+        body = await request.json();
+      } catch (e) {
+        return new Response("Bad JSON", { status: 400 });
+      }
+      const accountId = String(body.accountId || "");
+      if (accountId !== OWNER_ACCOUNT_ID || body.confirm !== "RESET") {
+        return Response.json({ ok: false, error: "not-allowed" }, { status: 403 });
+      }
+      const player = await env.DB.prepare("SELECT name FROM players WHERE account_id = ?")
+        .bind(accountId)
+        .first();
+      // Unix seconds on purpose: the plugin stores this in an AngelScript int.
+      const epoch = String(Math.floor(Date.now() / 1000));
+      const batch = [
+        env.DB.prepare("DELETE FROM players WHERE account_id = ?").bind(accountId),
+        env.DB.prepare("DELETE FROM bounty_bonus WHERE account_id = ?").bind(accountId),
+        env.DB.prepare(
+          "INSERT INTO meta (key, value) VALUES ('reset_epoch', ?) " +
+          "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+        ).bind(epoch)
+      ];
+      if (player && player.name) {
+        batch.push(
+          env.DB.prepare("UPDATE bounties SET cp = ?, ms = 0, holder = ? WHERE holder = ?")
+            .bind(BASE_BOUNTY_CP, "GrinchBot", player.name)
+        );
+        batch.push(
+          env.DB.prepare("DELETE FROM events WHERE msg LIKE ?")
+            .bind("%" + player.name + "%")
+        );
+      }
+      await env.DB.batch(batch);
+      return Response.json({ ok: true, accountId, resetEpoch: Number(epoch) });
     }
 
     // Small read-only admin page. Requires the ADMIN_TOKEN secret as ?token=...
@@ -192,7 +263,7 @@ export default {
       const [players, bounties, events, maps] = await Promise.all([
         env.DB.prepare("SELECT account_id, name, points, bounties, badges, bests FROM players ORDER BY points DESC LIMIT 50").all(),
         env.DB.prepare("SELECT day, cp, ms, holder FROM bounties ORDER BY day").all(),
-        env.DB.prepare("SELECT msg, created_at FROM events ORDER BY id DESC LIMIT 15").all(),
+        env.DB.prepare("SELECT msg, created_at FROM events ORDER BY id DESC LIMIT " + MAX_EVENTS).all(),
         env.DB.prepare("SELECT uid, day, first_seen FROM map_days ORDER BY day").all()
       ]);
       const esc = (v) => String(v == null ? "" : v).replace(/[&<>\"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -207,6 +278,20 @@ th{background:#242733}tr:nth-child(even){background:#1b1d24}a{color:#9ecbff}</st
 <p><a href="/admin?token=${encodeURIComponent(env.ADMIN_TOKEN)}">Refresh</a> &middot;
 <a href="https://dash.cloudflare.com/2975602b6ae7dc883884858d1b5ce4bf/database/d1">Cloudflare D1 dashboard</a></p>
 <p>Discord webhook: <strong>${env.DISCORD_WEBHOOK_URL ? "configured" : "not set"}</strong></p>
+<p><button id="resetOwner">Reset owner test data</button> <span id="resetMsg"></span></p>
+<script>
+document.getElementById("resetOwner").onclick = async () => {
+  if (!confirm("Reset all owner test data on the server?")) return;
+  const r = await fetch("/admin/reset?token=" + ${JSON.stringify(env.ADMIN_TOKEN)}, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accountId: ${JSON.stringify(OWNER_ACCOUNT_ID)}, confirm: "RESET" })
+  });
+  const j = await r.json().catch(() => ({}));
+  document.getElementById("resetMsg").textContent = r.ok
+    ? "Reset done. Clients will clear their local save on next sync."
+    : "Reset failed: " + JSON.stringify(j);
+};
+</script>
 <h2>Players (${(players.results || []).length} of ${(players.results || []).length})</h2>
 <table><tr><th>account</th><th>name</th><th>pts</th><th>bounties</th><th>badges</th><th>bests</th></tr>
 ${rows(players, ["account_id", "name", "points", "bounties", "badges", "bests"])}</table>
@@ -270,10 +355,28 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       const mapDays = {};
       for (const row of (mapRows.results || [])) mapDays[row.uid] = row.day;
 
+      const epochRow = await env.DB.prepare("SELECT value FROM meta WHERE key = 'reset_epoch'").first();
+
+      // Server clock mirror for the tiles. The submit route re-checks the same
+      // rules, so editing the PC clock changes nothing that counts.
+      const now = new Date();
+      const serverMonth = now.getUTCMonth() + 1;
+      const serverDate = now.getUTCDate();
+      const serverCatchUp = serverMonth === 12 ||
+        (serverMonth === 1 && serverDate <= FINALE_GRACE_DAYS);
+      const serverDay = serverMonth === 12
+        ? Math.min(serverDate, DAY_COUNT)
+        : (serverCatchUp ? DAY_COUNT : 0);
+
       return Response.json({
         points: me ? me.points : 0,
         bounties: me ? me.bounties : 0,
         badges: badgesFor(accountId, me ? safeParse(me.badges, []) : []),
+        resetEpoch: Number((epochRow && epochRow.value) || 0),
+        serverMonth,
+        serverDate,
+        serverDay,
+        serverCatchUp,
         days,
         leaderboard,
         mapDays,
@@ -297,6 +400,13 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
           !Number.isInteger(cpCount) || cpCount <= 0 || cpCount > MAX_CP) {
         return new Response("Bad Request", { status: 400 });
       }
+
+      // The server clock decides which days exist. Changing the PC clock may
+      // unlock tiles in the UI, but it can never publish a future day.
+      const now = new Date();
+      if (!dayAllowedByServer(day, now)) {
+        return Response.json({ ok: false, error: "day-not-open" }, { status: 403 });
+      }
       // Any day may be submitted. Tuesday nights are a Pursuit bonus in the
       // calendar UI, but when a Goal Hunt map is actually played on that day
       // the run must count - rejecting it here produced HTTP 403 in test runs.
@@ -316,7 +426,6 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       const bests = player ? normalizeBests(safeParse(player.bests, {})) : {};
       const badges = new Set(badgesFor(accountId, player ? safeParse(player.badges, []) : []));
 
-      const now = new Date();
       const mult = isPremiere(day, now) ? 2 : 1;
       const isFinale = day === DAY_COUNT;
 
@@ -351,6 +460,7 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         (cpCount === currentCp && timeMs > 0 && (!currentMs || timeMs < currentMs));
 
       let bountyWon = false;
+      let holderNow = previousHolder;
       if (beatsBounty) {
         await env.DB.prepare(
           "INSERT INTO bounties (day, cp, ms, holder) VALUES (?, ?, ?, ?) " +
@@ -365,12 +475,28 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         )
           .bind(day, cpCount, timeMs, name || "Player")
           .run();
-        if (!prev.b) {
+
+        // Exactly one request can claim the bonus for a (day, player) pair.
+        // The insert is ignored when the same player already claimed it, so a
+        // double submit or two players racing cannot grant it twice.
+        const claim = await env.DB.prepare(
+          "INSERT OR IGNORE INTO bounty_bonus (day, account_id, created_at) VALUES (?, ?, ?)"
+        )
+          .bind(day, accountId, Date.now())
+          .run();
+        if (claim.meta && claim.meta.changes > 0) {
           gained += BASE_BOUNTY_POINTS * mult;
           dayPts += BASE_BOUNTY_POINTS * mult;
           bountyWon = true;
         }
         badges.add("BOUNTY-HUNTER");
+
+        // Read the record back: with two simultaneous submits the stored row
+        // (highest CP, then lowest time) decides who actually holds it.
+        const settled = await env.DB.prepare("SELECT * FROM bounties WHERE day = ?")
+          .bind(day)
+          .first();
+        if (settled && settled.holder) holderNow = settled.holder;
       }
 
       bests[day] = {
@@ -380,11 +506,37 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         b: prev.b || bountyWon ? 1 : 0
       };
 
+      // Two submits from the same player can overlap (a debounce retry next to
+      // the next run). Re-read the row and keep the better of both snapshots so
+      // neither write can silently drop the other run or a badge.
+      const latest = await env.DB.prepare("SELECT * FROM players WHERE account_id = ?")
+        .bind(accountId)
+        .first();
+      if (latest) {
+        for (const storedBadge of safeParse(latest.badges, [])) badges.add(storedBadge);
+        const stored = normalizeBests(safeParse(latest.bests, {}));
+        for (const key of Object.keys(stored)) {
+          const theirs = stored[key];
+          const mine = bests[key];
+          if (!mine) {
+            bests[key] = theirs;
+            continue;
+          }
+          const theirsBetter = (theirs.cp || 0) > (mine.cp || 0);
+          bests[key] = {
+            cp: Math.max(theirs.cp || 0, mine.cp || 0),
+            ms: theirsBetter ? (theirs.ms || 0) : (mine.ms || 0),
+            pts: Math.max(theirs.pts || 0, mine.pts || 0),
+            b: theirs.b || mine.b ? 1 : 0
+          };
+        }
+      }
+
       const completedDays = Object.keys(bests).filter(
         (key) => (bests[key].cp || 0) >= GOAL_CP
       ).length;
-      if (completedDays >= 10) badges.add("ELF-VETERAN");
-      if (completedDays >= 24) badges.add("GOALMAS-24");
+      if (completedDays >= ELF_VETERAN_DAYS) badges.add("ELF-VETERAN");
+      if (completedDays >= DAY_COUNT - 1) badges.add("GOALMAS-24");
       if (completedDays >= DAY_COUNT) badges.add("FINALIST");
 
       // Legacy rows have no per-day pts; keep their old total until they next
@@ -413,9 +565,11 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
 
       // Repeated +0 submits must not flood the 15-line feed or Discord.
       const timeInfo = timeMs > 0 ? " (" + (timeMs / 1000).toFixed(3) + "s)" : "";
-      // Announce every takeover, not only the first bonus: the holder changes
-      // several times per day and #goalmas-leaderboard should follow it.
-      const bountyChanged = beatsBounty && (name || "Player") !== previousHolder;
+      // Announce a takeover only when the stored record really points at this
+      // run. With simultaneous submits the higher CP (or lower time) wins and
+      // the loser stays silent instead of announcing a bounty it does not hold.
+      const bountyChanged = beatsBounty && holderNow === (name || "Player") &&
+                            holderNow !== previousHolder;
       if (bountyChanged) {
         await pushEvent(
           env,

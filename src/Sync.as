@@ -17,7 +17,7 @@ void ShowBanner(const string &in text) {
 void PushFeed(const string &in text) {
     string line = text;
     g_liveFeed.InsertAt(0, line);
-    while (g_liveFeed.Length > 15) g_liveFeed.RemoveAt(g_liveFeed.Length - 1);
+    while (g_liveFeed.Length > MAX_FEED_EVENTS) g_liveFeed.RemoveAt(g_liveFeed.Length - 1);
 }
 
 string ApiUrl() {
@@ -152,14 +152,63 @@ void RefreshFolderBoard() {
 // ---------------------------------------------------------------------------
 // HTTP transport (free Cloudflare Worker + D1)
 // ---------------------------------------------------------------------------
+// /state is untrusted input: every value is read through a type check so one
+// malformed row can never throw a script exception in the middle of a sync.
+int JsonIntOr(Json::Value@ obj, const string &in key, int fallback) {
+    if (obj is null || !obj.HasKey(key)) return fallback;
+    Json::Value@ value = obj[key];
+    if (value is null || value.GetType() != Json::Type::Number) return fallback;
+    return int(value);
+}
+
+string JsonStrOr(Json::Value@ obj, const string &in key, const string &in fallback) {
+    if (obj is null || !obj.HasKey(key)) return fallback;
+    Json::Value@ value = obj[key];
+    if (value is null || value.GetType() != Json::Type::String) return fallback;
+    return string(value);
+}
+
+bool JsonBoolOr(Json::Value@ obj, const string &in key, bool fallback) {
+    if (obj is null || !obj.HasKey(key)) return fallback;
+    Json::Value@ value = obj[key];
+    if (value is null || value.GetType() != Json::Type::Boolean) return fallback;
+    return bool(value);
+}
+
 void ApplyState(const string &in body) {
     Json::Value@ root = Json::Parse(body);
     if (root is null || root.GetType() != Json::Type::Object) return;
 
+    int srvMonth = JsonIntOr(root, "serverMonth", 0);
+    int srvDate = JsonIntOr(root, "serverDate", 0);
+
+    // An admin reset bumps the server epoch. Drop the local save once, then
+    // keep syncing normally - other players are unaffected.
+    int epoch = JsonIntOr(root, "resetEpoch", 0);
+    if (epoch > 0 && epoch != g_resetEpoch) {
+        // A missing/zero epoch means an older save, which may still hold test
+        // progress from before the reset. Clear once, then persist the new one.
+        g_resetEpoch = epoch;
+        ResetProgress();
+        SaveProgress();
+        g_status = "Server data was reset | local progress cleared.";
+    }
+    if (srvMonth >= 1 && srvMonth <= 12 && srvDate >= 1 && srvDate <= 31) {
+        g_serverMonth = srvMonth;
+        g_serverDate = srvDate;
+        g_serverDay = JsonIntOr(root, "serverDay", 0);
+        g_serverCatchUp = JsonBoolOr(root, "serverCatchUp", false);
+        g_serverClockStamp = int(Time::Stamp);
+    }
+
     if (root.HasKey("badges")) {
         Json::Value@ badges = root["badges"];
         if (badges !is null && badges.GetType() == Json::Type::Array) {
-            for (uint i = 0; i < badges.Length; i++) AddBadge(string(badges[i]));
+            for (uint i = 0; i < badges.Length; i++) {
+                Json::Value@ badge = badges[i];
+                if (badge is null || badge.GetType() != Json::Type::String) continue;
+                AddBadge(string(badge));
+            }
         }
     }
 
@@ -169,22 +218,16 @@ void ApplyState(const string &in body) {
             Json::Value@ dayObj = days[i];
             if (dayObj is null || dayObj.GetType() != Json::Type::Object) continue;
             if (!dayObj.HasKey("day")) continue;
-            int day = int(dayObj["day"]);
+            int day = JsonIntOr(dayObj, "day", 0);
             if (day < 1 || day > DAY_COUNT) continue;
             int idx = day - 1;
 
-            if (dayObj.HasKey("bountyCp")) {
-                int value = int(dayObj["bountyCp"]);
-                if (value > g_bountyCp[idx]) g_bountyCp[idx] = value;
-            }
-            if (dayObj.HasKey("bountyHolder")) {
-                string holder = string(dayObj["bountyHolder"]);
-                if (holder.Length > 0) g_bountyHolder[idx] = holder;
-            }
-            if (dayObj.HasKey("myBestCp")) {
-                int best = int(dayObj["myBestCp"]);
-                if (best > g_bests[idx]) g_bests[idx] = best;
-            }
+            int value = ClampCp(JsonIntOr(dayObj, "bountyCp", 0));
+            if (value > g_bountyCp[idx]) g_bountyCp[idx] = value;
+            string holder = JsonStrOr(dayObj, "bountyHolder", "");
+            if (holder.Length > 0) g_bountyHolder[idx] = holder;
+            int best = ClampCp(JsonIntOr(dayObj, "myBestCp", 0));
+            if (best > g_bests[idx]) g_bests[idx] = best;
         }
     }
 
@@ -197,10 +240,10 @@ void ApplyState(const string &in body) {
         for (uint i = 0; i < board.Length; i++) {
             Json::Value@ row = board[i];
             if (row is null || row.GetType() != Json::Type::Object) continue;
-            string name = row.HasKey("name") ? string(row["name"]) : "";
-            int points = row.HasKey("points") ? int(row["points"]) : 0;
-            int bounties = row.HasKey("bounties") ? int(row["bounties"]) : 0;
-            string accountId = row.HasKey("accountId") ? string(row["accountId"]) : "";
+            string name = JsonStrOr(row, "name", "");
+            int points = JsonIntOr(row, "points", 0);
+            int bounties = JsonIntOr(row, "bounties", 0);
+            string accountId = JsonStrOr(row, "accountId", "");
             AddBoardRow(name, points, bounties, accountId);
         }
         SortBoard();
@@ -211,7 +254,9 @@ void ApplyState(const string &in body) {
     if (events !is null && events.GetType() == Json::Type::Array) {
         g_liveFeed.Resize(0);
         for (uint i = 0; i < events.Length; i++) {
-            string line = string(events[i]);
+            Json::Value@ entry = events[i];
+            if (entry is null || entry.GetType() != Json::Type::String) continue;
+            string line = string(entry);
             if (line.Length > 0) g_liveFeed.InsertLast(line);
         }
         if (g_liveFeed.Length > 0 && g_liveFeed[0] != g_lastTopEvent) {
@@ -221,13 +266,12 @@ void ApplyState(const string &in body) {
     }
 
     // Server-learned map UIDs: new maps work for everyone after the first run.
-    Json::Value@ mapDays = root["mapDays"];
-    if (mapDays !is null && mapDays.GetType() == Json::Type::Object) {
+    Json::Value@ mapDays = root["mapDays"];    if (mapDays !is null && mapDays.GetType() == Json::Type::Object) {
         g_serverMapUids.Resize(0);
         g_serverMapDays.Resize(0);
         array<string>@ keys = mapDays.GetKeys();
         for (uint i = 0; i < keys.Length; i++) {
-            int day = int(mapDays[keys[i]]);
+            int day = JsonIntOr(mapDays, keys[i], 0);
             if (day >= 1 && day <= DAY_COUNT) {
                 g_serverMapUids.InsertLast(keys[i]);
                 g_serverMapDays.InsertLast(day);
@@ -244,6 +288,9 @@ void ApplyState(const string &in body) {
             ResetSession();
         }
     }
+
+    // A live sync may have overwritten the mock arrays; restore the preview.
+    ApplyQaPreview();
 
     g_lastSyncStamp = int(Time::Stamp);
 }

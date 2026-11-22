@@ -19,17 +19,26 @@ technical reference see [DOCS.md](DOCS.md).
   300 pts for the finale). Premiere day pays x2 - the **server UTC** clock
   decides, so changing the local clock cannot cheat.
 - 🛡️ **Bounty**: most checkpoints on a day wins the record and +150 pts.
-  Starts at 15 CP held by `GrinchBot`. The optional `timeMs` tie-breaker is reserved in the schema; the plugin currently sends 0.
-  The bounty bonus is granted at most once per day per player.
+  Starts at 15 CP held by `GrinchBot`. Equal CP is broken by the lower
+  `timeMs` (the plugin sends 0 today). The bonus is granted at most once per
+  day per player, enforced by the D1 primary key.
+- 🥇 **Run tiers are visual only**: 10 CP completed (emerald), 15 CP silver,
+  30 CP gold in the tile outline, day details, tooltip and HUD. Points never
+  change.
 - 🔁 **Catch-up**: past days stay playable until the event ends. The finale
-  stays open until 5 January; the raffle is drawn afterwards.
+  stays open until 5 January; the raffle is drawn afterwards. The worker
+  clock mirrors into `/state`, so the tiles unlock on server UTC and a future
+  day cannot be submitted.
 - 🏆 **Best 15 of 24 count**. The finale always counts on top. Missing days
   never destroy a run.
 - 🎖️ **Badges**: `GOALMAS-2026`, `GOALMAS-PLAYER`, `BOUNTY-HUNTER`,
   `ELF-VETERAN`, `GOALMAS-24`, `FINALIST`, plus `PURSUIT` and `MP-GALAXY`.
 - 🖥️ **Dashboard**: header card with progress, compact tab bar, 5x5
   colour-coded calendar, day details, leaderboard, live feed, per-day bounty
-  board, finale tab, HUD and banner.
+  board, finale tab, HUD and banner. The window is movable and manually
+  resizable; the grid and tables follow the content region. Grey glass tiles
+  and grey tabs as before; state is shown by the tile icon, caption and
+  border - no corner badges.
 - 🎁 **Gift opening**: finishing a day (or stealing a bounty) pops a short
   animation with the points, checkpoints and current bounty holder.
 - 💬 **Discord feed**: the worker mirrors bounty takeovers and first clears to a
@@ -113,6 +122,24 @@ window).
 | `Map UID to day` | empty | `UID=day` pairs for maps without `#N` |
 | `Force current map as day` | 0 | 1-25 override for testing |
 | `Debug overlay` | off | Admin diagnostics window |
+| `QA preview` | 0 | 0 off, 1 all 25 days done, 2 CP tier mix, 3 finale only - review the finished UI without saving or submitting anything |
+
+---
+
+## 🧪 Release QA
+
+Node only, no dependencies:
+
+```
+node tests/qa_checks.js
+node tests/qa_checks.js --live
+```
+
+It checks source hygiene, constants shared with the worker, rest days, CP
+tiers, server-clock gating, admin reset guards, the QA preview and the worker
+syntax. With `--live` it also probes the deployed worker. The result is written
+to `tests/qa-result.json`; with the debug overlay on, the log line shows
+`qa=passed` (or `failed`) next to `qaPreview=N`. Keep it green before a release.
 
 ---
 
@@ -188,8 +215,8 @@ result and errors into one pasteable block.
 | `src/Theme.as` | `ThemePalette` - colours, alpha and radii for both themes |
 | `src/Debug.as` | Admin diagnostics and log line |
 | `src/Main.as` | Entry points (`Main`, `Update`, `Render`, `RenderInterface`, `RenderMenu`) |
-| `backend/worker.js` | Cloudflare Worker + D1: `/state`, `/submit`, `/admin` |
-| `backend/schema.sql` | D1 tables (`players`, `bounties`, `events`, `map_days`) |
+| `backend/worker.js` | Cloudflare Worker + D1: `/state`, `/submit`, `/admin`, `/admin/reset` |
+| `backend/schema.sql` | D1 tables (`players`, `bounties`, `events`, `map_days`, `bounty_bonus`, `meta`) |
 | `backend/wrangler.toml` | Worker/D1 deployment config |
 | `backend/DEPLOY.md` | Free-tier deployment guide |
 
@@ -201,11 +228,15 @@ result and errors into one pasteable block.
 |---|---|
 | Plugin not in menu | Check `PluginsEnabled` in `Settings.ini` and reload scripts |
 | `No Goal Hunt map detected` | Map has no `#N` - use the debug assign button or set a UID mapping |
-| `submit: HTTP 403` | Old worker - redeploy with `wrangler deploy` (all days now accepted) |
+| `submit: HTTP 403` | The server says that day is not open: check the PC clock and the December date; a future day cannot be published |
 | `Attempted to suspend...` | Fixed by running HTTP sync in a coroutine (`startnew`) |
 | Raw `$fff` codes in feed | Fixed - feed uses the ManiaPlanet colour parser |
 | Leaderboard disagrees with `TOTAL` | Updated worker scoring - submit once to migrate |
 | `Script compilation failed` | Check `Openplanet.log`, then reload scripts |
+| Test data left before the event | On the admin page (secret token required) use `Reset owner test data`; the next sync clears the local save too |
+
+The reset route is restricted to the owner account and the admin secret - a
+player cannot reset anyone's progress.
 
 ---
 

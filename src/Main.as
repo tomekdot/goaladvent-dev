@@ -8,6 +8,8 @@ const string AGENT_RELOAD_MARKER = "C:/Users/tomekdot/Openplanet4/Plugins/goalad
 const string AGENT_RELOAD_PURSUIT = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-pursuit";
 const string AGENT_RELOAD_VEHICLE = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-vehicle";
 const string AGENT_RELOAD_CALENDAR = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-calendar";
+const string AGENT_RELOAD_VECDET = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-vecdet";
+const string AGENT_RELOAD_SOCIAL = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.agent-reload-social";
 Meta::Plugin@ g_selfPlugin;
 
 void ReloadPluginById(const string &in id) {
@@ -25,6 +27,11 @@ void Main() {
     startnew(AgentReloadLoop);
 
     LoadProgress();
+    if (S_QaPreview > 0) {
+        print("[goaladvent] QA preview " + tostring(S_QaPreview) +
+              " active | progress is not saved or submitted.");
+        g_status = "QA preview active | progress is not saved or submitted.";
+    }
 
     // Zero-setup sync: a baked or configured worker URL wins over offline mode.
     if (S_SyncMode == 0 && ApiUrl().Length > 0) S_SyncMode = 2;
@@ -73,6 +80,14 @@ void AgentReloadLoop() {
         if (IO::FileExists(AGENT_RELOAD_CALENDAR)) {
             IO::Delete(AGENT_RELOAD_CALENDAR);
             ReloadPluginById("event-calendar-dev");
+        }
+        if (IO::FileExists(AGENT_RELOAD_VECDET)) {
+            IO::Delete(AGENT_RELOAD_VECDET);
+            ReloadPluginById("vehicle-detector-dev");
+        }
+        if (IO::FileExists(AGENT_RELOAD_SOCIAL)) {
+            IO::Delete(AGENT_RELOAD_SOCIAL);
+            ReloadPluginById("anim-banner-dev");
         }
     }
 }

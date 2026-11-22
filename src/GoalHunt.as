@@ -102,7 +102,32 @@ string CurrentMapType() {
     return string(app.RootMap.MapType);
 }
 
+// Current titlepack id (e.g. "Pursuit", "PursuitStadium", "TMNext").
+string CurrentTitleId() {
+    auto app = cast<CGameManiaPlanet>(GetApp());
+    if (app is null) return "";
+    CGameManiaTitle@ title = app.LoadedManiaTitle;
+    if (title is null) return "";
+    return title.TitleId;
+}
+
+// Detection only runs on the configured titlepacks. This prevents a map named
+// "Goal Hunt" on an unrelated titlepack from triggering a false day.
+bool OnAllowedTitlepack() {
+    string raw = S_AllowedTitlepacks.Trim();
+    if (raw.Length == 0) return true;
+    string current = CurrentTitleId().ToLower();
+    if (current.Length == 0) return false;
+    array<string>@ parts = raw.Split(",");
+    for (uint i = 0; i < parts.Length; i++) {
+        string allowed = parts[i].Trim().ToLower();
+        if (allowed.Length > 0 && current == allowed) return true;
+    }
+    return false;
+}
+
 bool OnEventServer() {
+    if (!OnAllowedTitlepack()) return false;
     string keyword = S_EventServerKeyword.Trim().ToLower();
     if (keyword.Length == 0) return true;
     if (CurrentServerName().ToLower().Contains(keyword)) return true;
@@ -305,8 +330,8 @@ void CompleteDay(int day, int cp) {
     AddBadge("GOALMAS-PLAYER");
 
     int opened = OpenedCount();
-    if (opened >= 10) AddBadge("ELF-VETERAN");
-    if (opened >= 24) AddBadge("GOALMAS-24");
+    if (opened >= ELF_VETERAN_DAYS) AddBadge("ELF-VETERAN");
+    if (opened >= DAY_COUNT - 1) AddBadge("GOALMAS-24");
     if (opened >= DAY_COUNT) AddBadge("FINALIST");
 
     string msg = LocalName() + " finished day " + tostring(day) + " with " + tostring(cp) +
@@ -363,6 +388,7 @@ void ResetSession() {
 }
 
 void TrackGoalHunt(float dt) {
+    if (S_QaPreview > 0) return;   // preview mode is display only
     string uid = GetCurrentMapUid();
     if (uid != g_lastMapUid) {
         // Flush a finished run before the map change drops it from the queue.
@@ -381,7 +407,7 @@ void TrackGoalHunt(float dt) {
         CheckCommunityBadges();
         if (g_activeDay > 0) {
             g_selectedDay = g_activeDay;
-            ShowBanner("Day " + tostring(g_activeDay) + " Goal Hunt detected | hunt checkpoints!");
+            ShowBanner("Day " + tostring(g_activeDay) + " Goal Hunt detected | hunt checkpoints");
         }
         if (S_Debug) {
             print("[goaladvent][DBG] Map '" + CurrentMapName() + "' -> day " +
@@ -428,6 +454,11 @@ void TrackGoalHunt(float dt) {
         effective = g_curRaceNbCp;
     }
 
+    // Keep the local number inside the range the worker accepts (0..MAX_CP),
+    // so an unusually long arena checkpoint buffer can never create a run the
+    // server rejects on every retry.
+    effective = ClampCp(effective);
+
     if (effective > g_sessionCp) {
         g_sessionCp = effective;
         if (effective >= GOAL_CP) CompleteDay(g_activeDay, effective);
@@ -451,6 +482,7 @@ void TrackGoalHunt(float dt) {
 // Upload
 // ---------------------------------------------------------------------------
 void RequestCpSubmit(int day, int cp) {
+    if (S_QaPreview > 0) return;
     if (day < 1 || day > DAY_COUNT) return;
     if (cp <= 0) return;
     g_pendingDay = day;
@@ -475,6 +507,7 @@ void SubmitWhenFree() {
 }
 
 void Coroutine_SubmitCp() {
+    if (S_QaPreview > 0) return;
     if (g_syncing) return;
     if (S_SyncMode != 2 || ApiUrl().Length == 0) return;
 
@@ -508,6 +541,14 @@ void Coroutine_SubmitCp() {
         g_submitRetries = 0;
         if (cp > g_lastSentCp) g_lastSentCp = cp;
         g_status = "Sent " + tostring(cp) + " CP to the event server.";
+        SyncState();
+    } else if (code == 403) {
+        // The server clock decides which day is open. A retry cannot fix a
+        // wrong PC clock, so drop this run instead of looping forever.
+        g_submitRetries = 0;
+        if (cp > g_lastSentCp) g_lastSentCp = cp;
+        g_status = "Day " + tostring(day) + " is not open on the server | check the PC clock.";
+        DebugError("submit", "HTTP 403 day-not-open for day " + tostring(day));
         SyncState();
     } else {
         g_status = "Upload failed (HTTP " + tostring(code) + ") | retrying.";

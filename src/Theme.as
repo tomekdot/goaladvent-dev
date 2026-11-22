@@ -61,10 +61,10 @@ class ThemePalette {
         border         = vec4(0.160, 0.160, 0.200, 1.00);
         borderStrong   = vec4(0.920, 0.930, 0.960, 1.00);
         borderWeak     = vec4(0.160, 0.160, 0.200, 1.00);
-        buttonBg       = vec4(0.110, 0.110, 0.140, 1.00);
-        buttonHover    = vec4(0.170, 0.170, 0.210, 1.00);
-        buttonActive   = vec4(0.210, 0.210, 0.260, 1.00);
-        text           = vec4(0.920, 0.920, 0.950, 1.00);
+        buttonBg       = S_ButtonColour;
+        buttonHover    = S_ButtonHoverColour;
+        buttonActive   = S_ButtonActiveColour;
+        text           = S_ButtonTextColour;
         textMuted      = vec4(0.550, 0.550, 0.620, 1.00);
         tableHeaderBg  = innerBg;
 
@@ -82,8 +82,8 @@ class ThemePalette {
         iceBlue = vec4(0.92, 0.93, 0.96, 1.00);
 
         tabBg = vec4(0.000, 0.000, 0.000, 0.55);
-        tabActiveBg = vec4(0.00, 0.00, 0.00, 0.85);
-        tabActiveText = vec4(0.98, 0.98, 1.00, 1.00);
+        tabActiveBg = vec4(0.95, 0.95, 0.97, 1.00);
+        tabActiveText = vec4(0.06, 0.06, 0.08, 1.00);
         tabHoverBg = vec4(0.170, 0.170, 0.210, 1.00);
         tileEdge = border;
         tileHover = vec4(0.140, 0.140, 0.170, 1.00);
@@ -110,10 +110,10 @@ class ThemePalette {
         border         = vec4(1.000, 1.000, 1.000, 0.09);
         borderStrong   = vec4(1.000, 1.000, 1.000, 0.75);
         borderWeak     = vec4(1.000, 1.000, 1.000, 0.08);
-        buttonBg       = vec4(1.000, 1.000, 1.000, 0.07);
-        buttonHover    = vec4(1.000, 1.000, 1.000, 0.14);
-        buttonActive   = vec4(1.000, 1.000, 1.000, 0.18);
-        text           = vec4(1.000, 1.000, 1.000, 0.96);
+        buttonBg       = vec4(S_ButtonColour.x, S_ButtonColour.y, S_ButtonColour.z, 0.07);
+        buttonHover    = vec4(S_ButtonHoverColour.x, S_ButtonHoverColour.y, S_ButtonHoverColour.z, 0.14);
+        buttonActive   = vec4(S_ButtonActiveColour.x, S_ButtonActiveColour.y, S_ButtonActiveColour.z, 0.18);
+        text           = S_ButtonTextColour;
         textMuted      = vec4(1.000, 1.000, 1.000, 0.50);
         tableHeaderBg  = headerBg;
 
@@ -131,8 +131,8 @@ class ThemePalette {
         iceBlue = vec4(1.000, 1.000, 1.000, 0.96);
 
         tabBg = vec4(0.000, 0.000, 0.000, 0.20);
-        tabActiveBg = vec4(0.00, 0.00, 0.00, 0.60);
-        tabActiveText = vec4(0.98, 0.98, 1.00, 1.00);
+        tabActiveBg = vec4(0.95, 0.95, 0.97, 1.00);
+        tabActiveText = vec4(0.06, 0.06, 0.08, 1.00);
         tabHoverBg = vec4(1.000, 1.000, 1.000, 0.14);
         tileEdge = vec4(1.000, 1.000, 1.000, 0.16);
         tileHover = vec4(1.000, 1.000, 1.000, 0.15);
@@ -142,32 +142,6 @@ class ThemePalette {
         childRounding = 0.0f;
         frameRounding = 0.0f;
         tabRounding = 0.0f;
-    }
-
-    void SetLight() {
-        SetObsidian();
-        windowBg       = vec4(0.94, 0.94, 0.96, 1.00);
-        childBg        = vec4(0.98, 0.98, 0.99, 1.00);
-        containerBg    = vec4(0.96, 0.96, 0.98, 1.00);
-        innerBg        = vec4(0.90, 0.90, 0.90, 1.00);
-        headerBg       = vec4(0.88, 0.88, 0.92, 1.00);
-        frameBg        = vec4(0.86, 0.86, 0.90, 1.00);
-        border         = vec4(0.78, 0.78, 0.82, 1.00);
-        borderStrong   = vec4(0.30, 0.30, 0.34, 1.00);
-        borderWeak     = vec4(0.80, 0.80, 0.84, 1.00);
-        buttonBg       = vec4(0.90, 0.90, 0.90, 1.00);
-        buttonHover    = vec4(0.82, 0.82, 0.82, 1.00);
-        buttonActive   = vec4(0.74, 0.74, 0.74, 1.00);
-        text           = vec4(0.10, 0.10, 0.12, 1.00);
-        textMuted      = vec4(0.34, 0.34, 0.38, 1.00);
-        tileBg         = vec4(0.90, 0.90, 0.90, 1.00);
-        tileSelectedBg = vec4(1.00, 1.00, 1.00, 1.00);
-        iceBlue        = vec4(0.20, 0.36, 0.62, 1.00);
-        tabActiveBg    = vec4(0.20, 0.36, 0.62, 1.00);
-        tabActiveText  = vec4(1.00, 1.00, 1.00, 1.00);
-        tileEdge       = border;
-        tileHover      = vec4(0.82, 0.82, 0.82, 1.00);
-        tileFooter     = vec4(0.00, 0.00, 0.00, 0.08);
     }
 
     void SetClassic() {
@@ -189,7 +163,6 @@ ThemePalette g_palette;
 
 void RefreshPalette() {
     if (GlassTheme()) g_palette.SetTransparentGlass();
-    else if (g_Theme == UiTheme::Light) g_palette.SetLight();
     else if (g_Theme == UiTheme::Classic) g_palette.SetClassic();
     else g_palette.SetObsidian();
 }

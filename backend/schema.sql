@@ -30,3 +30,19 @@ CREATE TABLE IF NOT EXISTS map_days (
   day        INTEGER NOT NULL,
   first_seen INTEGER NOT NULL
 );
+
+-- One bounty bonus per player per day. The primary key makes the grant
+-- race-free: of two simultaneous submits exactly one row is inserted.
+CREATE TABLE IF NOT EXISTS bounty_bonus (
+  day        INTEGER NOT NULL,
+  account_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (day, account_id)
+);
+
+-- Unix seconds of the last admin reset (key = 'reset_epoch'). Clients compare
+-- it with their saved value and drop local test progress once when it changes.
+CREATE TABLE IF NOT EXISTS meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
