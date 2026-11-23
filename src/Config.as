@@ -56,13 +56,13 @@ bool S_AutoSync = true;
 [Setting category="Event" name="Map UID to day" description="Comma-separated UID=day pairs for maps whose name has no #N, e.g. P_abc=3,P_def=7. The debug panel can add the current map."]
 string S_MapUidDays = "";
 
-[Setting category="Event" name="Force current map as day" description="0 = auto-detect. Set 1-25 to treat the current map as that day (useful for testing)."]
+[Setting category="Event" name="Force current map as day" description="0 = auto-detect. Set 1-25 to treat the current map as that day (useful for testing)." min=0 max=25]
 int S_MapDayOverride = 0;
 
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.6.2-dev";
+const string PLUGIN_VERSION = "0.6.3-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -106,7 +106,7 @@ bool S_OpenAnimation = true;
 [Setting category="General" name="Display name" description="Used only when the game login cannot be read."]
 string S_Nickname = "Player";
 
-[Setting category="Sync" name="Sync mode: 0 = offline, 1 = shared folder, 2 = HTTP worker"]
+[Setting category="Sync" name="Sync mode" description="0 = offline, 1 = shared folder, 2 = HTTP worker. Values outside 0-2 are ignored." min=0 max=2]
 int S_SyncMode = 0;
 
 [Setting category="Sync" name="Worker URL" description="Cloudflare Workers + D1 base URL, e.g. https://goaladvent.example.workers.dev (no trailing slash)."]

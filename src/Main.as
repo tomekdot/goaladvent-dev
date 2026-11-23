@@ -27,6 +27,12 @@ void Main() {
     startnew(AgentReloadLoop);
 
     LoadProgress();
+
+    // Settings are user input: never let an out-of-range spinbox value break
+    // sync, map detection or QA. A negative sync mode used to disable HTTP.
+    if (S_SyncMode < 0 || S_SyncMode > 2) S_SyncMode = 0;
+    if (S_MapDayOverride < 0 || S_MapDayOverride > DAY_COUNT) S_MapDayOverride = 0;
+    if (S_QaPreview < 0 || S_QaPreview > 3) S_QaPreview = 0;
     if (S_QaPreview > 0) {
         print("[goaladvent] QA preview " + tostring(S_QaPreview) +
               " active | progress is not saved or submitted.");
