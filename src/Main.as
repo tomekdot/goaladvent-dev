@@ -33,6 +33,8 @@ void Main() {
     if (S_SyncMode < 0 || S_SyncMode > 2) S_SyncMode = 0;
     if (S_MapDayOverride < 0 || S_MapDayOverride > DAY_COUNT) S_MapDayOverride = 0;
     if (S_QaPreview < 0 || S_QaPreview > 3) S_QaPreview = 0;
+    if (S_UiScale < 1.0f) S_UiScale = 1.0f;
+    if (S_UiScale > 2.0f) S_UiScale = 2.0f;
     if (S_QaPreview > 0) {
         print("[goaladvent] QA preview " + tostring(S_QaPreview) +
               " active | progress is not saved or submitted.");

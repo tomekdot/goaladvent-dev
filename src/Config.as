@@ -35,7 +35,7 @@ float S_GlassOpacity = 0.55f;
 
 bool GlassTheme() { return S_GalaxyOn || g_Theme == UiTheme::Galaxy; }
 
-[Setting category="Advanced" name="QA preview (0 off, 1 all days, 2 CP tiers, 3 finale only)" description="Dev only: fills the dashboard with a mock 25-day season so the finished layout can be reviewed. Preview data is never saved or submitted." min=0 max=3]
+[Setting category="Advanced" name="QA preview" description="Dev only: 0 off, 1 all days done, 2 CP tier mix, 3 finale only. Fills the dashboard with a mock 25-day season; preview data is never saved or submitted." min=0 max=3]
 int S_QaPreview = 0;
 
 [Setting category="Advanced" name="Debug overlay" description="Admin-only diagnostics: live plugin state and a button that writes one readable line to Openplanet.log."]
@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.6.3-dev";
+const string PLUGIN_VERSION = "0.6.4-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -91,7 +91,7 @@ const int ELF_VETERAN_DAYS = 10;   // badge threshold, both client and server
 [Setting category="General" name="Show dashboard on start" description="Open the GoalAdvent window when the game starts. Turn off to hide it until selected from the menu."]
 bool S_ShowOnStart = true;
 
-[Setting category="General" name="Test mode (unlock every day)" description="Unlock all 25 days for testing. Not intended for the real event."]
+[Setting category="General" name="Test mode" description="Unlock all 25 days and allow submitting test CP. Not intended for the real event."]
 bool S_TestMode = false;
 
 [Setting category="General" name="Show notifications" description="Enable in-game banners for completed days and bounties."]

@@ -126,6 +126,21 @@ check('QA preview never submits', has(hunt, 'if (S_QaPreview > 0) return;'));
 check('QA preview has three variants', has(cal, 'S_QaPreview == 1') || has(cal, 'S_QaPreview == 2') && has(cal, 'S_QaPreview == 3'));
 check('sync mode setting bounded', /name="Sync mode"/.test(cfg) && /min=0 max=2/.test(cfg));
 check('settings clamped at startup', /S_SyncMode < 0 \|\| S_SyncMode > 2/.test(src['Main.as']));
+const settingProblems = [];
+const cfgLines = cfg.split('\n');
+for (let i = 0; i < cfgLines.length; i++) {
+  const m = cfgLines[i].match(/^\[Setting ([^\]]*)\]/);
+  if (!m) continue;
+  const attrs = m[1];
+  const decl = cfgLines[i + 1] || '';
+  if (!/name="/.test(attrs) || !/description="/.test(attrs)) {
+    settingProblems.push('line ' + (i + 1) + ' missing name/description');
+  }
+  if (/^(int|float)\s/.test(decl) && (!/min=/.test(attrs) || !/max=/.test(attrs))) {
+    settingProblems.push('line ' + (i + 1) + ' numeric without min/max');
+  }
+}
+check('settings metadata complete', settingProblems.length === 0, settingProblems.join('; '));
 
 // --- UI / typography --------------------------------------------------------
 for (const size of ['FS_LABEL', 'FS_BODY', 'FS_TITLE']) check('font size ' + size, has(uias, size));
