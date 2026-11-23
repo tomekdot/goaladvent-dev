@@ -111,17 +111,27 @@ string CurrentTitleId() {
     return title.TitleId;
 }
 
+// TitleId carries an author suffix in MP4, e.g. "Pursuit@domino54" or
+// "TMCanyon@nadeo". Compare the base id so the setting can stay short.
+string TitleIdBase(const string &in raw) {
+    string id = raw.ToLower();
+    int at = id.IndexOf("@");
+    if (at > 0) return id.SubStr(0, at);
+    return id;
+}
+
 // Detection only runs on the configured titlepacks. This prevents a map named
 // "Goal Hunt" on an unrelated titlepack from triggering a false day.
 bool OnAllowedTitlepack() {
     string raw = S_AllowedTitlepacks.Trim();
     if (raw.Length == 0) return true;
-    string current = CurrentTitleId().ToLower();
+    string current = TitleIdBase(CurrentTitleId());
     if (current.Length == 0) return false;
     array<string>@ parts = raw.Split(",");
     for (uint i = 0; i < parts.Length; i++) {
-        string allowed = parts[i].Trim().ToLower();
-        if (allowed.Length > 0 && current == allowed) return true;
+        // "Pursuit" must also accept "PursuitStadium@author".
+        string allowed = TitleIdBase(parts[i].Trim());
+        if (allowed.Length >= 4 && current.StartsWith(allowed)) return true;
     }
     return false;
 }
@@ -223,12 +233,14 @@ bool IsGoalHuntMapType(const string &in rawType) {
 int DetectGoalHuntDay() {
     auto app = cast<CGameManiaPlanet>(GetApp());
     if (app is null || app.RootMap is null || app.RootMap.MapInfo is null) return 0;
-    if (!OnEventServer()) return 0;
-
     string name = string(app.RootMap.MapInfo.Name);
     string mapType = string(app.RootMap.MapType);
-    bool goalMap = IsGoalHuntMapName(name) || IsGoalHuntMapType(mapType);
-    if (!goalMap) return 0;
+    // A real GoalHuntArena map is the strongest signal. It is authoritative
+    // even when the server/titlepack gate misses (the event keyword and
+    // allowed-titlepack settings are only an anti-cheat convenience).
+    bool arenaMap = IsGoalHuntMapType(mapType);
+    if (!arenaMap && !OnEventServer()) return 0;
+    if (!arenaMap && !IsGoalHuntMapName(name)) return 0;
 
     if (S_MapDayOverride >= 1 && S_MapDayOverride <= DAY_COUNT) return S_MapDayOverride;
     int mapped = DayFromUidMapping(GetCurrentMapUid());
@@ -239,7 +251,12 @@ int DetectGoalHuntDay() {
 
     // A new Goal Hunt / GoalHuntArena map with no day number: during the event
     // the day is today's UTC date - the same clock the worker uses.
-    return CurrentEventDayUtc();
+    int utcDay = CurrentEventDayUtc();
+    if (utcDay > 0) return utcDay;
+    // Before/after the event there is no UTC day. Keep QA usable by mapping a
+    // real Goal Hunt map to the selected day instead of reporting 0.
+    if (g_selectedDay >= 1 && g_selectedDay <= DAY_COUNT) return g_selectedDay;
+    return 1;
 }
 
 // Called from the debug panel: remember the current map as the selected day.

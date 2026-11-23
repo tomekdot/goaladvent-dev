@@ -105,6 +105,9 @@ check('plugin handles HTTP 403', has(hunt, 'code == 403') && has(hunt, 'check th
 check('worker tie-break by timeMs', has(worker, 'excluded.ms < bounties.ms'));
 check('bounty bonus is unique per day', /PRIMARY KEY \(day, account_id\)/.test(worker) && /PRIMARY KEY \(day, account_id\)/.test(schema));
 check('worker accepts CP above 30', has(worker, 'const MAX_CP = 250') && !/cpCount\s*>\s*(15|30)/.test(worker));
+check('GoalHuntArena bypasses server gate', /bool arenaMap = IsGoalHuntMapType\(mapType\)/.test(hunt) && /if \(!arenaMap && !OnEventServer\(\)\) return 0;/.test(hunt));
+check('arena map falls back to selected day', /return g_selectedDay;/.test(hunt));
+check('titlepack strips author suffix', /int at = id\.IndexOf\("@"\)/.test(hunt) && /current\.StartsWith\(allowed\)/.test(hunt));
 
 // --- admin reset ------------------------------------------------------------
 check('admin reset route exists', has(worker, '"/admin/reset"'));

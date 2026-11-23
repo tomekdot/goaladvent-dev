@@ -58,7 +58,9 @@ string DebugStateLine() {
            " mapType=" + CurrentMapType() +
            " detected=" + tostring(DetectGoalHuntDay()) +
            " server=" + CurrentServerName() +
-           " eventServer=" + tostring(OnEventServer());
+           " eventServer=" + tostring(OnEventServer()) +
+           " title=" + TitleIdBase(CurrentTitleId()) +
+           " titleRaw=" + CurrentTitleId();
 }
 
 // Dump candidate Pursuit role signals per player to Openplanet.log so a live

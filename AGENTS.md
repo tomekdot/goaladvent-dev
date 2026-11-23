@@ -16,7 +16,9 @@ editing code. The broader workspace rules also apply:
   release tag - never hardcode the current version number in this file.
   Every build here is a dev build: tags and `info.toml` use the `-dev` suffix
   (`v0.6.0-dev`, not `v0.6.0`). The tag must equal `info.toml` exactly; keep the
-  debug-only `PLUGIN_VERSION` in `Config.as` in sync with it.
+  debug-only `PLUGIN_VERSION` in `Config.as` in sync with it. Each release
+  bumps the patch by one (`0.6.0-dev` -> `0.6.1-dev` -> `0.6.2-dev`); only a
+  deliberate milestone changes the minor number.
 - Leaderboard points come from `scoreFromBests(bests)`: best 15 of days 1-24
   plus finale. Each day stores `pts` and a one-time bounty flag `b` in `bests`.
   Verified with 3x100 CP submits -> 300 points in `/state`.
@@ -62,10 +64,16 @@ editing code. The broader workspace rules also apply:
   `wrangler deploy` from `backend/`.
 - Map detection order: `S_MapDayOverride` -> server `mapDays` (UID) -> local
   `S_MapUidDays` -> name parser (`#N`, `Day N`, `GH N`, `goalhuntarena`) ->
-  `CGameCtnChallenge.MapType` containing `GoalHuntArena` -> UTC event day.
-  `OnEventServer()` gates all of it. Maps named "Goal Hunt - Complex" are
-  recognised by their MapType metadata. `CurrentMapName()` and the
-  live `detected day` are shown in the debug panel; a
+  MapType `TrackMania\GoalHuntArena` -> UTC event day. A MapType containing
+  `GoalHuntArena` is authoritative and **bypasses** `OnEventServer()` (the
+  titlepack/keyword gate); without it the gate still applies. When there is no
+  day in the name or UID mapping and we are outside the event window, a real
+  Goal Hunt map maps to `g_selectedDay` (usually 1) so QA is not stuck at 0.
+  `CurrentTitleId()` returns an id with an author suffix in MP4 (observed
+  `Pursuit@domino54`); `TitleIdBase()` strips everything from `@` and allowed
+  entries are matched by prefix, so `Pursuit` accepts both `Pursuit@domino54`
+  and `PursuitStadium@author`. `CurrentMapName()` and the live `detected day`
+  are shown in the debug panel with `title` / `titleRaw`; a
   `[goaladvent][DBG] Map ... -> day ...` line is logged on every map change
   when `S_Debug` is on.
 - Header card is a single row: tagline on the left, sync/save/reset/theme
