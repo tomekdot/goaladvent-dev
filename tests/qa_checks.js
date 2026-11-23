@@ -115,6 +115,7 @@ check('admin reset needs token', has(worker, 'url.searchParams.get("token") !== 
 check('admin reset limited to owner', has(worker, 'OWNER_ACCOUNT_ID') && has(worker, 'accountId !== OWNER_ACCOUNT_ID'));
 check('admin reset needs confirmation', has(worker, 'body.confirm !== "RESET"'));
 check('reset epoch clears local save', has(sync, 'ResetProgress()') && has(cal, 'root["resetEpoch"]'));
+check('QA clean slate marker exists', has(cfg, 'QA_CLEAN_MARKER') && has(cal, 'IO::FileExists(QA_CLEAN_MARKER)'));
 
 // --- QA preview -------------------------------------------------------------
 check('QA preview setting exists', /int S_QaPreview\s*=\s*0/.test(cfg) && has(cfg, 'QA preview'));

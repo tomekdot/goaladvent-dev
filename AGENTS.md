@@ -94,6 +94,10 @@ editing code. The broader workspace rules also apply:
   disabled so the real save and D1 are untouched. Openplanet caches newly
   added settings until a full restart - to test a variant before that, change
   the default in `Config.as` and reload. Restore it to 0 afterwards.
+  To force a clean local slate, create `.qa-clean-slate` in the plugin folder
+  and reload: `LoadProgress()` deletes it, sets `S_QaPreview = 0`, resets the
+  arrays and writes a fresh save; `SaveProgress()` skips writes while the
+  marker exists so an unload cannot restore preview data.
 - QA gate: `node tests/qa_checks.js` (add `--live` for worker checks). It writes
   `tests/qa-result.json` with `status: passed|failed`; the debug panel shows
   it as `qa=passed` through `QaResultText()` in `Debug.as`. Keep it green

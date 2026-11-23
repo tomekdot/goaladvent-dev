@@ -351,6 +351,13 @@ void LoadArrayInt(Json::Value@ root, const string &in key, array<int> &inout tar
 
 void LoadProgress() {
     ResetProgress();
+    if (IO::FileExists(QA_CLEAN_MARKER)) {
+        // One-shot reset: drop preview data and the stale save on disk.
+        IO::Delete(QA_CLEAN_MARKER);
+        S_QaPreview = 0;
+        SaveProgress();
+        return;
+    }
     if (!IO::FileExists(SAVE_FILE)) return;
 
     Json::Value@ root = Json::FromFile(SAVE_FILE);
@@ -389,6 +396,7 @@ void LoadProgress() {
 
 void SaveProgress() {
     if (S_QaPreview > 0) return;   // never write mock data over a real save
+    if (IO::FileExists(QA_CLEAN_MARKER)) return;   // reset in progress
     Json::Value@ root = Json::Object();
     root["version"] = 2;
     root["accountId"] = AccountId();

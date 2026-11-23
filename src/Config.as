@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.6.1-dev";
+const string PLUGIN_VERSION = "0.6.2-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -127,6 +127,8 @@ string S_AllowedTitlepacks = "Pursuit,PursuitStadium";
 const string SAVE_FILE = IO::FromStorageFolder("GoalmasAdvent.json");
 // Written by tests/qa_checks.js; the debug panel shows PASS/FAIL from it.
 const string QA_RESULT_FILE = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/tests/qa-result.json";
+// Written by QA to force a clean local slate on the next reload.
+const string QA_CLEAN_MARKER = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/.qa-clean-slate";
 const string SYNC_SUBFOLDER = "GoalAdvent";
 
 // Deployed worker URL. Paste it here once and every player syncs with no setup:
