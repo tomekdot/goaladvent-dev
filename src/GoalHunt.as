@@ -326,6 +326,11 @@ int CurrentCpCount() {
         if (player.ScriptAPI.Score !is null) {
             g_curRaceNbCp = int(player.ScriptAPI.Score.LapsNbCheckpoint);
         }
+        // The last checkpoint time drops when an arena starts a new round,
+        // even if the checkpoint buffer itself keeps growing.
+        g_lastCpTime = player.ScriptAPI.CurRace.Checkpoints.Length > 0
+            ? int(player.ScriptAPI.CurRace.Checkpoints[player.ScriptAPI.CurRace.Checkpoints.Length - 1])
+            : 0;
         return int(player.ScriptAPI.CurRace.Checkpoints.Length);
     }
     return 0;
@@ -400,6 +405,8 @@ void ResetSession() {
     g_submitTimer = 0.0f;
     g_lastRaceState = -1;
     g_lastCpBuffer = 0;
+    g_lastCpTime = 0;
+    g_prevCpTime = 0;
     g_warmupCpBaseline = 0;
     g_raceStartStamp = 0;
 }
@@ -442,6 +449,10 @@ void TrackGoalHunt(float dt) {
     bool newRace = false;
     if (raceState == RACE_RUNNING && g_lastRaceState != RACE_RUNNING) newRace = true;
     if (cp < g_lastCpBuffer) newRace = true;
+    // Arena rounds can reuse CurRace without clearing the buffer. A drop in
+    // the newest checkpoint time is the reliable "new run" signal.
+    if (g_lastCpTime > 0 && g_lastCpTime < g_prevCpTime) newRace = true;
+    g_prevCpTime = g_lastCpTime;
     if (newRace) {
         // The previous run is over: flush its final CP before resetting.
         if (g_submitPending && g_sessionCp > g_lastSentCp) {
@@ -558,6 +569,9 @@ void Coroutine_SubmitCp() {
         g_submitRetries = 0;
         if (cp > g_lastSentCp) g_lastSentCp = cp;
         g_status = "Sent " + tostring(cp) + " CP to the event server.";
+        // Persist the full run (10 -> 30 CP) after each successful upload;
+        // CompleteDay() returns early on later CP, so it cannot save them.
+        SaveProgress();
         SyncState();
     } else if (code == 403) {
         // The server clock decides which day is open. A retry cannot fix a

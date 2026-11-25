@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.6.4-dev";
+const string PLUGIN_VERSION = "0.6.5-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -239,7 +239,9 @@ const int RACE_RUNNING = 1;
 const int RACE_FINISHED = 2;
 int64 g_raceStartStamp = 0;   // Time::Stamp when the local race last started
 int g_lastRaceState = -1;     // previous ERaceState snapshot
-int g_lastCpBuffer = 0;       // previous raw Checkpoints.Length
+int g_lastCpBuffer = 0;
+int g_lastCpTime = 0;
+int g_prevCpTime = 0;       // previous raw Checkpoints.Length
 int g_warmupCpBaseline = 0;   // buffer value accumulated during warmup
 int g_curRaceState = 0;       // refreshed by CurrentCpCount()
 int g_curRaceNbCp = 0;        // map checkpoints per lap (Score.LapsNbCheckpoint)

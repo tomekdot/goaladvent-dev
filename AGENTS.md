@@ -196,6 +196,10 @@ Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
   `TUESDAY_OFF_DAYS` in `backend/worker.js`. Rest-day titles and hints are indexed
   by those exact day numbers - never shift them by hand.
 - `DAY_COUNT = 25`, `GOAL_CP = 10`; days 1-24 score 100, finale 300, bounty 150.
+  Checkpoint counting continues past the goal up to `MAX_CP` (tiers at 15 and
+  30). An arena round is detected by a drop in the last checkpoint time
+  (`g_lastCpTime < g_prevCpTime`), not only by `RaceState`/buffer changes.
+  `SaveProgress()` runs after a successful upload so CP above 10 is persisted.
 - Finale grace period is `FINALE_GRACE_DAYS = 5` (5 January). Do not hardcode
   "5 January" in UI text - read the constant.
 - Local JSON (`GoalmasAdvent.json`) is authoritative; the worker is a mirror.
