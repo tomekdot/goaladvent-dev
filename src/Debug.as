@@ -40,6 +40,7 @@ string DebugStateLine() {
            " active=" + tostring(g_activeDay) +
            " sessionCp=" + tostring(g_sessionCp) +
            " liveCp=" + tostring(g_liveCp) +
+           " trigger=" + tostring(g_liveTrigger) +
            " cpTime=" + tostring(g_lastCpTime) +
            " bestCp=" + tostring(BestCp(g_selectedDay)) +
            " sentCp=" + tostring(g_lastSentCp) +

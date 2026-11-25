@@ -326,13 +326,14 @@ int CurrentCpCount() {
         if (player.ScriptAPI.Score !is null) {
             g_curRaceNbCp = int(player.ScriptAPI.Score.LapsNbCheckpoint);
         }
-        // CurTriggerIndex is the live checkpoint index for the current run and
-        // resets with the run. CurRace.Checkpoints can keep growing in arena
-        // mode, which made a new round look like a continuation.
-        int cpIndex = int(player.ScriptAPI.CurTriggerIndex);
-        if (cpIndex <= 0) cpIndex = int(player.ScriptAPI.CurRace.Checkpoints.Length);
+        // CurTriggerIndex can advance twice per checkpoint on some arenas, so
+        // the checkpoint buffer is the count and the trigger index is only a
+        // secondary signal for a fresh run.
+        int buffer = int(player.ScriptAPI.CurRace.Checkpoints.Length);
+        g_liveTrigger = int(player.ScriptAPI.CurTriggerIndex);
+        g_liveCp = buffer;
         g_lastCpTime = int(player.ScriptAPI.CurCheckpointRaceTime);
-        return cpIndex;
+        return buffer;
     }
     return 0;
 }
@@ -408,6 +409,8 @@ void ResetSession() {
     g_lastCpBuffer = 0;
     g_lastCpTime = 0;
     g_prevCpTime = 0;
+    g_liveTrigger = 0;
+    g_prevTrigger = 0;
     g_warmupCpBaseline = 0;
     g_raceStartStamp = 0;
 }
@@ -454,7 +457,9 @@ void TrackGoalHunt(float dt) {
     // Arena rounds can reuse CurRace without clearing the buffer. A drop in
     // the newest checkpoint time is the reliable "new run" signal.
     if (g_lastCpTime > 0 && g_lastCpTime < g_prevCpTime) newRace = true;
+    if (g_liveTrigger > 0 && g_liveTrigger < g_prevTrigger) newRace = true;
     g_prevCpTime = g_lastCpTime;
+    g_prevTrigger = g_liveTrigger;
     if (newRace) {
         // The previous run is over: flush its final CP before resetting.
         if (g_submitPending && g_sessionCp > g_lastSentCp) {

@@ -200,7 +200,9 @@ Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
   30). An arena round is detected by a drop in the last checkpoint time
   (`g_lastCpTime < g_prevCpTime`), not only by `RaceState`/buffer changes. The live counter reads `player.ScriptAPI.CurTriggerIndex` first and
   falls back to `CurRace.Checkpoints.Length`; the latter can keep growing in
-  arena mode. Debug shows `liveCp`, `cpTime`, `sessionCp` and `bestCp`.
+  arena mode. `CurTriggerIndex` is only a round-reset signal: on some arenas
+  it advances twice for one checkpoint and must NOT be used as the count.
+  Debug shows `liveCp`, `trigger`, `cpTime`, `sessionCp` and `bestCp`.
   `SaveProgress()` runs after a successful upload so CP above 10 is persisted.
 - Finale grace period is `FINALE_GRACE_DAYS = 5` (5 January). Do not hardcode
   "5 January" in UI text - read the constant.

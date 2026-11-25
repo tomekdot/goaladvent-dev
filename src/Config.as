@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.6.6-dev";
+const string PLUGIN_VERSION = "0.6.7-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -221,6 +221,8 @@ int g_activeDay = 0;
 string g_lastMapUid = "";
 int g_sessionCp = 0;
 int g_liveCp = 0;
+int g_liveTrigger = 0;
+int g_prevTrigger = 0;
 int g_lastSentCp = 0;
 int g_pendingDay = 0;
 int g_pendingCp = 0;
