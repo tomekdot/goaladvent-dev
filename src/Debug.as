@@ -39,6 +39,8 @@ string DebugStateLine() {
            " selected=" + tostring(g_selectedDay) +
            " active=" + tostring(g_activeDay) +
            " sessionCp=" + tostring(g_sessionCp) +
+           " liveCp=" + tostring(g_liveCp) +
+           " cpTime=" + tostring(g_lastCpTime) +
            " bestCp=" + tostring(BestCp(g_selectedDay)) +
            " sentCp=" + tostring(g_lastSentCp) +
            " pending=" + tostring(g_submitPending) +

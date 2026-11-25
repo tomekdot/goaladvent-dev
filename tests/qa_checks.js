@@ -144,6 +144,7 @@ check('settings metadata complete', settingProblems.length === 0, settingProblem
 const submitSuccess = (hunt.match(/if \(code == 200\) \{[\s\S]*?\n    \} else if \(code == 403\)/) || [''])[0];
 check('full CP run saved after upload', /SaveProgress\(\)/.test(submitSuccess));
 check('arena round reset uses checkpoint time', /g_lastCpTime < g_prevCpTime/.test(hunt));
+check('live CP uses CurTriggerIndex', /player\.ScriptAPI\.CurTriggerIndex/.test(hunt) && /g_liveCp = cp;/.test(hunt));
 
 // --- UI / typography --------------------------------------------------------
 for (const size of ['FS_LABEL', 'FS_BODY', 'FS_TITLE']) check('font size ' + size, has(uias, size));

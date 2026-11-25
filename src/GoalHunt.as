@@ -326,12 +326,13 @@ int CurrentCpCount() {
         if (player.ScriptAPI.Score !is null) {
             g_curRaceNbCp = int(player.ScriptAPI.Score.LapsNbCheckpoint);
         }
-        // The last checkpoint time drops when an arena starts a new round,
-        // even if the checkpoint buffer itself keeps growing.
-        g_lastCpTime = player.ScriptAPI.CurRace.Checkpoints.Length > 0
-            ? int(player.ScriptAPI.CurRace.Checkpoints[player.ScriptAPI.CurRace.Checkpoints.Length - 1])
-            : 0;
-        return int(player.ScriptAPI.CurRace.Checkpoints.Length);
+        // CurTriggerIndex is the live checkpoint index for the current run and
+        // resets with the run. CurRace.Checkpoints can keep growing in arena
+        // mode, which made a new round look like a continuation.
+        int cpIndex = int(player.ScriptAPI.CurTriggerIndex);
+        if (cpIndex <= 0) cpIndex = int(player.ScriptAPI.CurRace.Checkpoints.Length);
+        g_lastCpTime = int(player.ScriptAPI.CurCheckpointRaceTime);
+        return cpIndex;
     }
     return 0;
 }
@@ -442,6 +443,7 @@ void TrackGoalHunt(float dt) {
     if (g_activeDay <= 0) return;
 
     int cp = CurrentCpCount();
+    g_liveCp = cp;
     int raceState = g_curRaceState;
 
     // A new race starts when the state enters Running, or when the checkpoint
