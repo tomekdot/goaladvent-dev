@@ -240,13 +240,25 @@ float MilestoneProgress(int cp) {
     return float(total - start) / float(next - start);
 }
 
+// Mineral name paired with a milestone value, used only for display.
+string MilestoneMineralFor(int value) {
+    for (uint i = 0; i < g_cpMilestones.Length; i++) {
+        if (g_cpMilestones[i] == value && i < g_milestoneMinerals.Length) {
+            return g_milestoneMinerals[i];
+        }
+    }
+    return "Quartz";
+}
+
 string MilestoneText(int cp) {
     int total = ClampCp(cp);
     int next = NextMilestone(total);
     if (next == 0) {
-        return "Milestone " + tostring(LastMilestone(total)) + " CP | all reached";
+        int last = LastMilestone(total);
+        return "Milestone " + tostring(last) + " CP (" + MilestoneMineralFor(last) + ") | all reached";
     }
-    return "Milestone " + tostring(next) + " CP | " + tostring(next - total) + " to go";
+    return "Milestone " + tostring(next) + " CP (" + MilestoneMineralFor(next) +
+           ") | " + tostring(next - total) + " to go";
 }
 
 string MilestoneSummary(int cp) {
@@ -511,4 +523,25 @@ void SaveProgress() {
     root["badges"] = badges;
 
     Json::ToFile(SAVE_FILE, root, true);
+}
+
+// Debug helper: keep a plain copy of the local save before experiments.
+void BackupProgress() {
+    if (!IO::FileExists(SAVE_FILE)) {
+        g_status = "No local save to back up.";
+        return;
+    }
+    IO::Copy(SAVE_FILE, SAVE_BACKUP_FILE);
+    g_status = "Save backed up to GoalmasAdvent.backup.json";
+}
+
+// Debug helper: clear local progress and restore the selected day to the
+// current event date. The server bucket stays authoritative after next sync.
+void ResetAllData() {
+    ResetProgress();
+    ResetSession();
+    int today = CurrentEventDayUtc();
+    g_selectedDay = today > 0 ? today : 1;
+    SaveProgress();
+    g_status = "Local progress reset | date restored to today.";
 }

@@ -311,6 +311,22 @@ void RenderDebugWindow() {
     if (UI::Button("Run sync now")) SyncNow();
     UI::EndDisabled();
     UI::SameLine(0, 6);
+    if (UI::Button("Backup save")) BackupProgress();
+    UI::SetItemTooltip("Copies GoalmasAdvent.json to GoalmasAdvent.backup.json.");
+    UI::SameLine(0, 6);
+    string resetLabel = g_confirmReset ? "Confirm reset" : "Reset data";
+    if (UI::Button(resetLabel)) {
+        if (g_confirmReset) {
+            ResetAllData();
+            g_confirmReset = false;
+            g_copyStatus = "Local progress reset and date restored.";
+        } else {
+            g_confirmReset = true;
+            g_copyStatus = "Click Reset data again to confirm.";
+        }
+    }
+    UI::SetItemTooltip("Clears the local save and restores today's date. Two clicks required.");
+    UI::SameLine(0, 6);
     if (UI::Button("Close")) g_showDebug = false;
 
     UI::PopFontSize();

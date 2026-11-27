@@ -22,6 +22,23 @@ float UiScale() {
 float UiK() { return UiScale() / 1.5f; }
 
 // Text-only tab labels. One source for the bar and the window-width floor.
+// Day colour name and token, shown instead of the gift glyph on locked tiles.
+string DayColourName(int day) {
+    if (day < 1 || day > DAY_COUNT || day > int(g_dayColourNames.Length)) return "Gray";
+    return g_dayColourNames[day - 1];
+}
+
+string DayColourToken(int day) {
+    string name = DayColourName(day);
+    if (name.Length < 3) return name.ToUpper();
+    return name.SubStr(0, 3).ToUpper();
+}
+
+vec4 DayColour(int day) {
+    if (day < 1 || day > DAY_COUNT || day > int(g_dayColoursRgb.Length)) return TextMuted();
+    return g_dayColoursRgb[day - 1];
+}
+
 string[] TabNames() {
     string[] names = { "CALENDAR", "LEADERBOARD", "LIVE FEED", "BOUNTIES", "FINALE" };
     return names;
@@ -344,7 +361,8 @@ string DayTileIcon(int day) {
     if (IsPremiereDay(day)) return Icons::Star;
     if (g_opened[day - 1]) return Icons::CheckCircle;
     if (DayPlayableNow(day)) return Icons::FlagCheckered;
-    return Icons::Gift;
+    // SnowflakeO is verified in this build and was already used in banners.
+    return Icons::SnowflakeO;
 }
 
 int NextGoalHuntDay(int from) {
@@ -418,7 +436,11 @@ bool DrawCenteredDayTile(int day, const string &in icon, const string &in label,
 
     vec2 iconSize = UI::MeasureString(icon, null, FS_TITLE);
     float glassH = r.w - barH;
-    vec4 iconCol = MixCol(accent, vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f);
+    // The snowflake marker uses the fixed per-day colour from Config.as, so a
+    // given day always has the same colour regardless of run or theme state.
+    vec4 iconCol = icon == Icons::SnowflakeO
+        ? DayColour(day)
+        : MixCol(accent, vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f);
     dl.AddText(vec2(cx - iconSize.x * 0.5f, r.y + (glassH - iconSize.y) * 0.5f),
                iconCol, icon, null, FS_TITLE);
 
@@ -489,6 +511,8 @@ void RenderDayGrid() {
                            "Bounty: " + tostring(g_bountyCp[day - 1]) + " CP | " +
                            Text::StripFormatCodes(g_bountyHolder[day - 1]) + "\n" +
                            "Best: " + tostring(best) + " CP | " + CpTierLabel(tier) + "\n" +
+                           "Colour: " + DayColourName(day) + "\n" +
+                           "Milestone: " + MilestoneMineralFor(LastMilestone(best)) + "\n" +
                            MilestoneSummary(best) + "\n" +
                            g_hints[day - 1]);
     }
@@ -588,6 +612,8 @@ void RenderDayDetails() {
 
     int best = BestCp(day);
     int tier = CpTier(best);
+    DetailLine("DAY COLOUR", DayColourName(day), DayColour(day));
+    DetailLine("MINERAL", MilestoneMineralFor(LastMilestone(best)), TextMain());
     if (IsOffDay(day)) {
         DetailLine("PURSUIT BONUS", "20:00 CET (19:00 UTC)", Purple());
         DetailLine("MOON", MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "% lit", TextMain());

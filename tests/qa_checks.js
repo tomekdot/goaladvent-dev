@@ -167,12 +167,12 @@ const milestoneValues = milestoneDecls.map((decl) => {
   const rhs = (decl.match(/=\s*([^;]+)/) || [])[1].trim();
   return resolveConst(rhs, new Set());
 });
-check('milestone ladder is 5/10/15/30/50/100',
-  JSON.stringify(milestoneValues) === JSON.stringify([5, 10, 15, 30, 50, 100]),
+check('milestone ladder is 1/5/10/15/30/50/100',
+  JSON.stringify(milestoneValues) === JSON.stringify([1, 5, 10, 15, 30, 50, 100]),
   milestoneValues.join("/"));
 check('milestones are defined as constants, not UI literals',
   /array<int> g_cpMilestones = \{/.test(cfg) &&
-  /MILESTONE_5_CP, MILESTONE_10_CP, MILESTONE_15_CP/.test(cfg) &&
+  /MILESTONE_1_CP, MILESTONE_5_CP, MILESTONE_10_CP/.test(cfg) &&
   /MILESTONE_30_CP, MILESTONE_50_CP, MILESTONE_100_CP/.test(cfg));
 for (const fn of ['LastMilestone', 'NextMilestone', 'MilestoneProgress',
                   'MilestoneText', 'MilestoneSummary']) {
@@ -193,7 +193,7 @@ check('milestones shown in HUD, details and tooltip',
         (nextM(cp) || Infinity) > (nextM(cp + 1) || Infinity)) monotonic = false;
     if (lastM(cp) > cp || (nextM(cp) && nextM(cp) <= cp)) monotonic = false;
   }
-  check('milestone display is monotonic', monotonic && milestoneValues.length === 6);
+  check('milestone display is monotonic', monotonic && milestoneValues.length === 7);
   check('5 CP reaches the first milestone', lastM(5) === 5 && nextM(5) === 10);
   check('10 CP shows 5 to go', lastM(10) === 10 && nextM(10) === 15 && nextM(10) - 10 === 5);
   check('all milestones reached at 100 CP', lastM(100) === 100 && nextM(100) === 0);
@@ -351,6 +351,15 @@ check('gift animation removed', !/StartOpenAnimation|RenderOpenAnimation|S_OpenA
   !/StartOpenAnimation|RenderOpenAnimation/.test(src['Main.as']));
 check('completed tile names its colour', /DONE \| " \+ CpTierColourName/.test(uias) &&
   /string CpTierColourName/.test(cal));
+check('tile marker uses verified snowflake icon', !/return Icons::Gift;/.test(uias) &&
+  /return Icons::SnowflakeO;/.test(uias) && /g_dayColourNames/.test(cfg));
+check('milestone minerals shown', /g_milestoneMinerals/.test(cfg) &&
+  /MilestoneMineralFor/.test(cal) && /MINERAL/.test(uias));
+check('debug has backup and reset buttons', /Backup save/.test(src['Debug.as']) &&
+  /Reset data/.test(src['Debug.as']) && /void BackupProgress\(/.test(cal) &&
+  /void ResetAllData\(/.test(cal));
+check('snowflake uses fixed day colour', /icon == Icons::SnowflakeO/.test(uias) &&
+  /DayColour\(day\)/.test(uias) && /array<vec4> g_dayColoursRgb/.test(cfg));
 const theme = src['Theme.as'];
 check('grey obsidian tiles', /tileBg = vec4\(0\.095/.test(theme));
 check('grey glass tiles', /vec4\(1\.000, 1\.000, 1\.000, 0\.09\)/.test(theme));

@@ -71,7 +71,7 @@ Tiers appear in the tile outline, day details, tooltip and HUD. **Points never c
 
 ### 📈 Milestones (cosmetic)
 
-5 / 10 / 15 / 30 / 50 / 100 CP. The HUD shows the day total, the last milestone reached and the next one with "to go". Day details and tile tooltips show the same ladder. No extra points.
+1 / 5 / 10 / 15 / 30 / 50 / 100 CP, each paired with a mineral name (Quartz, Garnet, Topaz, Ruby, Sapphire, Emerald, Diamond). The HUD shows the day total, the last milestone reached and the next one with "to go". Day details and tile tooltips show the same ladder. No extra points. Locked tiles show a three-letter day-colour token instead of a gift glyph; each of the 25 days has its own colour name.
 
 ### 🎖️ Badges
 

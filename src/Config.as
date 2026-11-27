@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.8.5-dev";
+const string PLUGIN_VERSION = "0.8.6-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -83,6 +83,7 @@ const int GOLD_CP = 30;            // top-tier run
 const int MAX_CP = 250;            // must match MAX_CP in backend/worker.js
 // Cosmetic milestone ladder. Scoring never reads this list: points stay
 // 100 / 300 / bounty 150. Keep the numbers here, not in UI strings.
+const int MILESTONE_1_CP = 1;
 const int MILESTONE_5_CP = 5;
 const int MILESTONE_10_CP = GOAL_CP;
 const int MILESTONE_15_CP = SILVER_CP;
@@ -90,8 +91,46 @@ const int MILESTONE_30_CP = GOLD_CP;
 const int MILESTONE_50_CP = 50;
 const int MILESTONE_100_CP = 100;
 array<int> g_cpMilestones = {
-    MILESTONE_5_CP, MILESTONE_10_CP, MILESTONE_15_CP,
+    MILESTONE_1_CP, MILESTONE_5_CP, MILESTONE_10_CP, MILESTONE_15_CP,
     MILESTONE_30_CP, MILESTONE_50_CP, MILESTONE_100_CP
+};
+
+// Twenty-five distinct day colours, used as tile markers instead of the
+// gift glyph. The short token is the first three letters of the name.
+array<string> g_dayColourNames = {
+    "Crimson", "Vermilion", "Orange", "Amber", "Gold", "Yellow", "Lime", "Chartreuse", "Green", "Emerald", "Mint", "Teal", "Cyan", "Azure", "Blue", "Indigo", "Violet", "Purple", "Magenta", "Rose", "Coral", "Salmon", "Bronze", "Copper", "Silver"
+};
+array<vec4> g_dayColoursRgb = {
+    vec4(0.829, 0.446, 0.411, 1.000),  // Crimson
+    vec4(0.829, 0.546, 0.411, 1.000),  // Vermilion
+    vec4(0.829, 0.646, 0.411, 1.000),  // Orange
+    vec4(0.829, 0.747, 0.411, 1.000),  // Amber
+    vec4(0.811, 0.829, 0.411, 1.000),  // Gold
+    vec4(0.711, 0.829, 0.411, 1.000),  // Yellow
+    vec4(0.610, 0.829, 0.411, 1.000),  // Lime
+    vec4(0.510, 0.829, 0.411, 1.000),  // Chartreuse
+    vec4(0.411, 0.829, 0.412, 1.000),  // Green
+    vec4(0.411, 0.829, 0.513, 1.000),  // Emerald
+    vec4(0.411, 0.829, 0.613, 1.000),  // Mint
+    vec4(0.411, 0.829, 0.713, 1.000),  // Teal
+    vec4(0.411, 0.829, 0.814, 1.000),  // Cyan
+    vec4(0.411, 0.744, 0.829, 1.000),  // Azure
+    vec4(0.411, 0.644, 0.829, 1.000),  // Blue
+    vec4(0.411, 0.543, 0.829, 1.000),  // Indigo
+    vec4(0.411, 0.443, 0.829, 1.000),  // Violet
+    vec4(0.479, 0.411, 0.829, 1.000),  // Purple
+    vec4(0.580, 0.411, 0.829, 1.000),  // Magenta
+    vec4(0.680, 0.411, 0.829, 1.000),  // Rose
+    vec4(0.780, 0.411, 0.829, 1.000),  // Coral
+    vec4(0.829, 0.411, 0.777, 1.000),  // Salmon
+    vec4(0.829, 0.411, 0.677, 1.000),  // Bronze
+    vec4(0.829, 0.411, 0.577, 1.000),  // Copper
+    vec4(0.829, 0.411, 0.476, 1.000),  // Silver
+};
+
+// Milestone minerals, aligned with g_cpMilestones below.
+array<string> g_milestoneMinerals = {
+    "Quartz", "Garnet", "Topaz", "Ruby", "Sapphire", "Emerald", "Diamond"
 };
 // Must match DAY_ROLLOVER_HOUR_UTC in backend/worker.js. A run before 02:00 UTC
 // still belongs to the previous event day; 02:00 UTC starts a fresh bucket.
@@ -139,6 +178,7 @@ string S_AllowedTitlepacks = "Pursuit,PursuitStadium";
 // Storage
 // ---------------------------------------------------------------------------
 const string SAVE_FILE = IO::FromStorageFolder("GoalmasAdvent.json");
+const string SAVE_BACKUP_FILE = IO::FromStorageFolder("GoalmasAdvent.backup.json");
 // Written by tests/qa_checks.js; the debug panel shows PASS/FAIL from it.
 const string QA_RESULT_FILE = "C:/Users/tomekdot/Openplanet4/Plugins/goaladvent-dev/tests/qa-result.json";
 // Written by QA to force a clean local slate on the next reload.
