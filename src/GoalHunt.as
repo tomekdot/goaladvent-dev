@@ -313,6 +313,7 @@ bool InWarmupGate() {
 int CurrentCpCount() {
     g_curRaceState = RACE_BEFORE_START;
     g_curRaceNbCp = 0;
+    g_curLapIndex = 0;
     g_bufferCp = 0;
     g_bufferLastTime = -1;
     g_raceStartTime = 0;
@@ -330,6 +331,7 @@ int CurrentCpCount() {
         auto script = player.ScriptAPI;
         g_curRaceState = int(script.RaceState);
         g_raceStartTime = int(script.RaceStartTime);
+        g_curLapIndex = int(player.CurLapIndex);
         if (script.Score !is null) {
             g_curRaceNbCp = int(script.Score.LapsNbCheckpoint);
         }
@@ -348,8 +350,8 @@ int CurrentCpCount() {
         if (g_curRaceNbCp > 0 && int(g_mapCpPassed.Length) != g_curRaceNbCp + 1) {
             g_mapCpPassed.Resize(g_curRaceNbCp + 1);
         }
-        for (uint i = 0; i <= uint(g_bufferCp) && i < g_mapCpPassed.Length; i++) {
-            g_mapCpPassed[i] = i > 0;
+        for (uint j = 0; j <= uint(g_bufferCp) && j < g_mapCpPassed.Length; j++) {
+            g_mapCpPassed[j] = j > 0;
         }
         return g_bufferCp;
     }
@@ -357,21 +359,56 @@ int CurrentCpCount() {
 }
 
 // Credit every checkpoint exactly once in the current round.
-// The primary signal is checkpoint-buffer growth. When an arena respawn
-// recycles the buffer, its length can drop below the high-water mark while the
-// newest checkpoint time still moves forward: that proves one new checkpoint
-// was passed and credits exactly one. The two paths are exclusive, so a normal
-// checkpoint can never be counted twice.
+// The buffer is the primary signal, but on later laps it can stay capped or be
+// cleared one frame late. The lap index and trigger index break that tie: a new
+// (lap, trigger) identity with a fresh checkpoint time is one new checkpoint;
+// a respawn back to the same identity is not.
 void CreditCheckpointProgress() {
+    int liveTime = g_lastCpTime > g_bufferLastTime ? g_lastCpTime : g_bufferLastTime;
+
+    // Buffer shrank or cleared (new lap or delayed ManiaScript clear).
+    if (g_bufferCp < g_runBufferHigh) {
+        bool newLap = g_curLapIndex > g_runLastLap;
+        g_runBufferHigh = g_bufferCp;
+        if (g_bufferCp == 0) {
+            if (!newLap || liveTime < g_runLastTime || liveTime <= 0) {
+                g_runLastTime = -1;
+            }
+            g_runLastLap = g_curLapIndex;
+            g_runLastTrigger = g_liveTrigger;
+            return;
+        }
+        // Buffer wrapped from N to 1 on a new lap: let the identity check
+        // below credit that first checkpoint once.
+        if (newLap && liveTime < g_runLastTime) {
+            g_runLastTime = -1;
+        }
+    }
+
+    // Normal buffer growth inside a lap.
     if (g_bufferCp > g_runBufferHigh) {
         int grew = g_bufferCp - g_runBufferHigh;
         g_runBufferHigh = g_bufferCp;
         g_runCp += grew;
-        if (g_bufferLastTime > g_runLastTime) g_runLastTime = g_bufferLastTime;
+        g_runLastLap = g_curLapIndex;
+        g_runLastTrigger = g_liveTrigger;
+        if (liveTime > g_runLastTime) g_runLastTime = liveTime;
         return;
     }
-    if (g_bufferLastTime >= 0 && g_bufferLastTime > g_runLastTime) {
-        g_runLastTime = g_bufferLastTime;
+
+    // Buffer flat across laps: +1 only for a new (lap, trigger) identity with
+    // a newer checkpoint time, so respawns and duplicate triggers stay free.
+    bool identityChanged = (g_curLapIndex != g_runLastLap) ||
+                           (g_liveTrigger != g_runLastTrigger);
+    if (!identityChanged) return;
+
+    bool newLapWithTrigger = (g_curLapIndex > g_runLastLap) &&
+                             (g_liveTrigger != g_runLastTrigger) &&
+                             (liveTime > 0);
+    if ((liveTime >= 0 && liveTime > g_runLastTime) || newLapWithTrigger) {
+        g_runLastLap = g_curLapIndex;
+        g_runLastTrigger = g_liveTrigger;
+        g_runLastTime = liveTime;
         g_runCp += 1;
     }
 }
@@ -446,10 +483,13 @@ void ResetRun() {
     g_liveCp = 0;
     g_liveTrigger = 0;
     g_lastCpTime = 0;
+    g_curLapIndex = 0;
     g_runStartTime = -1;
     g_runCp = 0;
     g_runBufferHigh = 0;
     g_runLastTime = -1;
+    g_runLastLap = 0;
+    g_runLastTrigger = 0;
     g_creditedRunCp = 0;
     g_mapCpPassed.Resize(0);
     g_raceStartStamp = 0;
@@ -533,7 +573,9 @@ void TrackGoalHunt(float dt) {
     if (g_runSeedPending) {
         g_runCp = g_bufferCp;
         g_runBufferHigh = g_bufferCp;
-        g_runLastTime = g_bufferLastTime;
+        g_runLastTime = g_lastCpTime > g_bufferLastTime ? g_lastCpTime : g_bufferLastTime;
+        g_runLastLap = g_curLapIndex;
+        g_runLastTrigger = g_liveTrigger;
         g_creditedRunCp = g_bufferCp;
         g_runSeedPending = false;
     }

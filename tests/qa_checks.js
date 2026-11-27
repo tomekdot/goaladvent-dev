@@ -289,8 +289,10 @@ check('one sanitizer for all notifications', has(sync, 'string CleanNotifyText('
 check('server events sanitized before feed', has(sync, 'CleanNotifyText(string(entry))'));
 check('player names sanitized in local messages', has(hunt, 'CleanNotifyText(LocalName()'));
 check('recycled buffer credits the newest checkpoint time',
-  /g_bufferLastTime = int\(script\.CurRace\.Checkpoints\[uint\(g_bufferCp - 1\)\]\)/.test(hunt) &&
-  /g_bufferLastTime > g_runLastTime/.test(hunt));
+  /int liveTime = g_lastCpTime > g_bufferLastTime/.test(hunt) &&
+  /liveTime > g_runLastTime/.test(hunt));
+check('later laps use lap and trigger identity', /g_curLapIndex = int\(player\.CurLapIndex\)/.test(hunt) &&
+  /g_liveTrigger != g_runLastTrigger/.test(hunt));
 check('HUD shows missing map checkpoints', /string MapCpStatus\(\)/.test(uias) &&
   /left " \+ left/.test(uias) && /UI::Text\(mapCp\)/.test(uias));
 check('empty buffer does not end the run', !/g_bufferCp == 0 && g_runCp > 0/.test(hunt));

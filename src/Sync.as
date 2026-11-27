@@ -14,7 +14,9 @@ bool IsHexDigit(uint8 c) {
 }
 
 string CleanNotifyText(const string &in raw) {
-    string src = Text::StripFormatCodes(raw);
+    // Parse the raw bytes first: StripFormatCodes() can turn "$$" into a fresh
+    // active "$n"/"$f00" token, so applying it first leaves code residues.
+    string src = raw;
     string clean = "";
     bool pendingSpace = false;
     int len = int(src.Length);
@@ -22,40 +24,49 @@ string CleanNotifyText(const string &in raw) {
     for (int i = 0; i < len; i++) {
         uint8 b = src[i];
 
-        // Leftover $ code. Drop the whole sequence so its letters (the
-        // "nfv g" style residue) never reach a banner or feed row.
-        if (b == 0x24 && i + 1 < len) {
+        if (b == 0x24) {
+            if (i + 1 >= len) break;
             uint8 n = src[i + 1];
+
+            // Escaped $$ drops both markers.
             if (n == 0x24) {
-                i += 1;   // $$ escape: drop both, keep the output $-free
+                i += 1;
                 continue;
             }
+
             uint lower = (n >= 0x41 && n <= 0x5A) ? uint(n) + 32 : uint(n);
-            // z s o i w n m g t < > are single-letter style codes.
-            if (lower == 0x7A || lower == 0x73 || lower == 0x6F || lower == 0x69 ||
-                lower == 0x77 || lower == 0x6E || lower == 0x6D || lower == 0x67 ||
-                lower == 0x74 || lower == 0x3C || lower == 0x3E) {
-                i += 1;   // loop increment consumes the code letter
+
+            // Links and style blocks: $l[...], $h[...], $p[...] or the bare code.
+            if (lower == 0x6C || lower == 0x68 || lower == 0x70) {
+                i += 1;
+                if (i + 1 < len && src[i + 1] == 0x5B) {
+                    i += 2;
+                    while (i < len && src[i] != 0x5D) i++;
+                }
                 continue;
             }
-            // Colour code: $ plus three or six hex digits. Only consume the
-            // payload when it really is a colour, never ordinary player text.
+
+            // Colour code: consume 3 or 6 hex digits, or a truncated 1-2 digit
+            // tail so residues like "fv" never leak into a banner.
             if (IsHexDigit(n)) {
                 int digits = 1;
                 while (digits < 6 && i + 1 + digits < len && IsHexDigit(src[i + 1 + digits])) {
                     digits++;
                 }
-                if (digits >= 3) {
-                    i += (digits == 6 ? 6 : 3);   // loop increment moves past it
-                    continue;
-                }
+                int consume = (digits >= 6) ? 6 : (digits >= 3 ? 3 : digits);
+                i += consume;
+                continue;
             }
-            // Stray escape marker: drop it and keep the following character.
+
+            // Any other single style/reset letter ($z, $g, $n, $v, $<, $>).
+            if ((lower >= 0x61 && lower <= 0x7A) || n == 0x3C || n == 0x3E) {
+                i += 1;
+                continue;
+            }
             continue;
         }
 
-        if (b == 0x20 || b < 0x20) {
-            // Space and control bytes are word boundaries, never glyphs.
+        if (b <= 0x20) {
             pendingSpace = clean.Length > 0;
             continue;
         }
@@ -66,7 +77,7 @@ string CleanNotifyText(const string &in raw) {
         }
         clean += src.SubStr(i, 1);
     }
-    return clean;
+    return Text::StripFormatCodes(clean).Trim();
 }
 
 void ShowBanner(const string &in text) {

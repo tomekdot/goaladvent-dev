@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.8.1-dev";
+const string PLUGIN_VERSION = "0.8.2-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -279,6 +279,9 @@ int g_runStartTime = -1;      // RaceStartTime of the round being counted
 int g_runCp = 0;              // checkpoints credited in this round
 int g_runBufferHigh = 0;      // highest Checkpoints.Length seen this round
 int g_runLastTime = -1;       // newest checkpoint time credited this round
+int g_curLapIndex = 0;        // player.CurLapIndex this tick
+int g_runLastLap = 0;         // lap index credited in this round
+int g_runLastTrigger = 0;     // trigger index credited in this round
 
 // Digits used by the "#N Goal Hunt" name parser.
 array<string> g_digits = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };

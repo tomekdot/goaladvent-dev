@@ -208,8 +208,11 @@ Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
   newest entry is newer than the last credited time, exactly one checkpoint is
   credited. A respawn or a new lap may empty the buffer without ending the run,
   so no buffer drop is a round boundary - resetting on them discarded earlier
-  CP and was the missed-checkpoint bug. `CurTriggerIndex` advances twice for
-  one checkpoint on some arenas and is debug-only.
+   CP and was the missed-checkpoint bug. Later laps can keep the buffer capped
+   at the map checkpoint count; `player.CurLapIndex` plus `CurTriggerIndex`
+   and a fresh checkpoint time then credit one CP per physical checkpoint.
+   `CurTriggerIndex` alone can advance twice for one checkpoint, so it is
+   never the count by itself.
   `ResetRun()` ends one run but keeps the whole-day total; `ResetSession()` is
   only for a bucket change or an admin reset. `g_creditedRunCp` prevents a
   run's CP from being added to `g_sessionCp` twice. Debug shows `liveCp`,

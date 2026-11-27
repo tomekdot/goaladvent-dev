@@ -40,10 +40,11 @@ float TabButtonWidth(const string &in name) {
     UI::PushFontSize(FS_BODY);
     float measured = UI::MeasureString(name, null, FS_BODY).x;
     UI::PopFontSize();
-    float fallback = float(int(name.Length)) * FS_BODY;
-    float labelW = measured > 0.0f ? measured : fallback;
-    // FramePadding is 8 px on each side, plus a 1 px border on each side.
-    return labelW + 18.0f * UiK();
+    float fallback = float(int(name.Length)) * 0.68f * FS_BODY;
+    float labelW = measured > fallback ? measured : fallback;
+    // FramePadding is 8 px on each side plus a 1 px border; 22 px leaves a
+    // small safety margin so FINALE can never be cut to "FI".
+    return labelW + 22.0f * UiK();
 }
 
 // Five tab buttons, the four gaps between them, the sync button and the gap
@@ -52,7 +53,8 @@ float TabRowWidth() {
     string[] names = TabNames();
     float total = 0.0f;
     for (uint i = 0; i < names.Length; i++) {
-        total += TabButtonWidth(names[i]) + TabGap();
+        if (i > 0) total += TabGap();
+        total += TabButtonWidth(names[i]);
     }
     return total + SyncButtonWidth() + TabSyncGap();
 }
@@ -451,6 +453,9 @@ void RenderDayGrid() {
     if (tileW > 200.0f * UiK()) tileW = 200.0f * UiK();
     float gridW = 5.0f * tileW + 4.0f * spacing;
     float gridX = origin.x + (avail.x - gridW) * 0.5f;
+    // Never push the first or fifth column outside the panel; a negative
+    // centering offset would clip both edges instead of centering the grid.
+    if (gridX < origin.x) gridX = origin.x;
     int today = CurrentEventDayUtc();
 
     for (int day = 1; day <= DAY_COUNT; day++) {
@@ -1132,12 +1137,16 @@ void RenderFinaleTab() {
 // ---------------------------------------------------------------------------
 void RenderWorkspace() {
     UI::PushStyleColor(UI::Col::ChildBg, g_palette.containerBg);
+    // Zero the workspace child padding: PushDashboardStyle() sets 14 px on
+    // every child, which silently steals width from the tabs and the grid.
+    UI::PushStyleVar(UI::StyleVar::WindowPadding, vec2(0.0f, 0.0f));
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int wsFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
     if (UI::BeginChild("##goaladventWorkspace", vec2(0, 0), UI::ChildFlags::None, wsFlags)) {
         string[] tabNames = TabNames();
 
         UI::PushFontSize(FS_BODY);
+        UI::PushStyleVar(UI::StyleVar::FramePadding, vec2(8.0f * UiK(), 4.0f * UiK()));
         UI::PushStyleVar(UI::StyleVar::FrameRounding, 0.0f);
         UI::PushStyleVar(UI::StyleVar::FrameBorderSize, 1.0f);
         UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(3.0f * UiK(), 8.0f * UiK()));
@@ -1153,9 +1162,9 @@ void RenderWorkspace() {
             vec4 txt = active ? TextMain() : TextMuted();
             vec4 brd = active ? g_palette.borderStrong : g_palette.tileEdge;
 
-            UI::PushStyleColor(UI::Col::Button, g_palette.tileBg);
-            UI::PushStyleColor(UI::Col::ButtonHovered, g_palette.tileHover);
-            UI::PushStyleColor(UI::Col::ButtonActive, g_palette.tileHover);
+            UI::PushStyleColor(UI::Col::Button, g_palette.tabBg);
+            UI::PushStyleColor(UI::Col::ButtonHovered, g_palette.tabHoverBg);
+            UI::PushStyleColor(UI::Col::ButtonActive, g_palette.tabHoverBg);
             UI::PushStyleColor(UI::Col::Text, txt);
             UI::PushStyleColor(UI::Col::Border, brd);
             float tw = TabButtonWidth(tabNames[i]);
@@ -1168,7 +1177,7 @@ void RenderWorkspace() {
 
         // Glass sync icon on the right, in the same tab row.
         float availRight = UI::GetContentRegionAvail().x;
-        if (availRight >= syncW) {
+        if (availRight >= syncW + 4.0f * UiK()) {
             UI::SameLine(0, availRight - syncW);
             UI::BeginDisabled(g_syncing);
             if (GlassButton(Icons::Refresh + "##topSync", vec2(syncW, tabH))) {
@@ -1178,7 +1187,7 @@ void RenderWorkspace() {
             UI::EndDisabled();
         }
 
-        UI::PopStyleVar(3);
+        UI::PopStyleVar(4);
         UI::PopFontSize();
 
         UI::Dummy(vec2(0, 4.0f * UiK()));
@@ -1190,7 +1199,7 @@ void RenderWorkspace() {
         else if (g_activeTab == 4) RenderFinaleTab();
     }
     UI::EndChild();
-    UI::PopStyleVar();
+    UI::PopStyleVar(2);
     UI::PopStyleColor();
 }
 
