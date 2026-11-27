@@ -344,6 +344,9 @@ check('tabs are text only', !/tabIcons/.test(uias) && !/showTabIcons/.test(uias)
 check('window minimum covers tabs and grid', /TabRowWidth\(\)/.test(uias) &&
   /GridMinWidth\(\)/.test(uias) && has(uias, 'SetNextWindowSizeConstraints'));
 check('calendar counter shown', /OPENED \| " \+/.test(uias));
+check('feed uses leaderboard visual language', /bool FeedEventIsMine\(/.test(uias) &&
+  /vec4 FeedEventColour\(/.test(uias) && /" events"\)/.test(uias) &&
+  /Tone\(Navy\(\)\)/.test(uias));
 const theme = src['Theme.as'];
 check('grey obsidian tiles', /tileBg = vec4\(0\.095/.test(theme));
 check('grey glass tiles', /vec4\(1\.000, 1\.000, 1\.000, 0\.09\)/.test(theme));

@@ -882,8 +882,30 @@ void DrawMpName(const string &in raw, const vec4 &in fallback) {
     }
 }
 
+bool FeedEventIsMine(const string &in line) {
+    string me = Text::StripFormatCodes(LocalName()).Trim().ToLower();
+    if (me.Length == 0) return false;
+    string plain = Text::StripFormatCodes(line).ToLower();
+    return plain.Contains(me);
+}
+
+vec4 FeedEventColour(const string &in line) {
+    string plain = Text::StripFormatCodes(line).ToLower();
+    if (plain.Contains("bounty") || plain.Contains("stole") || plain.Contains("record")) {
+        return Gold();
+    }
+    if (plain.Contains("finished") || plain.Contains("completed") ||
+        plain.Contains("reached") || plain.Contains("finale")) {
+        return Emerald();
+    }
+    if (plain.Contains("pursuit") || plain.Contains("rest")) {
+        return Purple();
+    }
+    return IceBlue();
+}
+
 void RenderLeaderboardTab() {
-    DrawSectionHeader("LEADERBOARD");
+    DrawSectionHeader("LEADERBOARD", tostring(int(g_boardNames.Length)) + " players");
     if (g_boardNames.Length == 0) {
         UI::TextDisabled("No entries yet. They appear after the first submitted run.");
         UI::BeginDisabled(g_syncing);
@@ -905,7 +927,10 @@ void RenderLeaderboardTab() {
         for (uint i = 0; i < g_boardNames.Length; i++) {
             UI::TableNextRow();
             bool mine = i < g_boardAccountIds.Length && g_boardAccountIds[i] == AccountId();
-            if (!mine && g_boardNames[i] == LocalName() && (i >= g_boardAccountIds.Length || g_boardAccountIds[i].Length == 0)) mine = true;
+            if (!mine && g_boardNames[i] == LocalName() &&
+                (i >= g_boardAccountIds.Length || g_boardAccountIds[i].Length == 0)) {
+                mine = true;
+            }
             if (mine) {
                 UI::TableSetBgColor(UI::TableBgTarget::RowBg0, Tone(Navy()));
                 UI::TableSetBgColor(UI::TableBgTarget::RowBg1, Tone(Navy()));
@@ -918,7 +943,8 @@ void RenderLeaderboardTab() {
             }
             UI::TableSetColumnIndex(0);
             if (i < 3) TextTone(i == 0 ? Gold() : (i == 1 ? Silver() : Bronze()), tostring(int(i) + 1));
-            else UI::Text(tostring(int(i) + 1));
+            else if (mine) TextTone(IceBlue(), tostring(int(i) + 1));
+            else TextTone(TextMuted(), tostring(int(i) + 1));
             UI::TableSetColumnIndex(1);
             DrawMpName(g_boardNames[i], mine ? Gold() : TextMain());
             if (mine) {
@@ -941,14 +967,15 @@ void RenderLeaderboardTab() {
 }
 
 void RenderFeedTab() {
-    DrawSectionHeader("LIVE FEED");
+    DrawSectionHeader("LIVE FEED", tostring(int(g_liveFeed.Length)) + " events");
     if (g_liveFeed.Length == 0) {
-        UI::TextDisabled("Nothing here yet. Complete a day or take a bounty.");
+        UI::TextDisabled("Nothing here yet | complete a day or take a bounty.");
         UI::BeginDisabled(g_syncing);
         if (CenteredButton(Icons::Refresh + " Refresh")) SyncNow();
         UI::EndDisabled();
         return;
     }
+
     int flags = UI::TableFlags::RowBg | UI::TableFlags::PadOuterX;
     UI::PushStyleColor(UI::Col::TableRowBg, vec4(0.10, 0.10, 0.11, 0.55));
     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.14, 0.14, 0.15, 0.55));
@@ -959,14 +986,30 @@ void RenderFeedTab() {
         UI::TableHeadersRow();
         for (uint i = 0; i < g_liveFeed.Length; i++) {
             UI::TableNextRow();
-            if (i == 0) {
-                UI::TableSetBgColor(UI::TableBgTarget::RowBg0, Tone(Gold()));
-                UI::TableSetBgColor(UI::TableBgTarget::RowBg1, Tone(Gold()));
+            bool mine = FeedEventIsMine(g_liveFeed[i]);
+            vec4 evCol = FeedEventColour(g_liveFeed[i]);
+
+            // Same visual language as the leaderboard: Navy for your own rows,
+            // a subtle podium-like tint for the three newest events.
+            if (mine) {
+                UI::TableSetBgColor(UI::TableBgTarget::RowBg0, Tone(Navy()));
+                UI::TableSetBgColor(UI::TableBgTarget::RowBg1, Tone(Navy()));
+            } else if (i < 3) {
+                vec4 rowTint = (i == 0 && evCol.x == IceBlue().x) ? Gold() : evCol;
+                if (i == 1 && rowTint.x == Gold().x && rowTint.y == Gold().y) rowTint = Silver();
+                UI::TableSetBgColor(UI::TableBgTarget::RowBg0, Tone(rowTint));
+                UI::TableSetBgColor(UI::TableBgTarget::RowBg1, Tone(rowTint));
             }
+
             UI::TableSetColumnIndex(0);
-            UI::Text(tostring(int(i) + 1));
+            TextTone(mine ? IceBlue() : evCol, tostring(int(i) + 1));
             UI::TableSetColumnIndex(1);
-            DrawMpName(g_liveFeed[i], TextMain());
+            DrawMpName(g_liveFeed[i], mine ? Gold() : TextMain());
+            if (mine) {
+                UI::SameLine(0, 6);
+                TextTone(TextMuted(), "(you)");
+            }
+            UI::SetItemTooltip(Text::StripFormatCodes(g_liveFeed[i]));
         }
         UI::EndTable();
     }
@@ -976,6 +1019,7 @@ void RenderFeedTab() {
     if (CenteredButton(Icons::Refresh + " Refresh feed")) SyncNow();
     UI::EndDisabled();
 }
+
 
 void RenderBountyTab() {
     DrawSectionHeader("BOUNTY BOARD");
