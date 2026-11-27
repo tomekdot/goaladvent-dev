@@ -283,6 +283,11 @@ check('checkpoint counter is monotonic',
   /g_runCp \+= grew/.test(hunt) && /g_runCp \+= 1/.test(hunt));
 check('new run seeds from live buffer', /g_creditedRunCp = g_bufferCp;/.test(hunt) &&
   /g_runSeedPending/.test(hunt));
+check('one sanitizer for all notifications', has(sync, 'string CleanNotifyText(') &&
+  has(sync, 'string clean = CleanNotifyText(text);') &&
+  has(sync, 'string line = CleanNotifyText(text);'));
+check('server events sanitized before feed', has(sync, 'CleanNotifyText(string(entry))'));
+check('player names sanitized in local messages', has(hunt, 'CleanNotifyText(LocalName()'));
 check('recycled buffer credits the newest checkpoint time',
   /g_bufferLastTime = int\(script\.CurRace\.Checkpoints\[uint\(g_bufferCp - 1\)\]\)/.test(hunt) &&
   /g_bufferLastTime > g_runLastTime/.test(hunt));
@@ -328,7 +333,12 @@ check('window has minimum size', has(uias, 'SetNextWindowSizeConstraints'));
 check('rest day text removed from day bar', !/status = "Pursuit night"/.test(uias));
 check('button lifted to title line', has(uias, 'rowStart.y - 8.0f * UiK()'));
 check('no corner checkmarks on tiles', !/AddCircleFilled\(cc, cr/.test(uias) && !/cpTier >= 2/.test(uias));
-check('tabs use palette colours', has(uias, 'g_palette.tabActiveBg') && has(uias, 'g_palette.tabActiveText'));
+check('tabs use palette colours', has(uias, 'g_palette.tileBg') &&
+  has(uias, 'g_palette.tileHover') && has(uias, 'TextMuted()'));
+check('tabs are text only', !/tabIcons/.test(uias) && !/showTabIcons/.test(uias));
+check('window minimum covers tabs and grid', /TabRowWidth\(\)/.test(uias) &&
+  /GridMinWidth\(\)/.test(uias) && has(uias, 'SetNextWindowSizeConstraints'));
+check('calendar counter shown', /OPENED \| " \+/.test(uias));
 const theme = src['Theme.as'];
 check('grey obsidian tiles', /tileBg = vec4\(0\.095/.test(theme));
 check('grey glass tiles', /vec4\(1\.000, 1\.000, 1\.000, 0\.09\)/.test(theme));

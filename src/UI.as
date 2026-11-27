@@ -21,6 +21,70 @@ float UiScale() {
 // Geometry factor: 1.5 is the designed size, so 1.5 -> 1.0.
 float UiK() { return UiScale() / 1.5f; }
 
+// Text-only tab labels. One source for the bar and the window-width floor.
+string[] TabNames() {
+    string[] names = { "CALENDAR", "LEADERBOARD", "LIVE FEED", "BOUNTIES", "FINALE" };
+    return names;
+}
+
+// Tab row geometry, shared by the drawing code and the window-width floor.
+float TabGap() { return 3.0f * UiK(); }
+float SyncButtonWidth() { return 28.0f * UiK(); }
+float TabSyncGap() { return 8.0f * UiK(); }
+
+// Width of one tab button. Measure inside the same font state used to draw the
+// label; a measurement taken outside it can report a smaller advance and clip
+// the last letters. The fallback is one em per character, so it cannot
+// underestimate these uppercase labels when measurement is unavailable.
+float TabButtonWidth(const string &in name) {
+    UI::PushFontSize(FS_BODY);
+    float measured = UI::MeasureString(name, null, FS_BODY).x;
+    UI::PopFontSize();
+    float fallback = float(int(name.Length)) * FS_BODY;
+    float labelW = measured > 0.0f ? measured : fallback;
+    // FramePadding is 8 px on each side, plus a 1 px border on each side.
+    return labelW + 18.0f * UiK();
+}
+
+// Five tab buttons, the four gaps between them, the sync button and the gap
+// before it. The bar and the window floor both use this helper.
+float TabRowWidth() {
+    string[] names = TabNames();
+    float total = 0.0f;
+    for (uint i = 0; i < names.Length; i++) {
+        total += TabButtonWidth(names[i]) + TabGap();
+    }
+    return total + SyncButtonWidth() + TabSyncGap();
+}
+
+// The calendar grid reads the same constants when it lays out the tiles and
+// when the window computes its minimum, so the fifth column cannot be clipped.
+float GridGap() { return 6.0f * UiK(); }
+float GridTileMinW() { return 48.0f * UiK(); }
+float GridMinWidth() { return 5.0f * GridTileMinW() + 4.0f * GridGap(); }
+
+// Padding swallowed by the nested windows. PushDashboardStyle() sets
+// WindowPadding = 14 px per side; it applies to the main window and to every
+// child, including the workspace and the calendar grid. Counting only the
+// outer padding leaves the tab row one child padding short, which is what
+// clips FINALE and the fifth grid column.
+float WindowPadWidth()    { return 2.0f * 14.0f * UiK(); }
+float WorkspacePadWidth() { return 2.0f * 14.0f * UiK(); }
+float GridPadWidth()      { return 2.0f * 6.0f * UiK(); }
+
+// Minimum width of the workspace content region: the widest of the measured
+// tab row, the 5x5 grid at its tile minimum, and that grid inside the 68%
+// details column (plus the column gap and a usable details pane).
+float WorkspaceMinWidth() {
+    float tabsNeed = TabRowWidth();
+    float gridNeed = GridMinWidth() + GridPadWidth();
+    float detailsNeed = (GridMinWidth() + GridPadWidth()) / 0.68f +
+                        8.0f * UiK() + 100.0f * UiK();
+    float need = tabsNeed > gridNeed ? tabsNeed : gridNeed;
+    if (need < detailsNeed) need = detailsNeed;
+    return need;
+}
+
 void ApplyUiScale() {
     float s = UiScale();
     FS_LABEL = 13.0f * s;
@@ -113,7 +177,7 @@ void DrawDot(vec2 pos, float radius, vec4 col) {
     UI::GetWindowDrawList().AddCircleFilled(pos, radius, col, 8);
 }
 
-void DrawSectionHeader(const string &in title) {
+void DrawSectionHeader(const string &in title, const string &in suffix = "") {
     vec2 p = UI::GetCursorScreenPos();
     UI::GetWindowDrawList().AddRectFilled(
         vec4(p.x, p.y + 2.0f * UiK(), 3.0f * UiK(), 15.0f * UiK()),
@@ -123,6 +187,12 @@ void DrawSectionHeader(const string &in title) {
     UI::PushFontSize(FS_BODY);
     TextTone(MixCol(TextMuted(), TextMain(), 0.65f), title);
     UI::PopFontSize();
+    if (suffix.Length > 0) {
+        UI::SameLine(0, 8.0f * UiK());
+        UI::PushFontSize(FS_LABEL);
+        TextTone(TextMuted(), suffix);
+        UI::PopFontSize();
+    }
     UI::Dummy(vec2(0, 5));
 }
 
@@ -371,13 +441,13 @@ void RenderDayGrid() {
 
     vec2 origin = UI::GetCursorPos();
     vec2 avail = UI::GetContentRegionAvail();
-    const float spacing = 6.0f * UiK();
+    const float spacing = GridGap();
     float minTileH = UI::MeasureString("00", null, FS_TITLE).y + 34.0f * UiK();
     float tileH = (avail.y - 4.0f * spacing) / 5.0f;
     if (tileH < minTileH) tileH = minTileH;
     if (tileH > 130.0f * UiK()) tileH = 130.0f * UiK();
     float tileW = (avail.x - 4.0f * spacing) / 5.0f;
-    if (tileW < 48.0f * UiK()) tileW = 48.0f * UiK();
+    if (tileW < GridTileMinW()) tileW = GridTileMinW();
     if (tileW > 200.0f * UiK()) tileW = 200.0f * UiK();
     float gridW = 5.0f * tileW + 4.0f * spacing;
     float gridX = origin.x + (avail.x - gridW) * 0.5f;
@@ -678,7 +748,8 @@ void RenderCalendarGrid(float w, float hReserve) {
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int gridFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
     if (UI::BeginChild("##goaladventCalendarGrid", vec2(w, hReserve), UI::ChildFlags::None, gridFlags)) {
-        DrawSectionHeader("ADVENT CALENDAR");
+        DrawSectionHeader("ADVENT CALENDAR",
+                          "OPENED | " + tostring(OpenedCount()) + " / " + tostring(DAY_COUNT));
         UI::SetItemTooltip("REST = Pursuit night | FINAL = day " + tostring(DAY_COUNT) +
                            " finale | DONE = completed | gray gift = opens later");
         RenderDayGrid();
@@ -1064,9 +1135,7 @@ void RenderWorkspace() {
     UI::PushStyleVar(UI::StyleVar::ScrollbarSize, 0.0f);
     int wsFlags = UI::WindowFlags::NoScrollbar | UI::WindowFlags::NoScrollWithMouse;
     if (UI::BeginChild("##goaladventWorkspace", vec2(0, 0), UI::ChildFlags::None, wsFlags)) {
-        string[] tabNames = { "CALENDAR", "LEADERBOARD", "LIVE FEED", "BOUNTIES", "FINALE" };
-        string[] tabIcons = { Icons::Calendar, Icons::Trophy, Icons::Rss,
-                              Icons::Crosshairs, Icons::Star };
+        string[] tabNames = TabNames();
 
         UI::PushFontSize(FS_BODY);
         UI::PushStyleVar(UI::StyleVar::FrameRounding, 0.0f);
@@ -1074,33 +1143,23 @@ void RenderWorkspace() {
         UI::PushStyleVar(UI::StyleVar::ItemSpacing, vec2(3.0f * UiK(), 8.0f * UiK()));
 
         float tabH = 28.0f * UiK();
-        float syncW = 28.0f * UiK();
-
-        // A narrow window drops the tab glyphs instead of clipping the row.
-        float rowAvail = UI::GetContentRegionAvail().x - syncW - 8.0f * UiK();
-        float rowNeed = 0.0f;
-        for (int i = 0; i < 5; i++) {
-            rowNeed += UI::MeasureString(tabIcons[i] + " " + tabNames[i], null, FS_BODY).x +
-                       13.0f * UiK() + 3.0f * UiK();
-        }
-        bool showTabIcons = rowNeed <= rowAvail;
+        float syncW = SyncButtonWidth();
 
         for (int i = 0; i < 5; i++) {
-            if (i > 0) UI::SameLine(0, 3.0f * UiK());
+            if (i > 0) UI::SameLine(0, TabGap());
             bool active = (g_activeTab == i);
-            vec4 bg = active ? g_palette.tabActiveBg : g_palette.tabBg;
-            vec4 hov = active ? g_palette.tabActiveBg : g_palette.tabHoverBg;
-            vec4 txt = active ? g_palette.tabActiveText : TextMain();
+            // Grey by default; hover only changes the shade. The active tab is
+            // marked by brighter text and a stronger border, never a white fill.
+            vec4 txt = active ? TextMain() : TextMuted();
             vec4 brd = active ? g_palette.borderStrong : g_palette.tileEdge;
 
-            UI::PushStyleColor(UI::Col::Button, bg);
-            UI::PushStyleColor(UI::Col::ButtonHovered, hov);
-            UI::PushStyleColor(UI::Col::ButtonActive, bg);
+            UI::PushStyleColor(UI::Col::Button, g_palette.tileBg);
+            UI::PushStyleColor(UI::Col::ButtonHovered, g_palette.tileHover);
+            UI::PushStyleColor(UI::Col::ButtonActive, g_palette.tileHover);
             UI::PushStyleColor(UI::Col::Text, txt);
             UI::PushStyleColor(UI::Col::Border, brd);
-            string tabLabel = showTabIcons ? tabIcons[i] + " " + tabNames[i] : tabNames[i];
-            float tw = UI::MeasureString(tabLabel, null, FS_BODY).x + 13.0f * UiK();
-            if (UI::Button(tabLabel + "##tab" + tostring(i), vec2(tw, tabH))) {
+            float tw = TabButtonWidth(tabNames[i]);
+            if (UI::Button(tabNames[i] + "##tab" + tostring(i), vec2(tw, tabH))) {
                 g_activeTab = i;
                 g_confirmReset = false;
             }
@@ -1142,13 +1201,20 @@ void RenderDashboard() {
     // Resizable on every tab. The size only seeds the first layout (ImGui keeps
     // whatever the player picks afterwards), and the grid, the tables and the
     // details pane all derive their geometry from the content region.
-    float winW = (S_ShowDayDetails ? 820.0f : 650.0f) * UiK();
-    float winH = 620.0f * UiK();
-    UI::SetNextWindowSize(int(winW), int(winH), UI::Cond::FirstUseEver);
-    // Below this the tab row, the grid and (when enabled) the details pane stop
-    // fitting; the bar is wider while the details pane is on.
-    float minW = (S_ShowDayDetails ? 700.0f : 560.0f) * UiK();
+    // The constraint is a window size, so add back every layer of padding
+    // between the outer window and the drawn content: the window itself, the
+    // workspace child (it inherits WindowPadding) and the calendar grid child.
+    // WorkspaceMinWidth() takes the widest of the measured tab row, the 5x5
+    // grid at its tile minimum and the 68% details column, so neither FINALE
+    // nor the fifth calendar column is clipped at the minimum.
+    float minW = WorkspaceMinWidth() + WorkspacePadWidth() + WindowPadWidth();
     float minH = (S_ShowDayDetails ? 460.0f : 400.0f) * UiK();
+
+    float winW = (S_ShowDayDetails ? 820.0f : 650.0f) * UiK();
+    if (winW < minW + 40.0f * UiK()) winW = minW + 40.0f * UiK();
+    float winH = 620.0f * UiK();
+    if (winH < minH) winH = minH;
+    UI::SetNextWindowSize(int(winW), int(winH), UI::Cond::FirstUseEver);
     UI::SetNextWindowSizeConstraints(int(minW), int(minH), 4000, 4000);
     if (!g_windowSizeApplied) {
         UI::SetNextWindowPos(24, 40, UI::Cond::FirstUseEver);

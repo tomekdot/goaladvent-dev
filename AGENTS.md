@@ -397,6 +397,9 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
 
 - One clean commit per change. Conventional Commits **with scope**:
   `feat(goaladvent): ...`, `fix(goaladvent): ...`, `style(goaladvent): ...`.
+  Do NOT put version numbers in the subject; older commits contain them, but
+  they are unreadable and must not be rewritten. Put the version in the commit
+  body as `Version: 0.8.1-dev` when the change is tied to a release.
 - Author identity: `tomekdot <73403480+tomekdot@users.noreply.github.com>`
   (the GitHub ID + noreply address, identical to the global git config and all
   other repos). Never use the plain `tomekdot@users.noreply.github.com` form.

@@ -396,8 +396,8 @@ void CompleteDay(int day, int cp) {
     if (opened >= DAY_COUNT - 1) AddBadge("GOALMAS-24");
     if (opened >= DAY_COUNT) AddBadge("FINALIST");
 
-    string msg = LocalName() + " finished day " + tostring(day) + " with " + tostring(cp) +
-                 " CP (+" + tostring(points) + " pts)";
+    string msg = CleanNotifyText(LocalName() + " finished day " + tostring(day) + " with " +
+                                 tostring(cp) + " CP (+" + tostring(points) + " pts)");
     if (S_OpenAnimation) StartOpenAnimation(day, points, cp, false);
     else ShowBanner("Day " + tostring(day) + " completed: " + tostring(cp) + " CP, +" + tostring(points) + " pts");
     PushFeed(msg);
@@ -423,8 +423,8 @@ void ClaimBounty(int day, int cp) {
         AddBadge("BOUNTY-HUNTER");
     }
 
-    string msg = LocalName() + " stole the day " + tostring(day) + " bounty with " +
-                 tostring(cp) + " CP";
+    string msg = CleanNotifyText(LocalName() + " stole the day " + tostring(day) +
+                                 " bounty with " + tostring(cp) + " CP");
     if (points > 0) {
         if (S_OpenAnimation) StartOpenAnimation(day, points, cp, true);
         else ShowBanner("BOUNTY TAKEN: " + tostring(cp) + " CP, +" + tostring(points) + " pts");

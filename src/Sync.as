@@ -3,10 +3,75 @@
 // ---------------------------------------------------------------------------
 // Banner and feed
 // ---------------------------------------------------------------------------
+// Player names, server names and server-supplied events carry ManiaPlanet $
+// codes and sometimes raw control bytes. Banners, toasts and feed rows show
+// plain text only. One sanitizer for every display path; the native pass first,
+// then a byte pass that drops leftover escapes and control characters and
+// collapses redundant whitespace. Output contains no $ marker, so cleaning the
+// same text twice is harmless (the banner path can clean a feed row twice).
+bool IsHexDigit(uint8 c) {
+    return (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x46) || (c >= 0x61 && c <= 0x66);
+}
+
+string CleanNotifyText(const string &in raw) {
+    string src = Text::StripFormatCodes(raw);
+    string clean = "";
+    bool pendingSpace = false;
+    int len = int(src.Length);
+
+    for (int i = 0; i < len; i++) {
+        uint8 b = src[i];
+
+        // Leftover $ code. Drop the whole sequence so its letters (the
+        // "nfv g" style residue) never reach a banner or feed row.
+        if (b == 0x24 && i + 1 < len) {
+            uint8 n = src[i + 1];
+            if (n == 0x24) {
+                i += 1;   // $$ escape: drop both, keep the output $-free
+                continue;
+            }
+            uint lower = (n >= 0x41 && n <= 0x5A) ? uint(n) + 32 : uint(n);
+            // z s o i w n m g t < > are single-letter style codes.
+            if (lower == 0x7A || lower == 0x73 || lower == 0x6F || lower == 0x69 ||
+                lower == 0x77 || lower == 0x6E || lower == 0x6D || lower == 0x67 ||
+                lower == 0x74 || lower == 0x3C || lower == 0x3E) {
+                i += 1;   // loop increment consumes the code letter
+                continue;
+            }
+            // Colour code: $ plus three or six hex digits. Only consume the
+            // payload when it really is a colour, never ordinary player text.
+            if (IsHexDigit(n)) {
+                int digits = 1;
+                while (digits < 6 && i + 1 + digits < len && IsHexDigit(src[i + 1 + digits])) {
+                    digits++;
+                }
+                if (digits >= 3) {
+                    i += (digits == 6 ? 6 : 3);   // loop increment moves past it
+                    continue;
+                }
+            }
+            // Stray escape marker: drop it and keep the following character.
+            continue;
+        }
+
+        if (b == 0x20 || b < 0x20) {
+            // Space and control bytes are word boundaries, never glyphs.
+            pendingSpace = clean.Length > 0;
+            continue;
+        }
+
+        if (pendingSpace) {
+            clean += " ";
+            pendingSpace = false;
+        }
+        clean += src.SubStr(i, 1);
+    }
+    return clean;
+}
+
 void ShowBanner(const string &in text) {
-    // Player names arrive with ManiaPlanet colour codes ($fff$s...$z);
-    // banners and toasts must show plain names, never the raw escapes.
-    string clean = Text::StripFormatCodes(text);
+    // All banner and toast text goes through the same sanitizer.
+    string clean = CleanNotifyText(text);
     g_bannerText = clean;
     g_bannerTimer = 6.0f;
     if (S_Notifications) {
@@ -15,7 +80,7 @@ void ShowBanner(const string &in text) {
 }
 
 void PushFeed(const string &in text) {
-    string line = text;
+    string line = CleanNotifyText(text);
     g_liveFeed.InsertAt(0, line);
     while (g_liveFeed.Length > MAX_FEED_EVENTS) g_liveFeed.RemoveAt(g_liveFeed.Length - 1);
 }
@@ -279,7 +344,8 @@ void ApplyState(const string &in body) {
         for (uint i = 0; i < events.Length; i++) {
             Json::Value@ entry = events[i];
             if (entry is null || entry.GetType() != Json::Type::String) continue;
-            string line = string(entry);
+            // /state events contain player names, so sanitize before storing.
+            string line = CleanNotifyText(string(entry));
             if (line.Length > 0) g_liveFeed.InsertLast(line);
         }
         if (g_liveFeed.Length > 0 && g_liveFeed[0] != g_lastTopEvent) {
