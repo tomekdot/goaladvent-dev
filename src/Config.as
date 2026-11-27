@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.8.6-dev";
+const string PLUGIN_VERSION = "0.8.7-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -132,6 +132,9 @@ array<vec4> g_dayColoursRgb = {
 array<string> g_milestoneMinerals = {
     "Quartz", "Garnet", "Topaz", "Ruby", "Sapphire", "Emerald", "Diamond"
 };
+// Server-locked colour index per day (0 = not claimed yet). The worker sets it
+// on the first 15 CP submit for that day; clients only mirror it.
+array<int> g_dayColourIndex;
 // Must match DAY_ROLLOVER_HOUR_UTC in backend/worker.js. A run before 02:00 UTC
 // still belongs to the previous event day; 02:00 UTC starts a fresh bucket.
 const int DAY_ROLLOVER_HOUR_UTC = 2;

@@ -416,3 +416,5 @@ Grep it before using a new API. Absent in this build: `I2S`, `UI::TextColored`,
   **before** force-pushing. Never clobber a rebase in progress.
 - After code changes, rebuild `goaladvent-dev.op` (`info.toml` + `README.md` at
   root, code in `src/`) and refresh the latest `v*` release only when asked.
+
+- Day colours are locked server-side on the first 15 CP submit.

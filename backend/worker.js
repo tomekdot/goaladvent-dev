@@ -46,6 +46,7 @@ const BASE_POINTS = 100;
 const FINALE_POINTS = 300;
 const BASE_BOUNTY_POINTS = 150;
 const BASE_BOUNTY_CP = 15;
+const SILVER_CP = 15;   // must match SILVER_CP in src/Config.as
 const STARTER_BADGE = "GOALMAS-2026";
 const MAX_EVENTS = 15;
 const ELF_VETERAN_DAYS = 10;   // must match ELF_VETERAN_DAYS in src/Config.as
@@ -100,6 +101,13 @@ async function ensureSchema(env) {
         "account_id TEXT NOT NULL, day INTEGER NOT NULL, " +
         "cp INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, " +
         "PRIMARY KEY (bucket_date, account_id, day))"
+      ).run();
+      // The first player to reach the 15 CP milestone on a day locks its
+      // colour for the rest of the event. Only the server may decide it.
+      await env.DB.prepare(
+        "CREATE TABLE IF NOT EXISTS day_colours (day INTEGER PRIMARY KEY, " +
+        "colour_index INTEGER NOT NULL, holder_id TEXT NOT NULL, " +
+        "set_at INTEGER NOT NULL)"
       ).run();
       await env.DB.prepare(
         "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
@@ -276,6 +284,7 @@ export default {
         env.DB.prepare("DELETE FROM players WHERE account_id = ?").bind(accountId),
         env.DB.prepare("DELETE FROM bounty_bonus WHERE account_id = ?").bind(accountId),
         env.DB.prepare("DELETE FROM day_cp WHERE account_id = ?").bind(accountId),
+        env.DB.prepare("DELETE FROM day_colours WHERE holder_id = ?").bind(accountId),
         env.DB.prepare(
           "INSERT INTO meta (key, value) VALUES ('reset_epoch', ?) " +
           "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
@@ -411,6 +420,9 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       for (const row of (mapRows.results || [])) mapDays[row.uid] = row.day;
 
       const epochRow = await env.DB.prepare("SELECT value FROM meta WHERE key = 'reset_epoch'").first();
+      const colourRows = await env.DB.prepare("SELECT day, colour_index FROM day_colours").all();
+      const dayColours = {};
+      for (const row of (colourRows.results || [])) dayColours[row.day] = row.colour_index;
 
       // Server clock mirror for the tiles. The submit route re-checks the same
       // bucket, so editing the PC clock changes nothing that counts.
@@ -433,6 +445,7 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       return Response.json({
         bucketDate: bucket.key,
         bucketHourUtc: DAY_ROLLOVER_HOUR_UTC,
+        dayColours,
         dayCp: Number((dayCpRow && dayCpRow.cp) || 0),
         points: me ? me.points : 0,
         bounties: me ? me.bounties : 0,
@@ -516,6 +529,20 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         .first();
       const dayCp = Math.max(submittedCp, Number((dayCpRow && dayCpRow.cp) || 0));
       cpCount = dayCp;
+
+      // First player to reach the silver milestone locks this day's colour.
+      // The colour index is bounded and stored only once (INSERT OR IGNORE).
+      if (cpCount >= SILVER_CP) {
+        const requested = Number(body.colourIndex);
+        const colourIndex = Number.isInteger(requested) && requested >= 1 && requested <= DAY_COUNT
+          ? requested : day;
+        await env.DB.prepare(
+          "INSERT OR IGNORE INTO day_colours (day, colour_index, holder_id, set_at) " +
+          "VALUES (?, ?, ?, ?)"
+        )
+          .bind(day, colourIndex, accountId, nowMs)
+          .run();
+      }
 
       // Learn the UID<->day pair only from a completed run. Debug submits with
       // a handful of CP must not poison detection for every other player.

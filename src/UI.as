@@ -24,19 +24,24 @@ float UiK() { return UiScale() / 1.5f; }
 // Text-only tab labels. One source for the bar and the window-width floor.
 // Day colour name and token, shown instead of the gift glyph on locked tiles.
 string DayColourName(int day) {
-    if (day < 1 || day > DAY_COUNT || day > int(g_dayColourNames.Length)) return "Gray";
-    return g_dayColourNames[day - 1];
+    if (day < 1 || day > DAY_COUNT || day >= int(g_dayColourIndex.Length)) return "Unknown";
+    int idx = g_dayColourIndex[day];
+    if (idx < 1 || idx > DAY_COUNT || idx > int(g_dayColourNames.Length)) return "Unknown";
+    return g_dayColourNames[idx - 1];
 }
 
 string DayColourToken(int day) {
     string name = DayColourName(day);
+    if (name == "Unknown") return "???";
     if (name.Length < 3) return name.ToUpper();
     return name.SubStr(0, 3).ToUpper();
 }
 
 vec4 DayColour(int day) {
-    if (day < 1 || day > DAY_COUNT || day > int(g_dayColoursRgb.Length)) return TextMuted();
-    return g_dayColoursRgb[day - 1];
+    if (day < 1 || day > DAY_COUNT || day >= int(g_dayColourIndex.Length)) return TextMuted();
+    int idx = g_dayColourIndex[day];
+    if (idx < 1 || idx > DAY_COUNT || idx > int(g_dayColoursRgb.Length)) return TextMuted();
+    return g_dayColoursRgb[idx - 1];
 }
 
 string[] TabNames() {

@@ -255,6 +255,19 @@ void ApplyState(const string &in body) {
     Json::Value@ root = Json::Parse(body);
     if (root is null || root.GetType() != Json::Type::Object) return;
 
+    Json::Value@ dayColours = root["dayColours"];
+    if (dayColours !is null && dayColours.GetType() == Json::Type::Object) {
+        array<string>@ colourKeys = dayColours.GetKeys();
+        for (uint i = 0; i < colourKeys.Length; i++) {
+            int day = Text::ParseInt(colourKeys[i]);
+            int idx = JsonIntOr(dayColours, colourKeys[i], 0);
+            if (day >= 1 && day <= DAY_COUNT && idx >= 1 && idx <= DAY_COUNT &&
+                day < int(g_dayColourIndex.Length)) {
+                g_dayColourIndex[day] = idx;
+            }
+        }
+    }
+
     int srvMonth = JsonIntOr(root, "serverMonth", 0);
     int srvDate = JsonIntOr(root, "serverDate", 0);
 

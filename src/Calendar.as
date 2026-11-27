@@ -351,6 +351,7 @@ void ResetProgress() {
     g_bountyCp.Resize(DAY_COUNT);
     g_bountyHolder.Resize(DAY_COUNT);
     g_bountyHolderId.Resize(DAY_COUNT);
+    g_dayColourIndex.Resize(DAY_COUNT);
     g_bountyClaimed.Resize(DAY_COUNT);
     for (int i = 0; i < DAY_COUNT; i++) {
         g_opened[i] = false;
@@ -360,6 +361,7 @@ void ResetProgress() {
         g_bountyHolder[i] = "GrinchBot";
         g_bountyHolderId[i] = BOT_HOLDER_ID;
         g_bountyClaimed[i] = false;
+        g_dayColourIndex[i] = 0;
     }
     g_badges.Resize(0);
     g_bountiesWon = 0;
@@ -474,6 +476,14 @@ void LoadProgress() {
             }
         }
     }
+    if (root.HasKey("dayColourIndex")) {
+        Json::Value@ arr = root["dayColourIndex"];
+        if (arr !is null && arr.GetType() == Json::Type::Array) {
+            for (uint i = 0; i < g_dayColourIndex.Length && i < arr.Length; i++) {
+                g_dayColourIndex[i] = int(arr[i]);
+            }
+        }
+    }
     if (root.HasKey("badges")) {
         Json::Value@ arr = root["badges"];
         if (arr !is null && arr.GetType() == Json::Type::Array) {
@@ -501,6 +511,7 @@ void SaveProgress() {
     Json::Value@ bountyHolder = Json::Array();
     Json::Value@ bountyHolderId = Json::Array();
     Json::Value@ bountyClaimed = Json::Array();
+    Json::Value@ dayColourIndex = Json::Array();
     for (int i = 0; i < DAY_COUNT; i++) {
         opened.Add(g_opened[i]);
         bests.Add(g_bests[i]);
@@ -509,6 +520,7 @@ void SaveProgress() {
         bountyHolder.Add(g_bountyHolder[i]);
         bountyHolderId.Add(g_bountyHolderId[i]);
         bountyClaimed.Add(g_bountyClaimed[i]);
+        dayColourIndex.Add(g_dayColourIndex[i]);
     }
     root["opened"] = opened;
     root["bests"] = bests;
@@ -517,6 +529,7 @@ void SaveProgress() {
     root["bountyHolder"] = bountyHolder;
     root["bountyHolderId"] = bountyHolderId;
     root["bountyClaimed"] = bountyClaimed;
+    root["dayColourIndex"] = dayColourIndex;
 
     Json::Value@ badges = Json::Array();
     for (uint i = 0; i < g_badges.Length; i++) badges.Add(g_badges[i]);

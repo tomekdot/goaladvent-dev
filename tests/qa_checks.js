@@ -360,6 +360,10 @@ check('debug has backup and reset buttons', /Backup save/.test(src['Debug.as']) 
   /void ResetAllData\(/.test(cal));
 check('snowflake uses fixed day colour', /icon == Icons::SnowflakeO/.test(uias) &&
   /DayColour\(day\)/.test(uias) && /array<vec4> g_dayColoursRgb/.test(cfg));
+check('server locks day colour on first 15 CP', /CREATE TABLE IF NOT EXISTS day_colours/.test(worker) &&
+  /INSERT OR IGNORE INTO day_colours/.test(worker) && /colourIndex/.test(worker));
+check('client mirrors server day colour', /g_dayColourIndex/.test(sync) &&
+  /payload\["colourIndex"\]/.test(hunt) && /dayColours/.test(sync));
 const theme = src['Theme.as'];
 check('grey obsidian tiles', /tileBg = vec4\(0\.095/.test(theme));
 check('grey glass tiles', /vec4\(1\.000, 1\.000, 1\.000, 0\.09\)/.test(theme));
@@ -502,6 +506,19 @@ async function workerGuardChecks() {
     check('future day is refused', future.status === 403, 'HTTP ' + future.status);
     const openDay = await submit('qa-g', 'Grace', 10, 14, strictEnv);
     check('open day is accepted', openDay.status === 200, 'HTTP ' + openDay.status);
+
+    // First 15 CP submit locks the day colour; later submits cannot change it.
+    const colourA = await call('/submit', {
+      accountId: 'qa-ca', name: 'C1', day: 14, cpCount: 20, mapUid: '', timeMs: 0, colourIndex: 3
+    });
+    const colourB = await call('/submit', {
+      accountId: 'qa-cb', name: 'C2', day: 14, cpCount: 25, mapUid: '', timeMs: 0, colourIndex: 7
+    });
+    const colourState = await call('/state?accountId=qa-ca');
+    check('first 15 CP locks the day colour',
+      colourA.status === 200 && colourB.status === 200 &&
+      colourState.json && colourState.json.dayColours && colourState.json.dayColours['14'] === 3,
+      colourState.json && String(colourState.json.dayColours && colourState.json.dayColours['14']));
 
     // 02:00 UTC on 26 December is the first instant after the last bucket.
     setClock(Date.UTC(2026, 11, 26, 2));

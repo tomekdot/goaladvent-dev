@@ -730,6 +730,7 @@ void Coroutine_SubmitCp() {
     payload["mapUid"] = mapUid;
     payload["cpCount"] = cp;
     payload["timeMs"] = 0;
+    payload["colourIndex"] = day;
 
     Net::HttpRequest@ req = Net::HttpPost(ApiUrl() + "/submit", Json::Write(payload), "application/json");
     if (req is null) {

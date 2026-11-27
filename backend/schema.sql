@@ -58,3 +58,11 @@ CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- First 15 CP submit on a day locks that day's colour index (1..25).
+CREATE TABLE IF NOT EXISTS day_colours (
+  day          INTEGER PRIMARY KEY,
+  colour_index INTEGER NOT NULL,
+  holder_id    TEXT NOT NULL,
+  set_at       INTEGER NOT NULL
+);
