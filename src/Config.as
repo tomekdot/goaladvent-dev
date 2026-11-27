@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.7.0-dev";
+const string PLUGIN_VERSION = "0.7.1-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -232,9 +232,8 @@ bool g_submitQueued = false;
 int g_submitRetries = 0;
 float g_submitTimer = 0.0f;
 
-// Warmup gate: the first seconds of a race never count checkpoints, and any
-// server warmup phase is excluded too. CP passed during warmup are subtracted
-// via a baseline, so they cannot leak into the count when the gate lifts.
+// Warmup is informational only: checkpoints passed in warmup count as well.
+// Skipping them made early CP disappear for the rest of the run.
 const int64 WARMUP_GRACE_SEC = 15;
 // CTrackManiaScriptPlayer::ERaceState values (BeforeStart, Running, Finished,
 // Eliminated) as ints, so the tracker does not depend on enum scope syntax.
@@ -259,7 +258,6 @@ int g_runStartTime = -1;      // RaceStartTime of the round being counted
 int g_runCp = 0;              // checkpoints credited in this round
 int g_runBufferHigh = 0;      // highest Checkpoints.Length seen this round
 int g_runLastTime = -1;       // newest checkpoint time credited this round
-int g_warmupCpBaseline = 0;   // run CP accumulated during warmup
 
 // Digits used by the "#N Goal Hunt" name parser.
 array<string> g_digits = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };

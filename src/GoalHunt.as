@@ -443,7 +443,6 @@ void ResetSession() {
     g_runCp = 0;
     g_runBufferHigh = 0;
     g_runLastTime = -1;
-    g_warmupCpBaseline = 0;
     g_raceStartStamp = 0;
 }
 
@@ -513,15 +512,9 @@ void TrackGoalHunt(float dt) {
     int cp = g_runCp;
     g_liveCp = cp;
 
-    // Warmup never counts. Track the run counter while gated so CP passed
-    // during warmup are subtracted afterwards instead of counted retroactively.
-    if (InWarmupGate()) {
-        if (cp > g_warmupCpBaseline) g_warmupCpBaseline = cp;
-        return;
-    }
-
-    int effective = cp - g_warmupCpBaseline;
-    if (effective < 0) effective = 0;
+    // Checkpoints count in warmup too. The previous baseline skipped early CP
+    // and cost players points when those checkpoints were never re-passed.
+    int effective = cp;
 
     // The finish line is the map's last checkpoint. Arena mode can recycle
     // CurRace before the buffer shows it, so a finished race credits the full

@@ -205,7 +205,7 @@ check('checkpoint counter is monotonic',
 check('recycled buffer credits the newest checkpoint time',
   /g_bufferLastTime = int\(script\.CurRace\.Checkpoints\[uint\(g_bufferCp - 1\)\]\)/.test(hunt) &&
   /g_bufferLastTime > g_runLastTime/.test(hunt));
-check('warmup subtracts the early CP baseline', /int effective = cp - g_warmupCpBaseline/.test(hunt));
+check('warmup checkpoints count', /int effective = cp;/.test(hunt) && !/g_warmupCpBaseline/.test(hunt));
 check('final CP flushed on race finish', /bool justFinished = raceState == RACE_FINISHED/.test(hunt) && /if \(justFinished && g_sessionCp > g_lastSentCp\)/.test(hunt));
 const detectFn = (hunt.match(/int DetectGoalHuntDay\(\) \{[\s\S]*?\n\}/) || [''])[0];
 check('map name number beats UID mapping', detectFn.indexOf('ParseDayFromMapName(name)') > 0 &&

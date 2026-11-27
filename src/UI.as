@@ -1304,7 +1304,7 @@ void RenderGoalHuntHud() {
         TextTone(TextMain(), Icons::FlagCheckered + " #" + tostring(day) + " GOAL HUNT");
         if (IsPremiereDay(day)) TextTone(Gold(), "Premiere | x2 points");
         else UI::TextDisabled("Catch-up | x1 points");
-        if (InWarmupGate()) UI::TextDisabled("Warmup | CP counting paused");
+        if (InWarmupGate()) UI::TextDisabled("Warmup | checkpoints count");
         UI::Text("Goal " + tostring(GOAL_CP) + " CP | session " +
                  tostring(ClampCp(g_sessionCp)) + " CP");
         UI::Text("Bounty " + tostring(g_bountyCp[day - 1]) + " CP | " +
