@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.6.9-dev";
+const string PLUGIN_VERSION = "0.7.0-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -74,6 +74,9 @@ const int BASE_POINTS = 100;       // days 1..24
 const int FINALE_POINTS = 300;     // day 25
 const int BOUNTY_POINTS = 150;
 const int DEFAULT_BOUNTY_CP = 15;  // starting GrinchBot record
+// Must match BOT_HOLDER_ID in backend/worker.js. Identity, not the display
+// nickname, decides who owns a bounty record.
+const string BOT_HOLDER_ID = "grinchbot";
 // Run tiers are cosmetic only - points stay 100 / 300 / bounty 150.
 const int SILVER_CP = DEFAULT_BOUNTY_CP;   // 15 CP, the starting bounty record
 const int GOLD_CP = 30;            // top-tier run
@@ -81,7 +84,6 @@ const int MAX_CP = 250;            // must match MAX_CP in backend/worker.js
 const float SUBMIT_DEBOUNCE_SEC = 6.0f;
 const int SYNC_INTERVAL_SEC = 20;
 const int SERVER_CLOCK_TTL_SEC = 180;      // server day mirror stays valid 3x the sync interval
-const int FINALE_GRACE_DAYS = 5;   // finale / catch-up window after Christmas
 const int MAX_FEED_EVENTS = 15;    // must match MAX_EVENTS in backend/worker.js
 const int ELF_VETERAN_DAYS = 10;   // badge threshold, both client and server
 
@@ -155,6 +157,7 @@ array<int> g_points;       // points collected per day
 array<int> g_bountyCp;     // current bounty record per day
 array<bool> g_bountyClaimed;  // bounty bonus already granted per day
 array<string> g_bountyHolder;
+array<string> g_bountyHolderId;  // canonical account id of each holder ("" if unknown)
 array<string> g_badges;
 int g_bountiesWon = 0;
 // Last known account id, persisted so a profile that has not loaded yet does
@@ -210,7 +213,6 @@ array<int> g_serverMapDays;
 int g_serverMonth = 0;
 int g_serverDate = 0;
 int g_serverDay = 0;
-bool g_serverCatchUp = false;
 int g_serverClockStamp = 0;
 int g_resetEpoch = 0;      // server reset counter; 0 until the first /state
 
@@ -220,9 +222,8 @@ int g_resetEpoch = 0;      // server reset counter; 0 until the first /state
 int g_activeDay = 0;
 string g_lastMapUid = "";
 int g_sessionCp = 0;
-int g_liveCp = 0;
-int g_liveTrigger = 0;
-int g_prevTrigger = 0;
+int g_liveCp = 0;          // checkpoints credited in the current round
+int g_liveTrigger = 0;     // raw CurTriggerIndex, debug only (never a count)
 int g_lastSentCp = 0;
 int g_pendingDay = 0;
 int g_pendingCp = 0;
@@ -242,12 +243,23 @@ const int RACE_RUNNING = 1;
 const int RACE_FINISHED = 2;
 int64 g_raceStartStamp = 0;   // Time::Stamp when the local race last started
 int g_lastRaceState = -1;     // previous ERaceState snapshot
-int g_lastCpBuffer = 0;
-int g_lastCpTime = 0;
-int g_prevCpTime = 0;       // previous raw Checkpoints.Length
-int g_warmupCpBaseline = 0;   // buffer value accumulated during warmup
+int g_lastCpTime = 0;         // CurCheckpointRaceTime this tick (informational)
 int g_curRaceState = 0;       // refreshed by CurrentCpCount()
 int g_curRaceNbCp = 0;        // map checkpoints per lap (Score.LapsNbCheckpoint)
+int g_raceStartTime = 0;      // ScriptAPI.RaceStartTime this tick (run identity)
+int g_bufferCp = 0;           // raw CurRace.Checkpoints.Length this tick
+int g_bufferLastTime = -1;    // newest CurRace.Checkpoints[] value this tick
+
+// Per-round checkpoint accounting. A respawn can rewind the checkpoint buffer
+// and the trigger index without ending the run, so neither a buffer drop nor a
+// trigger/time drop is a round boundary. The round identity is RaceStartTime
+// (plus an explicit Running transition); inside a round the counter is a
+// high-water mark that only ever grows.
+int g_runStartTime = -1;      // RaceStartTime of the round being counted
+int g_runCp = 0;              // checkpoints credited in this round
+int g_runBufferHigh = 0;      // highest Checkpoints.Length seen this round
+int g_runLastTime = -1;       // newest checkpoint time credited this round
+int g_warmupCpBaseline = 0;   // run CP accumulated during warmup
 
 // Digits used by the "#N Goal Hunt" name parser.
 array<string> g_digits = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };

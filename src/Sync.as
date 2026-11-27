@@ -197,7 +197,6 @@ void ApplyState(const string &in body) {
         g_serverMonth = srvMonth;
         g_serverDate = srvDate;
         g_serverDay = JsonIntOr(root, "serverDay", 0);
-        g_serverCatchUp = JsonBoolOr(root, "serverCatchUp", false);
         g_serverClockStamp = int(Time::Stamp);
     }
 
@@ -226,6 +225,9 @@ void ApplyState(const string &in body) {
             if (value > g_bountyCp[idx]) g_bountyCp[idx] = value;
             string holder = JsonStrOr(dayObj, "bountyHolder", "");
             if (holder.Length > 0) g_bountyHolder[idx] = holder;
+            // Canonical owner from the server. An empty value means an older
+            // worker or a legacy row, so the display name stays the fallback.
+            g_bountyHolderId[idx] = JsonStrOr(dayObj, "bountyHolderAccountId", "");
             int best = ClampCp(JsonIntOr(dayObj, "myBestCp", 0));
             if (best > g_bests[idx]) g_bests[idx] = best;
         }

@@ -94,8 +94,10 @@ Openplanet compiles `src/*.as` recursively; no explicit manifest lists them.
   `TUESDAY_OFF_DAYS` in `backend/worker.js`. Those are Pursuit bonus nights in
   the calendar UI. The worker now accepts submissions on every day, because a
   Goal Hunt map can be played on any of them.
-- Day 25 finale stays open until 5 January (`FINALE_GRACE_DAYS = 5`).
-- All past days remain playable for catch-up.
+- Day 25 is the finale and only opens on 25 December UTC. The event is
+  strictly 1-25 December: there is no January catch-up window and `/submit`
+  refuses any day outside it.
+- Past days remain playable until 25 December (catch-up inside the window).
 
 ### 4.2 Checkpoints and points
 
@@ -106,9 +108,13 @@ Openplanet compiles `src/*.as` recursively; no explicit manifest lists them.
 | Complete finale | `FINALE_POINTS = 300` |
 | Take a day bounty record | `BOUNTY_POINTS = 150` (once per day per player) |
 
-Checkpoint count comes from
-`CTrackManiaPlayer.ScriptAPI.CurRace.Checkpoints.Length` over
-`app.CurrentPlayground.Players`, matched by local login.
+Checkpoint count is a monotonic per-round counter built from
+`CTrackManiaPlayer.ScriptAPI.CurRace.Checkpoints` over
+`app.CurrentPlayground.Players`, matched by local login. A round is identified
+by `ScriptAPI.RaceStartTime`; within a round the count only grows, so a respawn
+that rewinds the buffer, `CurTriggerIndex` or `CurCheckpointRaceTime` cannot
+erase earlier checkpoints. Buffer growth credits the difference; a recycled
+buffer whose newest checkpoint time moved forward credits exactly one.
 
 ### 4.3 Final score
 
@@ -145,9 +151,8 @@ Detection order in `DetectGoalHuntDay()`:
    `GoalHuntArena` are recognised even when the name has no number. This is
    how maps such as `Goal Hunt - Complex` (MapType `GoalHuntArena`,
    Titlepack `Pursuit`) are detected.
-6. **UTC date fallback** `CurrentEventDayUtc()`: during 1-25 December (and the
-   January finale window) a recognised Goal Hunt map with no number is
-   assigned to today's UTC day.
+6. **UTC date fallback** `CurrentEventDayUtc()`: during 1-25 December a
+   recognised Goal Hunt map with no number is assigned to today's UTC day.
 
 All of the above is gated by `OnEventServer()`: if `S_EventServerKeyword` is
 set, the server name or login must contain it. Empty keyword accepts all
@@ -408,5 +413,5 @@ Repo:          https://github.com/tomekdot/goaladvent-dev
 Releases:      https://github.com/tomekdot/goaladvent-dev/releases
 Worker:        https://goalmas.tomekdot-goalmas.workers.dev
 D1 database:   goalmas
-Event dates:   1-25 December 2026, finale until 5 January 2027
+Event dates:   1-25 December 2026 UTC (strict, no January window)
 ```

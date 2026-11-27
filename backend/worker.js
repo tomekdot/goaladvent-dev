@@ -47,10 +47,14 @@ const FINALE_POINTS = 300;
 const BASE_BOUNTY_POINTS = 150;
 const BASE_BOUNTY_CP = 15;
 const STARTER_BADGE = "GOALMAS-2026";
-const FINALE_GRACE_DAYS = 5;   // must match FINALE_GRACE_DAYS in src/Config.as
 const MAX_EVENTS = 15;
 const ELF_VETERAN_DAYS = 10;   // must match ELF_VETERAN_DAYS in src/Config.as
 const MAX_CP = 250;   // reject forged/huge values without imposing a real limit
+// Cheap anti-spam gate: one accepted submit per account per second. The check
+// is an atomic conditional upsert on meta, so racing requests cannot both pass.
+const SUBMIT_COOLDOWN_MS = 1000;
+const MAX_NAME_LEN = 60;   // display only - identity always comes from accountId
+const BOT_HOLDER_ID = "grinchbot";   // pseudo-account for the starting record
 
 // Older D1 databases had only (day, ms, holder). Add cp idempotently at runtime.
 // Cache per isolate so /admin and /state do not re-run DDL on every request.
@@ -60,11 +64,19 @@ async function ensureSchema(env) {
     schemaReady = (async () => {
       await env.DB.prepare(
         "CREATE TABLE IF NOT EXISTS bounties (day INTEGER PRIMARY KEY, " +
-        "cp INTEGER NOT NULL DEFAULT 0, ms INTEGER NOT NULL DEFAULT 0, holder TEXT NOT NULL)"
+        "cp INTEGER NOT NULL DEFAULT 0, ms INTEGER NOT NULL DEFAULT 0, " +
+        "holder TEXT NOT NULL, holder_id TEXT NOT NULL DEFAULT '')"
       ).run();
       const info = await env.DB.prepare("PRAGMA table_info(bounties)").all();
       if (!(info.results || []).some(col => col.name === "cp")) {
         await env.DB.prepare("ALTER TABLE bounties ADD COLUMN cp INTEGER NOT NULL DEFAULT 0").run();
+      }
+      // The display name is mutable, so the record owner is stored as the
+      // stable account id. Older rows keep an empty id until their next submit.
+      if (!(info.results || []).some(col => col.name === "holder_id")) {
+        await env.DB.prepare(
+          "ALTER TABLE bounties ADD COLUMN holder_id TEXT NOT NULL DEFAULT ''"
+        ).run();
       }
       await env.DB.prepare(
         "CREATE TABLE IF NOT EXISTS map_days (uid TEXT PRIMARY KEY, day INTEGER NOT NULL, " +
@@ -191,15 +203,17 @@ function isPremiere(day, now) {
 }
 
 // The event calendar is decided by the server clock, never by a client clock.
-// December opens one day per day (a day from the future is refused), January
-// 1..FINALE_GRACE_DAYS is the catch-up window for every day, and outside the
-// event the route stays open so QA and archived data keep working.
-function dayAllowedByServer(day, now) {
+// The event is strictly 1-25 December UTC: one day opens per UTC day, a day
+// from the future is refused, and nothing is accepted after 25 December.
+// The old January catch-up window was removed on purpose. A server-side
+// QA_ALLOW_OFFSEASON secret (value "1") is the only off-season escape hatch;
+// it is never exposed to clients and must not be set for the live event.
+function dayAllowedByServer(day, now, env) {
+  if (env && env.QA_ALLOW_OFFSEASON === "1") return true;
   const month = now.getUTCMonth() + 1;
   const date = now.getUTCDate();
-  if (month === 12) return day <= date;
-  if (month === 1 && date <= FINALE_GRACE_DAYS) return true;
-  return true;
+  if (month !== 12 || date > DAY_COUNT) return false;
+  return day <= date;
 }
 
 export default {
@@ -242,14 +256,21 @@ export default {
       ];
       if (player && player.name) {
         batch.push(
-          env.DB.prepare("UPDATE bounties SET cp = ?, ms = 0, holder = ? WHERE holder = ?")
-            .bind(BASE_BOUNTY_CP, "GrinchBot", player.name)
+          env.DB.prepare(
+            "UPDATE bounties SET cp = ?, ms = 0, holder = ?, holder_id = ? " +
+            "WHERE holder_id = ? OR (holder_id = '' AND holder = ?)"
+          )
+            .bind(BASE_BOUNTY_CP, "GrinchBot", BOT_HOLDER_ID, accountId, player.name)
         );
         batch.push(
           env.DB.prepare("DELETE FROM events WHERE msg LIKE ?")
             .bind("%" + player.name + "%")
         );
       }
+      // Clear the submit cooldown so QA can submit again immediately.
+      batch.push(
+        env.DB.prepare("DELETE FROM meta WHERE key = ?").bind("submit:" + accountId)
+      );
       await env.DB.batch(batch);
       return Response.json({ ok: true, accountId, resetEpoch: Number(epoch) });
     }
@@ -262,7 +283,7 @@ export default {
       }
       const [players, bounties, events, maps] = await Promise.all([
         env.DB.prepare("SELECT account_id, name, points, bounties, badges, bests FROM players ORDER BY points DESC LIMIT 50").all(),
-        env.DB.prepare("SELECT day, cp, ms, holder FROM bounties ORDER BY day").all(),
+        env.DB.prepare("SELECT day, cp, ms, holder, holder_id FROM bounties ORDER BY day").all(),
         env.DB.prepare("SELECT msg, created_at FROM events ORDER BY id DESC LIMIT " + MAX_EVENTS).all(),
         env.DB.prepare("SELECT uid, day, first_seen FROM map_days ORDER BY day").all()
       ]);
@@ -295,8 +316,8 @@ document.getElementById("resetOwner").onclick = async () => {
 <h2>Players (${(players.results || []).length} of ${(players.results || []).length})</h2>
 <table><tr><th>account</th><th>name</th><th>pts</th><th>bounties</th><th>badges</th><th>bests</th></tr>
 ${rows(players, ["account_id", "name", "points", "bounties", "badges", "bests"])}</table>
-<h2>Bounties</h2><table><tr><th>day</th><th>cp</th><th>ms</th><th>holder</th></tr>
-${rows(bounties, ["day", "cp", "ms", "holder"])}</table>
+<h2>Bounties</h2><table><tr><th>day</th><th>cp</th><th>ms</th><th>holder</th><th>holder id</th></tr>
+${rows(bounties, ["day", "cp", "ms", "holder", "holder_id"])}</table>
 <h2>Map UID -&gt; day (learned)</h2><table><tr><th>uid</th><th>day</th><th>first seen</th></tr>
 ${rows(maps, ["uid", "day", "first_seen"])}</table>
 <h2>Recent events</h2><table><tr><th>time</th><th>message</th></tr>
@@ -319,7 +340,9 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       const bests = me ? normalizeBests(safeParse(me.bests, {})) : {};
       const days = [];
       for (let d = 1; d <= DAY_COUNT; d++) {
-        const bounty = bounties[d] || { cp: BASE_BOUNTY_CP, ms: 0, holder: "GrinchBot" };
+        const bounty = bounties[d] || {
+          cp: BASE_BOUNTY_CP, ms: 0, holder: "GrinchBot", holder_id: BOT_HOLDER_ID
+        };
         const best = bests[d] || { cp: 0, ms: 0 };
         days.push({
           day: d,
@@ -328,6 +351,11 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
           bountyCp: bounty.cp || BASE_BOUNTY_CP,
           bountyMs: bounty.ms || 0,
           bountyHolder: bounty.holder || "GrinchBot",
+          // Canonical, mutable-name-proof owner. The display name above is kept
+          // for older clients; the identity is this account id (or "" for a
+          // legacy row that never stored one).
+          bountyHolderAccountId: bounty.holder_id ||
+            (bounty.holder === "GrinchBot" ? BOT_HOLDER_ID : ""),
           completed: (best.cp || 0) >= GOAL_CP,
           myBestCp: best.cp || 0,
           myBestMs: best.ms || 0
@@ -362,11 +390,13 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       const now = new Date();
       const serverMonth = now.getUTCMonth() + 1;
       const serverDate = now.getUTCDate();
-      const serverCatchUp = serverMonth === 12 ||
-        (serverMonth === 1 && serverDate <= FINALE_GRACE_DAYS);
-      const serverDay = serverMonth === 12
-        ? Math.min(serverDate, DAY_COUNT)
-        : (serverCatchUp ? DAY_COUNT : 0);
+      // Strict 1-25 December UTC. Outside that window serverDay is 0, so tiles
+      // stay locked; serverCatchUp is kept in the response only for older
+      // clients and is always false now.
+      const serverCatchUp = false;
+      const serverDay = (serverMonth === 12 && serverDate <= DAY_COUNT)
+        ? serverDate
+        : 0;
 
       return Response.json({
         points: me ? me.points : 0,
@@ -396,7 +426,8 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       const day = Number(body.day);
       const cpCount = Number(body.cpCount);
       const timeMs = Number(body.timeMs) || 0;
-      if (!accountId || !Number.isInteger(day) || day < 1 || day > DAY_COUNT ||
+      if (typeof accountId !== "string" || accountId.length === 0 ||
+          !Number.isInteger(day) || day < 1 || day > DAY_COUNT ||
           !Number.isInteger(cpCount) || cpCount <= 0 || cpCount > MAX_CP) {
         return new Response("Bad Request", { status: 400 });
       }
@@ -404,12 +435,31 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       // The server clock decides which days exist. Changing the PC clock may
       // unlock tiles in the UI, but it can never publish a future day.
       const now = new Date();
-      if (!dayAllowedByServer(day, now)) {
+      if (!dayAllowedByServer(day, now, env)) {
         return Response.json({ ok: false, error: "day-not-open" }, { status: 403 });
       }
-      // Any day may be submitted. Tuesday nights are a Pursuit bonus in the
-      // calendar UI, but when a Goal Hunt map is actually played on that day
-      // the run must count - rejecting it here produced HTTP 403 in test runs.
+      // Any open day may be submitted. Tuesday nights are a Pursuit bonus in
+      // the calendar UI, but a Goal Hunt run actually played on that day must
+      // count - rejecting it here produced HTTP 403 in test runs.
+
+      // Cheap per-account rate limit, checked before any state write. The
+      // conditional upsert is atomic: of two racing submits exactly one can
+      // move the timestamp, so a spammer cannot send arbitrary values in a
+      // burst and a rejected request leaves players/bounties untouched.
+      const nowMs = Date.now();
+      const rate = await env.DB.prepare(
+        "INSERT INTO meta (key, value) VALUES (?, ?) " +
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value " +
+        "WHERE CAST(meta.value AS INTEGER) + ? <= ?"
+      )
+        .bind("submit:" + accountId, String(nowMs), SUBMIT_COOLDOWN_MS, nowMs)
+        .run();
+      if (!rate.meta || rate.meta.changes === 0) {
+        return Response.json(
+          { ok: false, error: "rate-limited", retryAfterMs: SUBMIT_COOLDOWN_MS },
+          { status: 429 }
+        );
+      }
 
       // Learn the UID<->day pair only from a completed run. Debug submits with
       // a handful of CP must not poison detection for every other player.
@@ -423,6 +473,12 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       const player = await env.DB.prepare("SELECT * FROM players WHERE account_id = ?")
         .bind(accountId)
         .first();
+      // Identity comes from accountId; the nickname is display-only and is
+      // reused from the stored row once it exists so a client cannot rename
+      // itself on every submit.
+      const displayName = player && player.name
+        ? String(player.name).slice(0, MAX_NAME_LEN)
+        : String(name || "Player").slice(0, MAX_NAME_LEN);
       const bests = player ? normalizeBests(safeParse(player.bests, {})) : {};
       const badges = new Set(badgesFor(accountId, player ? safeParse(player.badges, []) : []));
 
@@ -455,15 +511,16 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       const currentCp = bountyRow ? bountyRow.cp || BASE_BOUNTY_CP : BASE_BOUNTY_CP;
       const currentMs = bountyRow ? bountyRow.ms || 0 : 0;
       const previousHolder = bountyRow ? bountyRow.holder || "GrinchBot" : "GrinchBot";
+      const previousHolderId = bountyRow ? bountyRow.holder_id || "" : "";
       const beatsBounty =
         cpCount > currentCp ||
         (cpCount === currentCp && timeMs > 0 && (!currentMs || timeMs < currentMs));
 
       let bountyWon = false;
-      let holderNow = previousHolder;
+      let holderIdNow = previousHolderId;
       if (beatsBounty) {
         await env.DB.prepare(
-          "INSERT INTO bounties (day, cp, ms, holder) VALUES (?, ?, ?, ?) " +
+          "INSERT INTO bounties (day, cp, ms, holder, holder_id) VALUES (?, ?, ?, ?, ?) " +
             "ON CONFLICT(day) DO UPDATE SET " +
             "cp = MAX(bounties.cp, excluded.cp), " +
             "ms = CASE WHEN excluded.cp > bounties.cp OR " +
@@ -471,9 +528,12 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
             "THEN excluded.ms ELSE bounties.ms END, " +
             "holder = CASE WHEN excluded.cp > bounties.cp OR " +
             "(excluded.cp = bounties.cp AND excluded.ms < bounties.ms) " +
-            "THEN excluded.holder ELSE bounties.holder END"
+            "THEN excluded.holder ELSE bounties.holder END, " +
+            "holder_id = CASE WHEN excluded.cp > bounties.cp OR " +
+            "(excluded.cp = bounties.cp AND excluded.ms < bounties.ms) " +
+            "THEN excluded.holder_id ELSE bounties.holder_id END"
         )
-          .bind(day, cpCount, timeMs, name || "Player")
+          .bind(day, cpCount, timeMs, displayName, accountId)
           .run();
 
         // Exactly one request can claim the bonus for a (day, player) pair.
@@ -496,7 +556,9 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         const settled = await env.DB.prepare("SELECT * FROM bounties WHERE day = ?")
           .bind(day)
           .first();
-        if (settled && settled.holder) holderNow = settled.holder;
+        if (settled) {
+          holderIdNow = settled.holder_id || "";
+        }
       }
 
       bests[day] = {
@@ -555,7 +617,7 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       )
         .bind(
           accountId,
-          name || "Player",
+          displayName,
           totalPoints,
           totalBounties,
           JSON.stringify(Array.from(badges)),
@@ -568,18 +630,18 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       // Announce a takeover only when the stored record really points at this
       // run. With simultaneous submits the higher CP (or lower time) wins and
       // the loser stays silent instead of announcing a bounty it does not hold.
-      const bountyChanged = beatsBounty && holderNow === (name || "Player") &&
-                            holderNow !== previousHolder;
+      const bountyChanged = beatsBounty && holderIdNow === accountId &&
+                            holderIdNow !== previousHolderId;
       if (bountyChanged) {
         await pushEvent(
           env,
-          (name || "Player") + " stole the day " + day + " bounty from " +
+          displayName + " stole the day " + day + " bounty from " +
             previousHolder + " with " + cpCount + " CP" + timeInfo +
             (bountyWon ? " (+" + BASE_BOUNTY_POINTS * mult + " pts)" : ""),
           {
             bounty: true,
             day,
-            name: name || "Player",
+            name: displayName,
             cp: cpCount,
             gained: bountyWon ? BASE_BOUNTY_POINTS * mult : 0
           }
@@ -587,8 +649,8 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       } else if (gained > 0) {
         await pushEvent(
           env,
-          (name || "Player") + " reached " + cpCount + " CP on day " + day + " (+" + gained + " pts)",
-          { bounty: false, day, name: name || "Player", cp: cpCount, gained }
+          displayName + " reached " + cpCount + " CP on day " + day + " (+" + gained + " pts)",
+          { bounty: false, day, name: displayName, cp: cpCount, gained }
         );
       }
 

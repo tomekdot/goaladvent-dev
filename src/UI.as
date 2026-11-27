@@ -64,7 +64,6 @@ vec4 CpTierColour(int tier) {
 string EventCountdown() {
     Time::Info now = Time::ParseUTC();
     if (now.Month == 12) return "";
-    if (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS) return "";
     int days = 0;
     if (now.Month == 11) days = 31 - now.Day;
     else if (now.Month < 11) days = (11 - now.Month) * 30 + (31 - now.Day);
@@ -933,7 +932,12 @@ void RenderBountyTab() {
             UI::TableSetColumnIndex(2);
             TextTone(Gold(), tostring(g_bountyCp[day - 1]) + " CP");
             UI::TableSetColumnIndex(3);
-            if (g_bountyHolder[day - 1] == LocalName()) TextTone(Gold(), "you");
+            // The server owns the account id; a nickname can be spoofed or
+            // changed. Older rows without an id fall back to the name.
+            string holderId = g_bountyHolderId[day - 1];
+            bool mine = holderId.Length > 0 ? holderId == AccountId()
+                                            : g_bountyHolder[day - 1] == LocalName();
+            if (mine) TextTone(Gold(), "you");
             else DrawMpName(g_bountyHolder[day - 1], TextMain());
             UI::SetItemTooltip("Holder: " + Text::StripFormatCodes(g_bountyHolder[day - 1]));
         }
@@ -1041,8 +1045,7 @@ void RenderFinaleTab() {
                  raffleReady ? (Icons::CheckCircle + "  Raffle ticket earned.")
                              : "Raffle needs " + tostring(DAY_COUNT) + "/" + tostring(DAY_COUNT) + " gifts opened.");
         TextToneWrapped(TextMuted(),
-            "The finale stays open until " + tostring(FINALE_GRACE_DAYS) +
-            " January. The raffle is drawn after the window closes.");
+            "The event runs 1-25 December UTC. The raffle is drawn after the window closes.");
         UI::PopFontSize();
     }
     UI::EndChild();

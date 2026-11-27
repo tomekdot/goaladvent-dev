@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS bounties (
   day    INTEGER PRIMARY KEY,    -- 1..25
   cp     INTEGER NOT NULL DEFAULT 0,  -- best checkpoint count
   ms     INTEGER NOT NULL DEFAULT 0,  -- optional time, tie-breaker only
-  holder TEXT NOT NULL           -- nickname of the record holder
+  holder TEXT NOT NULL,          -- display nickname (mutable, display only)
+  holder_id TEXT NOT NULL DEFAULT ''  -- canonical account id of the record owner
 );
 
 CREATE TABLE IF NOT EXISTS events (

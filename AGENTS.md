@@ -121,7 +121,9 @@ editing code. The broader workspace rules also apply:
   **and** the fixed `OWNER_ACCOUNT_ID`, so only the owner's test data can be
   wiped; no token in the request means 404, any other account or confirm value
   means 403. The route deletes that player's row and bounty bonuses, resets any
-  bounty they hold to GrinchBot and bumps `meta.reset_epoch` (Unix seconds,
+  bounty they hold to GrinchBot by matching `bounties.holder_id` (legacy rows
+  with an empty id fall back to the display name), clears their submit cooldown
+  key and bumps `meta.reset_epoch` (Unix seconds,
   must fit an AngelScript int). `/state` returns `resetEpoch`; the plugin
   clears its local save once when the value changes. The admin page has a
   button that calls this route after a confirmation. Use it to clean test
@@ -199,27 +201,52 @@ Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
   by those exact day numbers - never shift them by hand.
 - `DAY_COUNT = 25`, `GOAL_CP = 10`; days 1-24 score 100, finale 300, bounty 150.
   Checkpoint counting continues past the goal up to `MAX_CP` (tiers at 15 and
-  30). An arena round is detected by a drop in the last checkpoint time
-  (`g_lastCpTime < g_prevCpTime`), not only by `RaceState`/buffer changes. The live counter reads `player.ScriptAPI.CurTriggerIndex` first and
-  falls back to `CurRace.Checkpoints.Length`; the latter can keep growing in
-  arena mode. `CurTriggerIndex` is only a round-reset signal: on some arenas
-  it advances twice for one checkpoint and must NOT be used as the count.
+  30). The count is a **monotonic per-round counter**, not a raw buffer read:
+  `RaceStartTime` identifies the round (a `Running` transition and an emptied
+  buffer plus a zero checkpoint time are guarded fallbacks), and inside a round
+  `g_runCp` only grows. Buffer growth credits the difference; when an arena
+  respawn truncates `CurRace.Checkpoints` but the newest entry is newer than
+  the last credited time, exactly one checkpoint is credited. A respawn may
+  lower the buffer length, `CurTriggerIndex` or `CurCheckpointRaceTime` without
+  ending the run, so none of those drops is a round boundary - resetting on
+  them discarded earlier CP and was the missed-checkpoint bug. `CurTriggerIndex`
+  advances twice for one checkpoint on some arenas and is debug-only.
   Debug shows `liveCp`, `trigger`, `cpTime`, `sessionCp` and `bestCp`.
   `SaveProgress()` runs after a successful upload so CP above 10 is persisted. When the race enters Finished, the pending CP is submitted
   immediately so the leaderboard shows the final run without waiting for the
   debounce timer.
-- Finale grace period is `FINALE_GRACE_DAYS = 5` (5 January). Do not hardcode
-  "5 January" in UI text - read the constant.
+- The event is strictly **1-25 December UTC**; the old 5 January catch-up
+  window is gone (`FINALE_GRACE_DAYS` no longer exists). `dayAllowedByServer()`
+  refuses any day outside December 1-25, `/state` returns `serverDay = 0`
+  outside the window so every tile locks, and the client uses the same closed
+  window. A server-only secret `QA_ALLOW_OFFSEASON=1` is the sole off-season
+  escape hatch for QA; it must never be set on the live worker and is never
+  exposed to clients. `S_TestMode` only affects local map/UID preview and never
+  bypasses the server.
 - Local JSON (`GoalmasAdvent.json`) is authoritative; the worker is a mirror.
 - Map detection uses UID mappings learned by the worker first, then the name
   parser (`#N Goal Hunt`, `Goal Hunt Day N`, `GH N`, `goalhuntarena`), then the
   UTC event day. The old "name only" rule is obsolete.
 - Premiere x2, day unlock and the finale window are decided by the **server
-  UTC** clock. `/state` returns `serverMonth`, `serverDate`, `serverDay` and
-  `serverCatchUp`; `Config.as` keeps a `SERVER_CLOCK_TTL_SEC = 180` mirror and
-  `Calendar.as` only falls back to the local clock when offline or stale.
-  `/submit` re-checks the day against server UTC and answers HTTP 403
-  `day-not-open` for a future day. Never let the client clock decide a day.
+  UTC** clock. `/state` returns `serverMonth`, `serverDate` and `serverDay`
+  (0 outside 1-25 December); `Config.as` keeps a `SERVER_CLOCK_TTL_SEC = 180`
+  mirror and `Calendar.as` only falls back to the local clock when offline or
+  stale. `/submit` re-checks the day against server UTC and answers HTTP 403
+  `day-not-open` for a future or out-of-window day. Never let the client clock
+  decide a day.
+- `/submit` is rate limited per account with an atomic conditional upsert on
+  `meta` key `submit:<accountId>` (`SUBMIT_COOLDOWN_MS = 1000`). It runs before
+  any state write and answers HTTP 429 `{ error: "rate-limited" }`, so a burst
+  cannot corrupt players/bounties. Admin reset deletes that key.
+- Bounty identity is the **account id**, stored in `bounties.holder_id`; the
+  `holder` column is a mutable display name only. `/state` returns both
+  `bountyHolder` (legacy display string) and `bountyHolderAccountId`. Compare
+  ids for ownership; never trust the client nickname. Legacy rows with an empty
+  `holder_id` are matched by name only until their next submit. The client
+  mirrors the id for the Bounties tab "you" marker and falls back to the name
+  when the id is empty.
+- The server caps `name` at `MAX_NAME_LEN = 60`, validates `accountId` as a
+  non-empty string, `day` 1..25 and `cpCount` 1..`MAX_CP` (250).
 - Run tiers are cosmetic: `SILVER_CP` (15) and `GOLD_CP` (30) in `Config.as`
   colour the tile border/dot, the day details, tooltip and HUD. Points stay
   100 / 300 / 150. `ClampCp()` in `Calendar.as` keeps every display inside

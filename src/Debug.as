@@ -26,7 +26,7 @@ string QaResultText() {
 string DebugStateLine() {
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
-    bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
+    bool eventSeason = now.Month == 12 && now.Day <= DAY_COUNT;
     string themeName = GlassTheme() ? "galaxy" :
                        (g_Theme == UiTheme::Classic ? "classic" : "goaladvent");
     return "version=" + PLUGIN_VERSION + " theme=" + themeName +
@@ -158,7 +158,7 @@ void RenderDebugWindow() {
 
     Time::Info now = Time::Parse();
     string localDate = tostring(now.Year) + "-" + tostring(now.Month) + "-" + tostring(now.Day);
-    bool eventSeason = now.Month == 12 || (now.Month == 1 && now.Day <= FINALE_GRACE_DAYS);
+    bool eventSeason = now.Month == 12 && now.Day <= DAY_COUNT;
 
     // Answers "is it working right now?" without reading the log.
     int detectedNow = DetectGoalHuntDay();

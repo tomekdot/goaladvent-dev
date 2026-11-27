@@ -67,7 +67,7 @@ const hunt = src['GoalHunt.as'];
 const sync = src['Sync.as'];
 const pairs = [
   ['DAY_COUNT', 25], ['GOAL_CP', 10], ['GOLD_CP', 30], ['MAX_CP', 250],
-  ['BEST_OF_DAYS', 15], ['FINALE_GRACE_DAYS', 5], ['ELF_VETERAN_DAYS', 10],
+  ['BEST_OF_DAYS', 15], ['ELF_VETERAN_DAYS', 10],
   ['MAX_FEED_EVENTS', 15]
 ];
 for (const [name, expected] of pairs) {
@@ -76,7 +76,7 @@ for (const [name, expected] of pairs) {
 check('SILVER_CP follows bounty record', /const int SILVER_CP\s*=\s*DEFAULT_BOUNTY_CP/.test(cfg));
 for (const [name, expected] of [
   ['DAY_COUNT', 25], ['GOAL_CP', 10], ['MAX_CP', 250], ['BEST_OF_DAYS', 15],
-  ['FINALE_GRACE_DAYS', 5], ['ELF_VETERAN_DAYS', 10], ['MAX_EVENTS', 15]
+  ['ELF_VETERAN_DAYS', 10], ['MAX_EVENTS', 15]
 ]) {
   const m = worker.match(new RegExp('const ' + name + ' = ([0-9]+)'));
   check('worker ' + name + ' = ' + expected, m && Number(m[1]) === expected);
@@ -97,7 +97,7 @@ check('tiers used by HUD', has(uias, 'Best " + tostring(best)'));
 check('tiers used by tooltip', has(uias, '"Best: " + tostring(best)'));
 
 // --- server authority -------------------------------------------------------
-for (const needle of ['serverMonth', 'serverDate', 'serverDay', 'serverCatchUp', 'resetEpoch']) {
+for (const needle of ['serverMonth', 'serverDate', 'serverDay', 'resetEpoch']) {
   check('/state returns ' + needle, has(worker, needle) && has(sync, needle));
 }
 check('worker gates future days', has(worker, 'dayAllowedByServer') && has(worker, 'day-not-open'));
@@ -108,6 +108,53 @@ check('worker accepts CP above 30', has(worker, 'const MAX_CP = 250') && !/cpCou
 check('GoalHuntArena bypasses server gate', /bool arenaMap = IsGoalHuntMapType\(mapType\)/.test(hunt) && /if \(!arenaMap && !OnEventServer\(\)\) return 0;/.test(hunt));
 check('arena map falls back to selected day', /return g_selectedDay;/.test(hunt));
 check('titlepack strips author suffix', /int at = id\.IndexOf\("@"\)/.test(hunt) && /current\.StartsWith\(allowed\)/.test(hunt));
+
+// --- strict event window (1-25 December UTC) --------------------------------
+check('worker window is strict December 1-25',
+  /month !== 12 \|\| date > DAY_COUNT/.test(worker) && !/month === 1/.test(worker));
+check('worker has no January grace constant',
+  !/FINALE_GRACE_DAYS/.test(worker) && !/FINALE_GRACE_DAYS/.test(cfg));
+check('off-season submit needs a server flag',
+  has(worker, 'QA_ALLOW_OFFSEASON') && !has(cfg, 'QA_ALLOW_OFFSEASON') && !has(hunt, 'QA_ALLOW_OFFSEASON'));
+check('/state locks outside the window',
+  /const serverDay = \(serverMonth === 12 && serverDate <= DAY_COUNT\)/.test(worker) &&
+  /serverCatchUp = false/.test(worker));
+check('client locks outside 1-25 December',
+  /now\.Month == 12 && now\.Day >= day && now\.Day <= DAY_COUNT/.test(cal) && !/now\.Month == 1\b/.test(cal));
+check('finale only on 25 December',
+  /g_serverDate == DAY_COUNT/.test(cal) && /now\.Day == DAY_COUNT/.test(cal));
+check('no stale January grace text', !/FINALE_GRACE_DAYS/.test(allSrc));
+
+// --- anti-cheat / submit guards ---------------------------------------------
+const submitFn = (worker.match(/if \(request\.method === "POST" && url\.pathname === "\/submit"\) \{[\s\S]*?\n    \}/) || [''])[0];
+check('/submit rate limit returns 429', /status: 429/.test(submitFn) && /"rate-limited"/.test(submitFn));
+check('rate limit is an atomic meta upsert',
+  /ON CONFLICT\(key\) DO UPDATE SET value = excluded\.value/.test(submitFn) &&
+  /CAST\(meta\.value AS INTEGER\) \+ \? <= \?/.test(submitFn));
+const rateAt = submitFn.indexOf('rate-limited');
+check('rate limit runs before state writes',
+  rateAt > 0 && rateAt < submitFn.indexOf('INSERT INTO map_days') &&
+  rateAt < submitFn.indexOf('INSERT INTO players') &&
+  rateAt < submitFn.indexOf('INSERT INTO bounties'));
+check('submit keeps day and CP bounds',
+  /day < 1 \|\| day > DAY_COUNT/.test(submitFn) &&
+  /cpCount <= 0 \|\| cpCount > MAX_CP/.test(submitFn));
+check('submit validates account id type', /typeof accountId !== "string"/.test(submitFn));
+check('bounty identity is the account id',
+  /holder_id/.test(worker) && /bountyHolderAccountId/.test(worker) &&
+  /excluded\.holder_id/.test(worker) && /\.bind\(day, cpCount, timeMs, displayName, accountId\)/.test(worker));
+check('/state keeps display holder for old clients',
+  /bountyHolder: bounty\.holder/.test(worker) && /bountyHolderAccountId:/.test(worker));
+check('schema declares holder_id', /holder_id TEXT NOT NULL DEFAULT ''/.test(schema));
+check('client reads canonical holder id',
+  /bountyHolderAccountId/.test(sync) && /g_bountyHolderId\[idx\]/.test(sync) &&
+  /holderId == AccountId\(\)/.test(uias) && /g_bountyHolderId\[idx\] = AccountId\(\)/.test(hunt));
+check('holder id survives local save/load',
+  /root\["bountyHolderId"\]/.test(cal) && /g_bountyHolderId\.Resize\(DAY_COUNT\)/.test(cal));
+check('bot holder id matches worker', /const string BOT_HOLDER_ID = "grinchbot"/.test(cfg) &&
+  /const BOT_HOLDER_ID = "grinchbot"/.test(worker));
+check('admin reset clears holder id and cooldown',
+  /holder_id = \?/.test(worker) && /DELETE FROM meta WHERE key = \?/.test(worker));
 
 // --- admin reset ------------------------------------------------------------
 check('admin reset route exists', has(worker, '"/admin/reset"'));
@@ -143,9 +190,22 @@ for (let i = 0; i < cfgLines.length; i++) {
 check('settings metadata complete', settingProblems.length === 0, settingProblems.join('; '));
 const submitSuccess = (hunt.match(/if \(code == 200\) \{[\s\S]*?\n    \} else if \(code == 403\)/) || [''])[0];
 check('full CP run saved after upload', /SaveProgress\(\)/.test(submitSuccess));
-check('arena round reset uses checkpoint time', /g_lastCpTime < g_prevCpTime/.test(hunt));
-check('live CP uses checkpoint buffer', /int buffer = int\(player\.ScriptAPI\.CurRace\.Checkpoints\.Length\)/.test(hunt) && /g_liveCp = buffer;/.test(hunt));
-check('trigger index only for round reset', /g_liveTrigger < g_prevTrigger/.test(hunt));
+check('live CP counts one buffer entry per checkpoint',
+  /g_bufferCp = int\(script\.CurRace\.Checkpoints\.Length\)/.test(hunt) && /return g_bufferCp;/.test(hunt));
+check('trigger index is debug only, never a count',
+  /g_liveTrigger = int\(script\.CurTriggerIndex\)/.test(hunt) && !/g_liveTrigger\s*[<>]/.test(hunt));
+check('respawn rewinds never reset the round',
+  !/cp < g_lastCpBuffer/.test(hunt) && !/g_lastCpTime < g_prevCpTime/.test(hunt) &&
+  !/g_liveTrigger < g_prevTrigger/.test(hunt));
+check('round identity uses RaceStartTime',
+  /g_raceStartTime = int\(script\.RaceStartTime\)/.test(hunt) &&
+  /g_raceStartTime != g_runStartTime/.test(hunt));
+check('checkpoint counter is monotonic',
+  /g_runCp \+= grew/.test(hunt) && /g_runCp \+= 1/.test(hunt));
+check('recycled buffer credits the newest checkpoint time',
+  /g_bufferLastTime = int\(script\.CurRace\.Checkpoints\[uint\(g_bufferCp - 1\)\]\)/.test(hunt) &&
+  /g_bufferLastTime > g_runLastTime/.test(hunt));
+check('warmup subtracts the early CP baseline', /int effective = cp - g_warmupCpBaseline/.test(hunt));
 check('final CP flushed on race finish', /bool justFinished = raceState == RACE_FINISHED/.test(hunt) && /if \(justFinished && g_sessionCp > g_lastSentCp\)/.test(hunt));
 const detectFn = (hunt.match(/int DetectGoalHuntDay\(\) \{[\s\S]*?\n\}/) || [''])[0];
 check('map name number beats UID mapping', detectFn.indexOf('ParseDayFromMapName(name)') > 0 &&
@@ -171,6 +231,164 @@ try {
   check('worker syntax', true);
 } catch (e) {
   check('worker syntax', false, e.message);
+}
+
+// --- worker guards, exercised against an in-memory SQLite D1 stand-in -------
+// Static checks prove the code exists; this proves the guards behave: a spam
+// submit gets 429 without touching state, and the bounty owner follows the
+// account id even when the display nickname is spoofed.
+async function workerGuardChecks() {
+  let DatabaseSync = null;
+  try {
+    DatabaseSync = require('node:sqlite').DatabaseSync;
+  } catch (e) {
+    console.log('SKIP  functional worker guards (node:sqlite unavailable)');
+    return;
+  }
+
+  const db = new DatabaseSync(':memory:');
+  // A provisioned D1 already has schema.sql applied; ensureSchema only adds
+  // the migration columns, exactly like the live database.
+  db.exec(fs.readFileSync(root + '/backend/schema.sql', 'utf8'));
+  function prep(sql, params) {
+    return {
+      bind(...args) { return prep(sql, args); },
+      run() {
+        const r = db.prepare(sql).run(...params);
+        return { meta: { changes: Number(r.changes) } };
+      },
+      all() { return { results: db.prepare(sql).all(...params) }; },
+      first() {
+        const row = db.prepare(sql).get(...params);
+        return row || null;
+      }
+    };
+  }
+  const env = {
+    DB: { prepare: (sql) => prep(sql, []), batch: (items) => items.map((s) => s.run()) },
+    QA_ALLOW_OFFSEASON: '1'
+  };
+
+  const moduleObj = { exports: {} };
+  try {
+    const code = worker.replace(/^export default/m, 'module.exports =');
+    new Function('module', 'exports', code)(moduleObj, moduleObj.exports);
+  } catch (e) {
+    check('functional worker loads', false, e.message);
+    return;
+  }
+  const api = moduleObj.exports;
+
+  const realDate = global.Date;
+  let clock = 1800000000000;
+  global.Date = class extends realDate {
+    constructor(...args) {
+      super(...(args.length ? args : [Date.UTC(2026, 11, 15)]));
+    }
+    static now() { return clock; }
+  };
+
+  async function call(path, body, useEnv) {
+    const req = body === undefined
+      ? { method: 'GET', url: 'https://qa.local' + path, json: async () => ({}) }
+      : { method: 'POST', url: 'https://qa.local' + path, json: async () => body };
+    const res = await api.fetch(req, useEnv || env);
+    let json = null;
+    try { json = await res.json(); } catch (e) {}
+    return { status: res.status, json };
+  }
+  // Production-shaped env: no QA_ALLOW_OFFSEASON escape hatch.
+  const strictEnv = { DB: env.DB };
+  const submit = (accountId, name, cpCount, day, useEnv) => {
+    clock += 2000;
+    return call('/submit', { accountId, name, day: day || 15, cpCount, mapUid: 'P_QA', timeMs: 1000 }, useEnv);
+  };
+  const dayState = async (accountId, day) => {
+    const state = await call('/state?accountId=' + encodeURIComponent(accountId));
+    const row = (state.json && state.json.days || []).find((d) => d.day === (day || 15));
+    return row || {};
+  };
+
+  try {
+    const first = await submit('qa-a', 'Alice', 12);
+    check('functional submit accepted', first.status === 200, 'HTTP ' + first.status);
+
+    const spam = await call('/submit', {
+      accountId: 'qa-a', name: 'Alice', day: 15, cpCount: 250, mapUid: 'P_QA', timeMs: 1000
+    });
+    check('functional spam submit is 429', spam.status === 429 && spam.json && spam.json.error === 'rate-limited',
+      'HTTP ' + spam.status);
+
+    const afterSpam = await dayState('qa-a', 15);
+    check('429 leaves the stored run untouched', afterSpam.myBestCp === 12 && afterSpam.bountyCp === 15,
+      'best ' + afterSpam.myBestCp + ' / bounty ' + afterSpam.bountyCp);
+
+    const later = await submit('qa-a', 'Alice', 13, 15);
+    check('submit accepted after cooldown', later.status === 200, 'HTTP ' + later.status);
+
+    const holder = await submit('qa-b', 'Bob', 20, 15);
+    const heldState = await dayState('qa-b', 15);
+    check('bounty owner stores the account id',
+      holder.status === 200 && heldState.bountyHolderAccountId === 'qa-b' && heldState.bountyHolder === 'Bob',
+      heldState.bountyHolder + ' / ' + heldState.bountyHolderAccountId);
+
+    // Same display name, different account: the holder id must change even
+    // though the human-readable string is identical.
+    const spoof = await submit('qa-c', 'Bob', 21, 15);
+    const spoofState = await dayState('qa-c', 15);
+    check('spoofed name cannot keep the bounty identity',
+      spoof.status === 200 && spoofState.bountyHolder === 'Bob' &&
+      spoofState.bountyHolderAccountId === 'qa-c' && spoofState.bountyCp === 21,
+      spoofState.bountyHolder + ' / ' + spoofState.bountyHolderAccountId);
+
+    const lower = await submit('qa-d', 'Bob', 5, 15);
+    const lowerState = await dayState('qa-d', 15);
+    check('lower run cannot steal the record identity',
+      lower.status === 200 && lowerState.bountyHolderAccountId === 'qa-c',
+      lowerState.bountyHolderAccountId);
+
+    const tooMany = await submit('qa-e', 'Eve', 251, 15);
+    check('functional CP ceiling is 250', tooMany.status === 400, 'HTTP ' + tooMany.status);
+
+    // Future day is refused; a day already open is accepted. These use the
+    // production env so the QA off-season flag cannot mask the calendar gate.
+    const future = await submit('qa-f', 'Frank', 10, 16, strictEnv);
+    check('future day is refused', future.status === 403, 'HTTP ' + future.status);
+    const openDay = await submit('qa-g', 'Grace', 10, 14, strictEnv);
+    check('open day is accepted', openDay.status === 200, 'HTTP ' + openDay.status);
+
+    // 26 December is after the event: nothing is accepted even for day 25.
+    global.Date = class extends realDate {
+      constructor(...args) {
+        super(...(args.length ? args : [Date.UTC(2026, 11, 26)]));
+      }
+      static now() { return clock; }
+    };
+    const closed = await submit('qa-h', 'Helen', 10, 25, strictEnv);
+    check('26 December closes the event', closed.status === 403, 'HTTP ' + closed.status);
+
+    // The client-visible /state must lock every day outside the window too.
+    const closedState = await call('/state?accountId=qa-h', undefined, strictEnv);
+    check('26 December locks every tile', closedState.json && closedState.json.serverDay === 0,
+      'serverDay ' + (closedState.json && closedState.json.serverDay));
+
+    // Without the server QA flag the off-season window stays closed.
+    global.Date = class extends realDate {
+      constructor(...args) {
+        super(...(args.length ? args : [Date.UTC(2026, 10, 27)]));
+      }
+      static now() { return clock; }
+    };
+    const offSeason = await api.fetch(
+      { method: 'POST', url: 'https://qa.local/submit', json: async () => ({
+        accountId: 'qa-i', name: 'Ivy', day: 5, cpCount: 10, mapUid: 'P_QA', timeMs: 1000
+      }) },
+      { DB: env.DB }
+    );
+    check('off-season submit needs the server flag', offSeason.status === 403, 'HTTP ' + offSeason.status);
+  } finally {
+    global.Date = realDate;
+  }
 }
 
 // --- optional live checks ---------------------------------------------------
@@ -204,6 +422,7 @@ async function liveChecks() {
 }
 
 (async () => {
+  await workerGuardChecks();
   if (process.argv.includes('--live')) await liveChecks();
   const failed = results.filter((r) => !r.ok);
   const summary = {

@@ -309,10 +309,13 @@ bool InWarmupGate() {
 
 // Checkpoints collected by the local player in the current race.
 // Uses the same path as the working chase-mode overlay (CTrackManiaPlayer.ScriptAPI).
-// Also refreshes g_curRaceState and g_curRaceNbCp for the warmup/finish logic.
+// Also refreshes the per-tick signals used by the round tracker.
 int CurrentCpCount() {
     g_curRaceState = RACE_BEFORE_START;
     g_curRaceNbCp = 0;
+    g_bufferCp = 0;
+    g_bufferLastTime = -1;
+    g_raceStartTime = 0;
     auto app = cast<CGameManiaPlanet>(GetApp());
     if (app is null || app.CurrentPlayground is null) return 0;
 
@@ -324,20 +327,44 @@ int CurrentCpCount() {
         if (player is null || player.User is null) continue;
         if (login.Length > 0 && player.User.Login != login) continue;
         if (player.ScriptAPI is null || player.ScriptAPI.CurRace is null) return 0;
-        g_curRaceState = int(player.ScriptAPI.RaceState);
-        if (player.ScriptAPI.Score !is null) {
-            g_curRaceNbCp = int(player.ScriptAPI.Score.LapsNbCheckpoint);
+        auto script = player.ScriptAPI;
+        g_curRaceState = int(script.RaceState);
+        g_raceStartTime = int(script.RaceStartTime);
+        if (script.Score !is null) {
+            g_curRaceNbCp = int(script.Score.LapsNbCheckpoint);
         }
-        // CurTriggerIndex can advance twice per checkpoint on some arenas, so
-        // the checkpoint buffer is the count and the trigger index is only a
-        // secondary signal for a fresh run.
-        int buffer = int(player.ScriptAPI.CurRace.Checkpoints.Length);
-        g_liveTrigger = int(player.ScriptAPI.CurTriggerIndex);
-        g_liveCp = buffer;
-        g_lastCpTime = int(player.ScriptAPI.CurCheckpointRaceTime);
-        return buffer;
+        // The checkpoint buffer holds one entry per passed checkpoint. It is
+        // the count; the trigger index is only a debug signal because some
+        // arenas advance it twice for the same checkpoint.
+        g_liveTrigger = int(script.CurTriggerIndex);
+        g_lastCpTime = int(script.CurCheckpointRaceTime);
+        g_bufferCp = int(script.CurRace.Checkpoints.Length);
+        if (g_bufferCp > 0) {
+            g_bufferLastTime = int(script.CurRace.Checkpoints[uint(g_bufferCp - 1)]);
+        }
+        return g_bufferCp;
     }
     return 0;
+}
+
+// Credit every checkpoint exactly once in the current round.
+// The primary signal is checkpoint-buffer growth. When an arena respawn
+// recycles the buffer, its length can drop below the high-water mark while the
+// newest checkpoint time still moves forward: that proves one new checkpoint
+// was passed and credits exactly one. The two paths are exclusive, so a normal
+// checkpoint can never be counted twice.
+void CreditCheckpointProgress() {
+    if (g_bufferCp > g_runBufferHigh) {
+        int grew = g_bufferCp - g_runBufferHigh;
+        g_runBufferHigh = g_bufferCp;
+        g_runCp += grew;
+        if (g_bufferLastTime > g_runLastTime) g_runLastTime = g_bufferLastTime;
+        return;
+    }
+    if (g_bufferLastTime >= 0 && g_bufferLastTime > g_runLastTime) {
+        g_runLastTime = g_bufferLastTime;
+        g_runCp += 1;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -376,6 +403,7 @@ void ClaimBounty(int day, int cp) {
     bool newRecord = cp > g_bountyCp[idx];
     g_bountyCp[idx] = cp;
     g_bountyHolder[idx] = LocalName();
+    g_bountyHolderId[idx] = AccountId();
     int points = 0;
     // The bonus is granted once per day, exactly like the worker's `b` flag.
     if (newRecord && !g_bountyClaimed[idx]) {
@@ -408,11 +436,13 @@ void ResetSession() {
     g_submitPending = false;
     g_submitTimer = 0.0f;
     g_lastRaceState = -1;
-    g_lastCpBuffer = 0;
-    g_lastCpTime = 0;
-    g_prevCpTime = 0;
+    g_liveCp = 0;
     g_liveTrigger = 0;
-    g_prevTrigger = 0;
+    g_lastCpTime = 0;
+    g_runStartTime = -1;
+    g_runCp = 0;
+    g_runBufferHigh = 0;
+    g_runLastTime = -1;
     g_warmupCpBaseline = 0;
     g_raceStartStamp = 0;
 }
@@ -447,36 +477,44 @@ void TrackGoalHunt(float dt) {
 
     if (g_activeDay <= 0) return;
 
-    int cp = CurrentCpCount();
-    g_liveCp = cp;
+    CurrentCpCount();
     int raceState = g_curRaceState;
     bool justFinished = raceState == RACE_FINISHED && g_lastRaceState != RACE_FINISHED;
 
-    // A new race starts when the state enters Running, or when the checkpoint
-    // buffer drops: arena respawn can recycle CurRace without a state flip.
-    bool newRace = false;
-    if (raceState == RACE_RUNNING && g_lastRaceState != RACE_RUNNING) newRace = true;
-    if (cp < g_lastCpBuffer) newRace = true;
-    // Arena rounds can reuse CurRace without clearing the buffer. A drop in
-    // the newest checkpoint time is the reliable "new run" signal.
-    if (g_lastCpTime > 0 && g_lastCpTime < g_prevCpTime) newRace = true;
-    if (g_liveTrigger > 0 && g_liveTrigger < g_prevTrigger) newRace = true;
-    g_prevCpTime = g_lastCpTime;
-    g_prevTrigger = g_liveTrigger;
-    if (newRace) {
+    // A new round is a change of run identity, never a rewound buffer. A
+    // respawn can truncate CurRace.Checkpoints and lower CurTriggerIndex while
+    // the race is still the same run, so those drops must not reset the count.
+    bool newRound = false;
+    if (g_runStartTime > 0 && g_raceStartTime > 0 && g_raceStartTime != g_runStartTime) {
+        newRound = true;
+    }
+    // Arena rounds can restart without a distinct scratch buffer; a fresh
+    // Running transition is the explicit fallback when RaceStartTime is absent.
+    if (raceState == RACE_RUNNING && g_lastRaceState != RACE_RUNNING) newRound = true;
+    // Buffer emptied and the checkpoint time cleared while a run was in
+    // progress: the round was recycled without a state or start-time flip.
+    if (g_bufferCp == 0 && g_runCp > 0 && g_lastCpTime == 0) newRound = true;
+
+    if (newRound) {
         // The previous run is over: flush its final CP before resetting.
         if (g_submitPending && g_sessionCp > g_lastSentCp) {
             RequestCpSubmit(g_activeDay, g_sessionCp);
         }
         ResetSession();
         g_raceStartStamp = Time::Stamp;
-        g_warmupCpBaseline = cp;
+        g_runStartTime = g_raceStartTime;
+    } else if (g_runStartTime < 0 && g_raceStartTime > 0) {
+        // Joined mid-round: adopt the current run without a false reset.
+        g_runStartTime = g_raceStartTime;
     }
     g_lastRaceState = raceState;
-    g_lastCpBuffer = cp;
 
-    // Warmup never counts. Track the buffer while gated so CP passed during
-    // warmup are subtracted afterwards instead of counted retroactively.
+    CreditCheckpointProgress();
+    int cp = g_runCp;
+    g_liveCp = cp;
+
+    // Warmup never counts. Track the run counter while gated so CP passed
+    // during warmup are subtracted afterwards instead of counted retroactively.
     if (InWarmupGate()) {
         if (cp > g_warmupCpBaseline) g_warmupCpBaseline = cp;
         return;

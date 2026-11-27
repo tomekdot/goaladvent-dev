@@ -25,10 +25,10 @@ technical reference see [DOCS.md](DOCS.md).
 - 🥇 **Run tiers are visual only**: 10 CP completed (emerald), 15 CP silver,
   30 CP gold in the tile outline, day details, tooltip and HUD. Points never
   change.
-- 🔁 **Catch-up**: past days stay playable until the event ends. The finale
-  stays open until 5 January; the raffle is drawn afterwards. The worker
-  clock mirrors into `/state`, so the tiles unlock on server UTC and a future
-  day cannot be submitted.
+- 🔁 **Strict 1-25 December UTC**: one day unlocks per UTC day, no future day
+  is accepted, and the event closes when 25 December ends. There is no January
+  catch-up window any more. Past days stay playable while the event runs, and
+  the worker clock mirrors into `/state`, so tiles unlock on server time.
 - 🏆 **Best 15 of 24 count**. The finale always counts on top. Missing days
   never destroy a run.
 - 🎖️ **Badges**: `GOALMAS-2026`, `GOALMAS-PLAYER`, `BOUNTY-HUNTER`,
@@ -176,8 +176,8 @@ offline. See [DEPLOY.md](backend/DEPLOY.md) for redeployment steps.
 2. 🆔 **UID mapping**: the first submit sends `mapUid`; the worker stores
    `UID -> day` in D1 and shares it through `/state`. New maps work for
    everyone after the first run.
-3. 📅 **UTC date fallback**: during the event (1-25 December UTC, finale until
-   5 January) a Goal Hunt map without a number is assigned to today's day.
+3. 📅 **UTC date fallback**: during the event (1-25 December UTC) a Goal Hunt
+   map without a number is assigned to today's day.
 4. 🛠️ Manual fallbacks: **Assign this map to day N** in the debug panel,
    `Map UID to day` setting, or `Force current map as day`.
 

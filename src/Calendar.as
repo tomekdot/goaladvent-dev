@@ -119,37 +119,29 @@ int DayMultiplier(int day) {
     return IsPremiereDay(day) ? 2 : 1;
 }
 
-// The finale stays open until 5 January so nobody has to be online on the 25th.
+// The event is strictly 1-25 December UTC. The old 5 January catch-up window
+// was removed, so both the worker and the client use the same closed window.
 bool FinaleOpen() {
     if (ServerClockFresh()) {
-        if (g_serverMonth == 12) return g_serverDate >= DAY_COUNT;
-        return g_serverMonth == 1 && g_serverDate <= FINALE_GRACE_DAYS;
+        return g_serverMonth == 12 && g_serverDate == DAY_COUNT;
     }
     Time::Info now = Today();
-    if (now.Month == 12) return now.Day >= DAY_COUNT;
-    if (now.Month == 1) return now.Day <= FINALE_GRACE_DAYS;
-    return false;
+    return now.Month == 12 && now.Day == DAY_COUNT;
 }
 
 // Day unlock (and the premiere shown on a tile) follows the worker clock when
 // it was heard recently. A changed PC clock can still unlock tiles offline,
 // but /submit re-checks the day against server UTC before it counts anything.
 bool ServerDayUnlocked(int day) {
-    if (g_serverCatchUp) return true;
-    if (g_serverMonth == 12) return g_serverDate >= day;
-    return false;
+    return g_serverMonth == 12 && g_serverDate >= day && g_serverDate <= DAY_COUNT;
 }
 
 // Event day from the server-side UTC clock, used when a Goal Hunt map has no
-// day number in its name. Returns 0 outside 1-25 December / finale window.
+// day number in its name. Returns 0 outside 1-25 December.
 int CurrentEventDayUtc() {
     if (ServerClockFresh()) return g_serverDay;
     Time::Info now = Time::ParseUTC();
-    if (now.Month == 12) {
-        // 26-31 December are still the finale window.
-        return now.Day >= 1 && now.Day <= DAY_COUNT ? now.Day : DAY_COUNT;
-    }
-    // In January a nameless map cannot be assigned to a specific catch-up day.
+    if (now.Month == 12 && now.Day >= 1 && now.Day <= DAY_COUNT) return now.Day;
     return 0;
 }
 
@@ -159,20 +151,18 @@ bool DayUnlocked(int day) {
     if (day == DAY_COUNT) return FinaleOpen();
     if (ServerClockFresh()) return ServerDayUnlocked(day);
     Time::Info now = Today();
-    if (now.Month == 12) return now.Day >= day;
-    return now.Month == 1 && now.Day <= FINALE_GRACE_DAYS;   // catch-up after the event
+    return now.Month == 12 && now.Day >= day && now.Day <= DAY_COUNT;
 }
 
-// Every day stays playable until the end of the event, so a missed day
-// only costs the premium multiplier, never the streak.
+// Every day stays playable until 25 December, so a missed day only costs the
+// premium multiplier, never the streak.
 bool DayPlayableNow(int day) {
     if (S_TestMode) return true;
     if (IsOffDay(day)) return false;
     if (day == DAY_COUNT) return FinaleOpen();
     if (ServerClockFresh()) return ServerDayUnlocked(day);
     Time::Info now = Today();
-    if (now.Month == 12) return now.Day >= day;
-    return now.Month == 1 && now.Day <= FINALE_GRACE_DAYS;
+    return now.Month == 12 && now.Day >= day && now.Day <= DAY_COUNT;
 }
 
 // ---------------------------------------------------------------------------
@@ -281,6 +271,7 @@ void ResetProgress() {
     g_points.Resize(DAY_COUNT);
     g_bountyCp.Resize(DAY_COUNT);
     g_bountyHolder.Resize(DAY_COUNT);
+    g_bountyHolderId.Resize(DAY_COUNT);
     g_bountyClaimed.Resize(DAY_COUNT);
     for (int i = 0; i < DAY_COUNT; i++) {
         g_opened[i] = false;
@@ -288,6 +279,7 @@ void ResetProgress() {
         g_points[i] = 0;
         g_bountyCp[i] = DEFAULT_BOUNTY_CP;
         g_bountyHolder[i] = "GrinchBot";
+        g_bountyHolderId[i] = BOT_HOLDER_ID;
         g_bountyClaimed[i] = false;
     }
     g_badges.Resize(0);
@@ -307,6 +299,7 @@ void ApplyQaPreview() {
         g_opened[i] = open;
         g_bountyClaimed[i] = false;
         g_bountyHolder[i] = "QA Bot";
+        g_bountyHolderId[i] = "qa-bot";
         g_bountyCp[i] = S_QaPreview == 3 ? DEFAULT_BOUNTY_CP : GOLD_CP;
         if (!open) {
             g_bests[i] = 0;
@@ -385,6 +378,14 @@ void LoadProgress() {
             }
         }
     }
+    if (root.HasKey("bountyHolderId")) {
+        Json::Value@ arr = root["bountyHolderId"];
+        if (arr !is null && arr.GetType() == Json::Type::Array) {
+            for (uint i = 0; i < g_bountyHolderId.Length && i < arr.Length; i++) {
+                g_bountyHolderId[i] = string(arr[i]);
+            }
+        }
+    }
     if (root.HasKey("badges")) {
         Json::Value@ arr = root["badges"];
         if (arr !is null && arr.GetType() == Json::Type::Array) {
@@ -408,6 +409,7 @@ void SaveProgress() {
     Json::Value@ points = Json::Array();
     Json::Value@ bountyCp = Json::Array();
     Json::Value@ bountyHolder = Json::Array();
+    Json::Value@ bountyHolderId = Json::Array();
     Json::Value@ bountyClaimed = Json::Array();
     for (int i = 0; i < DAY_COUNT; i++) {
         opened.Add(g_opened[i]);
@@ -415,6 +417,7 @@ void SaveProgress() {
         points.Add(g_points[i]);
         bountyCp.Add(g_bountyCp[i]);
         bountyHolder.Add(g_bountyHolder[i]);
+        bountyHolderId.Add(g_bountyHolderId[i]);
         bountyClaimed.Add(g_bountyClaimed[i]);
     }
     root["opened"] = opened;
@@ -422,6 +425,7 @@ void SaveProgress() {
     root["points"] = points;
     root["bountyCp"] = bountyCp;
     root["bountyHolder"] = bountyHolder;
+    root["bountyHolderId"] = bountyHolderId;
     root["bountyClaimed"] = bountyClaimed;
 
     Json::Value@ badges = Json::Array();
