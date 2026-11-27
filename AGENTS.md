@@ -69,6 +69,8 @@ editing code. The broader workspace rules also apply:
   titlepack/keyword gate); without it the gate still applies. When there is no
   day in the name or UID mapping and we are outside the event window, a real
   Goal Hunt map maps to `g_selectedDay` (usually 1) so QA is not stuck at 0.
+   A number in the map name (`#24`, `Day 7`, `GH 7`) is checked BEFORE UID
+   mappings, so a stale `mapDays` entry cannot override it.
   `CurrentTitleId()` returns an id with an author suffix in MP4 (observed
   `Pursuit@domino54`); `TitleIdBase()` strips everything from `@` and allowed
   entries are matched by prefix, so `Pursuit` accepts both `Pursuit@domino54`

@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.6.8-dev";
+const string PLUGIN_VERSION = "0.6.9-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning

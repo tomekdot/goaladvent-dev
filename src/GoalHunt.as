@@ -243,11 +243,13 @@ int DetectGoalHuntDay() {
     if (!arenaMap && !IsGoalHuntMapName(name)) return 0;
 
     if (S_MapDayOverride >= 1 && S_MapDayOverride <= DAY_COUNT) return S_MapDayOverride;
-    int mapped = DayFromUidMapping(GetCurrentMapUid());
-    if (mapped > 0) return mapped;
-
+    // An explicit number in the map name (#24, Day 7, GH 7) beats any learned
+    // UID mapping. A stale server mapDays entry used to turn #24 into day 1.
     int fromName = ParseDayFromMapName(name);
     if (fromName > 0) return fromName;
+
+    int mapped = DayFromUidMapping(GetCurrentMapUid());
+    if (mapped > 0) return mapped;
 
     // A new Goal Hunt / GoalHuntArena map with no day number: during the event
     // the day is today's UTC date - the same clock the worker uses.

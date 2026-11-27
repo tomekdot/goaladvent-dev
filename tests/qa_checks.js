@@ -147,6 +147,9 @@ check('arena round reset uses checkpoint time', /g_lastCpTime < g_prevCpTime/.te
 check('live CP uses checkpoint buffer', /int buffer = int\(player\.ScriptAPI\.CurRace\.Checkpoints\.Length\)/.test(hunt) && /g_liveCp = buffer;/.test(hunt));
 check('trigger index only for round reset', /g_liveTrigger < g_prevTrigger/.test(hunt));
 check('final CP flushed on race finish', /bool justFinished = raceState == RACE_FINISHED/.test(hunt) && /if \(justFinished && g_sessionCp > g_lastSentCp\)/.test(hunt));
+const detectFn = (hunt.match(/int DetectGoalHuntDay\(\) \{[\s\S]*?\n\}/) || [''])[0];
+check('map name number beats UID mapping', detectFn.indexOf('ParseDayFromMapName(name)') > 0 &&
+  detectFn.indexOf('ParseDayFromMapName(name)') < detectFn.indexOf('DayFromUidMapping('));
 
 // --- UI / typography --------------------------------------------------------
 for (const size of ['FS_LABEL', 'FS_BODY', 'FS_TITLE']) check('font size ' + size, has(uias, size));
