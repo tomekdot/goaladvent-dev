@@ -448,6 +448,7 @@ void TrackGoalHunt(float dt) {
     int cp = CurrentCpCount();
     g_liveCp = cp;
     int raceState = g_curRaceState;
+    bool justFinished = raceState == RACE_FINISHED && g_lastRaceState != RACE_FINISHED;
 
     // A new race starts when the state enters Running, or when the checkpoint
     // buffer drops: arena respawn can recycle CurRace without a state flip.
@@ -500,6 +501,13 @@ void TrackGoalHunt(float dt) {
         if (effective > g_bountyCp[g_activeDay - 1]) ClaimBounty(g_activeDay, effective);
         g_submitPending = true;
         g_submitTimer = 0.0f;
+    }
+
+    // End of the run: send the final number straight away so the leaderboard
+    // shows the completed day without waiting for the next debounce tick.
+    if (justFinished && g_sessionCp > g_lastSentCp) {
+        g_submitPending = false;
+        RequestCpSubmit(g_activeDay, g_sessionCp);
     }
 
     if (!g_submitPending) return;

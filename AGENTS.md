@@ -203,7 +203,9 @@ Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
   arena mode. `CurTriggerIndex` is only a round-reset signal: on some arenas
   it advances twice for one checkpoint and must NOT be used as the count.
   Debug shows `liveCp`, `trigger`, `cpTime`, `sessionCp` and `bestCp`.
-  `SaveProgress()` runs after a successful upload so CP above 10 is persisted.
+  `SaveProgress()` runs after a successful upload so CP above 10 is persisted. When the race enters Finished, the pending CP is submitted
+  immediately so the leaderboard shows the final run without waiting for the
+  debounce timer.
 - Finale grace period is `FINALE_GRACE_DAYS = 5` (5 January). Do not hardcode
   "5 January" in UI text - read the constant.
 - Local JSON (`GoalmasAdvent.json`) is authoritative; the worker is a mirror.
