@@ -200,6 +200,27 @@ void ApplyState(const string &in body) {
         g_serverClockStamp = int(Time::Stamp);
     }
 
+    // The server bucket is authoritative. A changed bucket closes the previous
+    // event day: only then is the whole-day counter allowed to restart.
+    string bucket = JsonStrOr(root, "bucketDate", "");
+    if (bucket.Length > 0 && bucket != g_bucketDate) {
+        g_bucketDate = bucket;
+        ResetSession();
+        if (g_serverDay > 0) {
+            g_activeDay = g_serverDay;
+            g_selectedDay = g_serverDay;
+        }
+        g_status = "New event day | checkpoint total restarted.";
+    }
+    int serverDayCp = ClampCp(JsonIntOr(root, "dayCp", 0));
+    if (serverDayCp > g_dayCp) g_dayCp = serverDayCp;
+    // A reinstall or a second client can already have a higher bucket total
+    // than this local run; keep the whole-day number in sync with the server.
+    if (serverDayCp > g_sessionCp) {
+        g_sessionCp = serverDayCp;
+        if (g_sessionCp > g_lastSentCp) g_lastSentCp = g_sessionCp;
+    }
+
     if (root.HasKey("badges")) {
         Json::Value@ badges = root["badges"];
         if (badges !is null && badges.GetType() == Json::Type::Array) {
@@ -286,8 +307,10 @@ void ApplyState(const string &in body) {
         int detected = DetectGoalHuntDay();
         if (detected > 0) {
             g_activeDay = detected;
-            g_selectedDay = detected;
-            ResetSession();
+            int bucketDay = CurrentEventDayUtc();
+            if (bucketDay > 0) g_activeDay = bucketDay;
+            g_selectedDay = g_activeDay;
+            ResetRun();
         }
     }
 

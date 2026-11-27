@@ -39,6 +39,9 @@ string DebugStateLine() {
            " selected=" + tostring(g_selectedDay) +
            " active=" + tostring(g_activeDay) +
            " sessionCp=" + tostring(g_sessionCp) +
+           " dayCp=" + tostring(g_dayCp) +
+           " bucket=" + g_bucketDate +
+           " milestone=" + tostring(LastMilestone(g_sessionCp)) +
            " liveCp=" + tostring(g_liveCp) +
            " trigger=" + tostring(g_liveTrigger) +
            " cpTime=" + tostring(g_lastCpTime) +

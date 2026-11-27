@@ -57,7 +57,7 @@ Installation instructions for testers:
 | 30 Nov | Reminder: start tomorrow |
 | 1 Dec | Start - Pursuit night, last chance to install |
 | 2-24 Dec | Daily map post |
-| 25 Dec | Finale, event closes at 23:59 UTC |
+| 25 Dec | Finale, event closes at 02:00 UTC on 26 Dec |
 | After 25 Dec | Results and raffle draw |
 
 ---
@@ -77,7 +77,7 @@ Installation instructions for testers:
 > • Premiere day pays x2 (server UTC decides)
 > • Best 15 of 24 days count - miss a day, keep the run
 > • Pursuit Tuesdays (1, 8, 15, 22): no Goal Hunt, your streak is safe
-> • 25/25 gifts = raffle ticket. The event closes 25 December, 23:59 UTC.
+> • 25/25 gifts = raffle ticket. The event closes 26 December, 02:00 UTC.
 > Install: [release link] → `Reload Scripts` → open **GoalAdvent 2026** from the Openplanet menu. Needs Openplanet 1.29.14.
 > React with 🎁 to get the player role.
 
@@ -107,7 +107,7 @@ Titles and hints are in `src/Calendar.as` (`g_titles`, `g_hints`).
 
 ### Finale - 25 Dec
 
-> 🏆 Day 25 finale is live. All 24 fragments, all bounties, one raffle ticket. The event closes tonight at 23:59 UTC.
+> 🏆 Day 25 finale is live. All 24 fragments, all bounties, one raffle ticket. The event closes at 02:00 UTC on 26 December.
 
 ### Results - after 25 Dec
 

@@ -50,6 +50,10 @@ const STARTER_BADGE = "GOALMAS-2026";
 const MAX_EVENTS = 15;
 const ELF_VETERAN_DAYS = 10;   // must match ELF_VETERAN_DAYS in src/Config.as
 const MAX_CP = 250;   // reject forged/huge values without imposing a real limit
+// Event days roll at 02:00 UTC, not at midnight. A run at 01:59 UTC belongs to
+// the previous bucket; 02:00 UTC starts a fresh one. Must match
+// DAY_ROLLOVER_HOUR_UTC in src/Config.as.
+const DAY_ROLLOVER_HOUR_UTC = 2;
 // Cheap anti-spam gate: one accepted submit per account per second. The check
 // is an atomic conditional upsert on meta, so racing requests cannot both pass.
 const SUBMIT_COOLDOWN_MS = 1000;
@@ -91,6 +95,12 @@ async function ensureSchema(env) {
       ).run();
       // Monotonic reset counter. A new value tells every client to drop its
       // local save after an admin reset without touching other players.
+      await env.DB.prepare(
+        "CREATE TABLE IF NOT EXISTS day_cp (bucket_date TEXT NOT NULL, " +
+        "account_id TEXT NOT NULL, day INTEGER NOT NULL, " +
+        "cp INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, " +
+        "PRIMARY KEY (bucket_date, account_id, day))"
+      ).run();
       await env.DB.prepare(
         "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
       ).run();
@@ -198,22 +208,38 @@ async function pushEvent(env, msg, extra) {
   }
 }
 
+// Shift UTC back by the rollover hour: the shifted calendar day is the event
+// bucket. Returns both the bucket day (0 outside the event) and its date key,
+// which is the primary key for the per-day checkpoint counter in D1.
+function eventBucket(now) {
+  const shifted = new Date(now.getTime() - DAY_ROLLOVER_HOUR_UTC * 3600 * 1000);
+  const month = shifted.getUTCMonth() + 1;
+  const date = shifted.getUTCDate();
+  const inEvent = month === 12 && date >= 1 && date <= DAY_COUNT;
+  return {
+    month,
+    date,
+    day: inEvent ? date : 0,
+    key: shifted.toISOString().slice(0, 10)
+  };
+}
+
 function isPremiere(day, now) {
-  return now.getUTCMonth() + 1 === 12 && now.getUTCDate() === day;
+  return eventBucket(now).day === day;
 }
 
 // The event calendar is decided by the server clock, never by a client clock.
-// The event is strictly 1-25 December UTC: one day opens per UTC day, a day
-// from the future is refused, and nothing is accepted after 25 December.
+// The strict 1-25 December window is applied to the *bucket*, so 01:59 UTC on
+// 26 December still belongs to day 25 and closes only at 02:00 UTC. A day from
+// the future is refused, and nothing is accepted after the final bucket.
 // The old January catch-up window was removed on purpose. A server-side
 // QA_ALLOW_OFFSEASON secret (value "1") is the only off-season escape hatch;
 // it is never exposed to clients and must not be set for the live event.
 function dayAllowedByServer(day, now, env) {
   if (env && env.QA_ALLOW_OFFSEASON === "1") return true;
-  const month = now.getUTCMonth() + 1;
-  const date = now.getUTCDate();
-  if (month !== 12 || date > DAY_COUNT) return false;
-  return day <= date;
+  const bucketDay = eventBucket(now).day;
+  if (bucketDay === 0) return false;
+  return day <= bucketDay;
 }
 
 export default {
@@ -249,6 +275,7 @@ export default {
       const batch = [
         env.DB.prepare("DELETE FROM players WHERE account_id = ?").bind(accountId),
         env.DB.prepare("DELETE FROM bounty_bonus WHERE account_id = ?").bind(accountId),
+        env.DB.prepare("DELETE FROM day_cp WHERE account_id = ?").bind(accountId),
         env.DB.prepare(
           "INSERT INTO meta (key, value) VALUES ('reset_epoch', ?) " +
           "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
@@ -386,19 +413,27 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
       const epochRow = await env.DB.prepare("SELECT value FROM meta WHERE key = 'reset_epoch'").first();
 
       // Server clock mirror for the tiles. The submit route re-checks the same
-      // rules, so editing the PC clock changes nothing that counts.
-      const now = new Date();
-      const serverMonth = now.getUTCMonth() + 1;
-      const serverDate = now.getUTCDate();
-      // Strict 1-25 December UTC. Outside that window serverDay is 0, so tiles
-      // stay locked; serverCatchUp is kept in the response only for older
-      // clients and is always false now.
+      // bucket, so editing the PC clock changes nothing that counts.
+      // serverMonth/serverDate are the bucket's date (UTC shifted by two hours)
+      // for backward compatibility with clients that still read them.
+      const bucket = eventBucket(new Date());
+      const serverMonth = bucket.month;
+      const serverDate = bucket.date;
+      // Strict 1-25 December: outside the bucket window serverDay is 0, so
+      // tiles stay locked. serverCatchUp is kept only for older clients and is
+      // always false now.
       const serverCatchUp = false;
-      const serverDay = (serverMonth === 12 && serverDate <= DAY_COUNT)
-        ? serverDate
-        : 0;
+      const serverDay = bucket.day;
+      const dayCpRow = await env.DB.prepare(
+        "SELECT cp FROM day_cp WHERE bucket_date = ? AND account_id = ? AND day = ?"
+      )
+        .bind(bucket.key, accountId, bucket.day)
+        .first();
 
       return Response.json({
+        bucketDate: bucket.key,
+        bucketHourUtc: DAY_ROLLOVER_HOUR_UTC,
+        dayCp: Number((dayCpRow && dayCpRow.cp) || 0),
         points: me ? me.points : 0,
         bounties: me ? me.bounties : 0,
         badges: badgesFor(accountId, me ? safeParse(me.badges, []) : []),
@@ -424,11 +459,12 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
 
       const { accountId, name, mapUid = "" } = body;
       const day = Number(body.day);
-      const cpCount = Number(body.cpCount);
+      const submittedCp = Number(body.cpCount);
+      let cpCount = submittedCp;
       const timeMs = Number(body.timeMs) || 0;
       if (typeof accountId !== "string" || accountId.length === 0 ||
           !Number.isInteger(day) || day < 1 || day > DAY_COUNT ||
-          !Number.isInteger(cpCount) || cpCount <= 0 || cpCount > MAX_CP) {
+          !Number.isInteger(submittedCp) || submittedCp <= 0 || submittedCp > MAX_CP) {
         return new Response("Bad Request", { status: 400 });
       }
 
@@ -460,6 +496,26 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
           { status: 429 }
         );
       }
+
+      // Whole-day checkpoint total for this 02:00 UTC bucket. The plugin sends
+      // the cumulative count for the day, so a later session cannot erase an
+      // earlier one; MAX keeps a stale/replayed client from lowering it.
+      const bucket = eventBucket(now);
+      await env.DB.prepare(
+        "INSERT INTO day_cp (bucket_date, account_id, day, cp, updated_at) " +
+        "VALUES (?, ?, ?, ?, ?) ON CONFLICT(bucket_date, account_id, day) " +
+        "DO UPDATE SET cp = MAX(day_cp.cp, excluded.cp), " +
+        "updated_at = excluded.updated_at"
+      )
+        .bind(bucket.key, accountId, day, submittedCp, nowMs)
+        .run();
+      const dayCpRow = await env.DB.prepare(
+        "SELECT cp FROM day_cp WHERE bucket_date = ? AND account_id = ? AND day = ?"
+      )
+        .bind(bucket.key, accountId, day)
+        .first();
+      const dayCp = Math.max(submittedCp, Number((dayCpRow && dayCpRow.cp) || 0));
+      cpCount = dayCp;
 
       // Learn the UID<->day pair only from a completed run. Debug submits with
       // a handful of CP must not poison detection for every other player.
@@ -654,7 +710,10 @@ ${rows(events, ["created_at", "msg"])}</table></body></html>`;
         );
       }
 
-      return Response.json({ ok: true, points: totalPoints, bountyWon, gained });
+      return Response.json({
+        ok: true, points: totalPoints, bountyWon, gained,
+        bucketDate: bucket.key, day, dayCp
+      });
     }
 
     return new Response("Not Found", { status: 404 });

@@ -94,17 +94,19 @@ Openplanet compiles `src/*.as` recursively; no explicit manifest lists them.
   `TUESDAY_OFF_DAYS` in `backend/worker.js`. Those are Pursuit bonus nights in
   the calendar UI. The worker now accepts submissions on every day, because a
   Goal Hunt map can be played on any of them.
-- Day 25 is the finale and only opens on 25 December UTC. The event is
-  strictly 1-25 December: there is no January catch-up window and `/submit`
-  refuses any day outside it.
+- Day 25 is the finale. The event is strictly 1-25 December and days are
+  buckets that roll at **02:00 UTC**: 01:59 UTC on 2 December still belongs to
+  day 1, 02:00 UTC starts day 2, and the final bucket closes at 02:00 UTC on
+  26 December. There is no January catch-up window and `/submit` refuses any
+  day outside the bucket window.
 - Past days remain playable until 25 December (catch-up inside the window).
 
 ### 4.2 Checkpoints and points
 
 | Action | Points |
 |---|---|
-| Complete day 1-24 (10 CP in one run) | `BASE_POINTS = 100` |
-| Complete on premiere day (server UTC) | x2 |
+| Complete day 1-24 (10 CP in one event day) | `BASE_POINTS = 100` |
+| Complete on premiere day (server bucket) | x2 |
 | Complete finale | `FINALE_POINTS = 300` |
 | Take a day bounty record | `BOUNTY_POINTS = 150` (once per day per player) |
 
@@ -112,9 +114,21 @@ Checkpoint count is a monotonic per-round counter built from
 `CTrackManiaPlayer.ScriptAPI.CurRace.Checkpoints` over
 `app.CurrentPlayground.Players`, matched by local login. A round is identified
 by `ScriptAPI.RaceStartTime`; within a round the count only grows, so a respawn
-that rewinds the buffer, `CurTriggerIndex` or `CurCheckpointRaceTime` cannot
-erase earlier checkpoints. Buffer growth credits the difference; a recycled
-buffer whose newest checkpoint time moved forward credits exactly one.
+or a new lap that empties the buffer cannot erase earlier checkpoints. Buffer
+growth credits the difference; a recycled buffer whose newest checkpoint time
+moved forward credits exactly one. `g_creditedRunCp` tracks the part of a run
+already added to the day total, so a replay cannot count it twice.
+
+The day total survives map changes and arena rounds. Only a bucket change (or
+an admin reset) clears `g_sessionCp` / `g_dayCp`. The worker stores the same
+cumulative total in `day_cp(bucket_date, account_id, day)` and returns it as
+`dayCp` in `/state`; `MAX` keeps a stale client from lowering it.
+
+Milestones are a cosmetic ladder: `MILESTONE_5_CP`, `MILESTONE_10_CP`,
+`MILESTONE_15_CP`, `MILESTONE_30_CP`, `MILESTONE_50_CP`, `MILESTONE_100_CP`,
+collected in `g_cpMilestones`. `Calendar.as` derives the last/next milestone,
+a progress fraction and the display strings from that list. The HUD, day
+details and tile tooltip read those helpers; no badge or point value uses them.
 
 ### 4.3 Final score
 
@@ -151,8 +165,10 @@ Detection order in `DetectGoalHuntDay()`:
    `GoalHuntArena` are recognised even when the name has no number. This is
    how maps such as `Goal Hunt - Complex` (MapType `GoalHuntArena`,
    Titlepack `Pursuit`) are detected.
-6. **UTC date fallback** `CurrentEventDayUtc()`: during 1-25 December a
-   recognised Goal Hunt map with no number is assigned to today's UTC day.
+6. **UTC bucket fallback** `CurrentEventDayUtc()`: during 1-25 December a
+   recognised Goal Hunt map with no number is assigned to the current 02:00
+   UTC bucket. A number in the map name is still preferred for the UI label,
+   but the bucket is the scoring day.
 
 All of the above is gated by `OnEventServer()`: if `S_EventServerKeyword` is
 set, the server name or login must contain it. Empty keyword accepts all
@@ -413,5 +429,5 @@ Repo:          https://github.com/tomekdot/goaladvent-dev
 Releases:      https://github.com/tomekdot/goaladvent-dev/releases
 Worker:        https://goalmas.tomekdot-goalmas.workers.dev
 D1 database:   goalmas
-Event dates:   1-25 December 2026 UTC (strict, no January window)
+Event dates:   1-25 December 2026 UTC (strict, 02:00 rollover, no January window)
 ```

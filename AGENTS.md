@@ -122,8 +122,8 @@ editing code. The broader workspace rules also apply:
   wiped; no token in the request means 404, any other account or confirm value
   means 403. The route deletes that player's row and bounty bonuses, resets any
   bounty they hold to GrinchBot by matching `bounties.holder_id` (legacy rows
-  with an empty id fall back to the display name), clears their submit cooldown
-  key and bumps `meta.reset_epoch` (Unix seconds,
+  with an empty id fall back to the display name), deletes their `day_cp`
+  buckets, clears their submit cooldown key and bumps `meta.reset_epoch` (Unix seconds,
   must fit an AngelScript int). `/state` returns `resetEpoch`; the plugin
   clears its local save once when the value changes. The admin page has a
   button that calls this route after a confirmation. Use it to clean test
@@ -202,36 +202,55 @@ Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
 - `DAY_COUNT = 25`, `GOAL_CP = 10`; days 1-24 score 100, finale 300, bounty 150.
   Checkpoint counting continues past the goal up to `MAX_CP` (tiers at 15 and
   30). The count is a **monotonic per-round counter**, not a raw buffer read:
-  `RaceStartTime` identifies the round (a `Running` transition and an emptied
-  buffer plus a zero checkpoint time are guarded fallbacks), and inside a round
-  `g_runCp` only grows. Buffer growth credits the difference; when an arena
-  respawn truncates `CurRace.Checkpoints` but the newest entry is newer than
-  the last credited time, exactly one checkpoint is credited. A respawn may
-  lower the buffer length, `CurTriggerIndex` or `CurCheckpointRaceTime` without
-  ending the run, so none of those drops is a round boundary - resetting on
-  them discarded earlier CP and was the missed-checkpoint bug. `CurTriggerIndex`
-  advances twice for one checkpoint on some arenas and is debug-only.
-  Debug shows `liveCp`, `trigger`, `cpTime`, `sessionCp` and `bestCp`.
+  `RaceStartTime` identifies the round (a fresh `Running` transition is the
+  fallback), and inside a round `g_runCp` only grows. Buffer growth credits the
+  difference; when an arena respawn truncates `CurRace.Checkpoints` but the
+  newest entry is newer than the last credited time, exactly one checkpoint is
+  credited. A respawn or a new lap may empty the buffer without ending the run,
+  so no buffer drop is a round boundary - resetting on them discarded earlier
+  CP and was the missed-checkpoint bug. `CurTriggerIndex` advances twice for
+  one checkpoint on some arenas and is debug-only.
+  `ResetRun()` ends one run but keeps the whole-day total; `ResetSession()` is
+  only for a bucket change or an admin reset. `g_creditedRunCp` prevents a
+  run's CP from being added to `g_sessionCp` twice. Debug shows `liveCp`,
+  `trigger`, `cpTime`, `sessionCp`, `dayCp`, `bucket`, `milestone` and `bestCp`.
   `SaveProgress()` runs after a successful upload so CP above 10 is persisted. When the race enters Finished, the pending CP is submitted
   immediately so the leaderboard shows the final run without waiting for the
   debounce timer.
 - The event is strictly **1-25 December UTC**; the old 5 January catch-up
-  window is gone (`FINALE_GRACE_DAYS` no longer exists). `dayAllowedByServer()`
-  refuses any day outside December 1-25, `/state` returns `serverDay = 0`
-  outside the window so every tile locks, and the client uses the same closed
-  window. A server-only secret `QA_ALLOW_OFFSEASON=1` is the sole off-season
-  escape hatch for QA; it must never be set on the live worker and is never
-  exposed to clients. `S_TestMode` only affects local map/UID preview and never
-  bypasses the server.
+  window is gone (`FINALE_GRACE_DAYS` no longer exists). Days are buckets that
+  roll at **02:00 UTC** (`DAY_ROLLOVER_HOUR_UTC = 2` in worker and client):
+  01:59 UTC on 2 December still belongs to day 1, and 02:00 UTC starts day 2.
+  `dayAllowedByServer()` checks day 1..25 against the bucket, so the final
+  bucket closes at 02:00 UTC on 26 December. `/state` returns `serverDay = 0`
+  plus `bucketDate` / `bucketHourUtc` outside the window. A server-only secret
+  `QA_ALLOW_OFFSEASON=1` is the sole off-season escape hatch for QA; it must
+  never be set on the live worker and is never exposed to clients. `S_TestMode`
+  only affects local map/UID preview and never bypasses the server.
+- Checkpoints accumulate for the whole bucket, not per race or per map. The
+  worker stores the cumulative total in `day_cp(bucket_date, account_id, day)`
+  and `/state` returns `dayCp`; `MAX` keeps a stale replay from lowering it.
+  The plugin keeps `g_sessionCp` across map/round changes and resets it only
+  when `bucketDate` changes. The scoring formula is unchanged - cumulative CP
+  is simply the input where a single-run CP used to be.
+- Cosmetic milestone ladder in `Config.as`: `MILESTONE_5_CP`, `MILESTONE_10_CP`,
+  `MILESTONE_15_CP`, `MILESTONE_30_CP`, `MILESTONE_50_CP`, `MILESTONE_100_CP`
+  (5 / 10 / 15 / 30 / 50 / 100), collected in `g_cpMilestones`. `Calendar.as`
+  derives `LastMilestone`, `NextMilestone`, `MilestoneProgress`, `MilestoneText`
+  and `MilestoneSummary` from that one list. The HUD shows current CP, last
+  reached milestone, next milestone with "to go" and a slim progress bar; day
+  details and the tile tooltip show the same ladder. No corner badges, no
+  points, no effect on run tiers.
 - Local JSON (`GoalmasAdvent.json`) is authoritative; the worker is a mirror.
 - Map detection uses UID mappings learned by the worker first, then the name
   parser (`#N Goal Hunt`, `Goal Hunt Day N`, `GH N`, `goalhuntarena`), then the
   UTC event day. The old "name only" rule is obsolete.
 - Premiere x2, day unlock and the finale window are decided by the **server
-  UTC** clock. `/state` returns `serverMonth`, `serverDate` and `serverDay`
-  (0 outside 1-25 December); `Config.as` keeps a `SERVER_CLOCK_TTL_SEC = 180`
-  mirror and `Calendar.as` only falls back to the local clock when offline or
-  stale. `/submit` re-checks the day against server UTC and answers HTTP 403
+  bucket clock**. `/state` returns `serverMonth`, `serverDate` (both shifted by
+  the 02:00 UTC rollover), `serverDay`, `bucketDate`, `bucketHourUtc` and
+  `dayCp`; `Config.as` keeps a `SERVER_CLOCK_TTL_SEC = 180` mirror and
+  `Calendar.as` only falls back to the local shifted clock when offline or
+  stale. `/submit` re-checks the day against the bucket and answers HTTP 403
   `day-not-open` for a future or out-of-window day. Never let the client clock
   decide a day.
 - `/submit` is rate limited per account with an atomic conditional upsert on

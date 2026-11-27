@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.7.1-dev";
+const string PLUGIN_VERSION = "0.8.0-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -81,6 +81,21 @@ const string BOT_HOLDER_ID = "grinchbot";
 const int SILVER_CP = DEFAULT_BOUNTY_CP;   // 15 CP, the starting bounty record
 const int GOLD_CP = 30;            // top-tier run
 const int MAX_CP = 250;            // must match MAX_CP in backend/worker.js
+// Cosmetic milestone ladder. Scoring never reads this list: points stay
+// 100 / 300 / bounty 150. Keep the numbers here, not in UI strings.
+const int MILESTONE_5_CP = 5;
+const int MILESTONE_10_CP = GOAL_CP;
+const int MILESTONE_15_CP = SILVER_CP;
+const int MILESTONE_30_CP = GOLD_CP;
+const int MILESTONE_50_CP = 50;
+const int MILESTONE_100_CP = 100;
+array<int> g_cpMilestones = {
+    MILESTONE_5_CP, MILESTONE_10_CP, MILESTONE_15_CP,
+    MILESTONE_30_CP, MILESTONE_50_CP, MILESTONE_100_CP
+};
+// Must match DAY_ROLLOVER_HOUR_UTC in backend/worker.js. A run before 02:00 UTC
+// still belongs to the previous event day; 02:00 UTC starts a fresh bucket.
+const int DAY_ROLLOVER_HOUR_UTC = 2;
 const float SUBMIT_DEBOUNCE_SEC = 6.0f;
 const int SYNC_INTERVAL_SEC = 20;
 const int SERVER_CLOCK_TTL_SEC = 180;      // server day mirror stays valid 3x the sync interval
@@ -212,7 +227,8 @@ array<int> g_serverMapDays;
 // stale on purpose so a long offline session falls back to the local clock.
 int g_serverMonth = 0;
 int g_serverDate = 0;
-int g_serverDay = 0;
+int g_serverDay = 0;       // event-day bucket, rolled at 02:00 UTC
+string g_bucketDate = "";  // YYYY-MM-DD of the current bucket
 int g_serverClockStamp = 0;
 int g_resetEpoch = 0;      // server reset counter; 0 until the first /state
 
@@ -221,7 +237,11 @@ int g_resetEpoch = 0;      // server reset counter; 0 until the first /state
 // ---------------------------------------------------------------------------
 int g_activeDay = 0;
 string g_lastMapUid = "";
-int g_sessionCp = 0;
+int g_sessionCp = 0;       // checkpoints collected in the whole event-day bucket
+int g_dayCp = 0;           // mirror of the server bucket counter
+string g_dayCpBucket = ""; // bucket date this local counter belongs to
+int g_creditedRunCp = 0;   // part of g_runCp already added to g_sessionCp
+bool g_runSeedPending = false;  // seed the next tick from the live buffer
 int g_liveCp = 0;          // checkpoints credited in the current round
 int g_liveTrigger = 0;     // raw CurTriggerIndex, debug only (never a count)
 int g_lastSentCp = 0;
@@ -245,6 +265,7 @@ int g_lastRaceState = -1;     // previous ERaceState snapshot
 int g_lastCpTime = 0;         // CurCheckpointRaceTime this tick (informational)
 int g_curRaceState = 0;       // refreshed by CurrentCpCount()
 int g_curRaceNbCp = 0;        // map checkpoints per lap (Score.LapsNbCheckpoint)
+array<bool> g_mapCpPassed;   // which checkpoint numbers are passed this lap
 int g_raceStartTime = 0;      // ScriptAPI.RaceStartTime this tick (run identity)
 int g_bufferCp = 0;           // raw CurRace.Checkpoints.Length this tick
 int g_bufferLastTime = -1;    // newest CurRace.Checkpoints[] value this tick

@@ -15,9 +15,10 @@ technical reference see [DOCS.md](DOCS.md).
 
 - 🎁 **24 event days + grand finale** (day 25). Tuesdays (1, 8, 15, 22) are
   Pursuit bonus nights on ManiaPlanet - no Goal Hunt race, no lost streak.
-- 🚩 **Checkpoint scoring**: 10 CP in one run completes a day (100 pts;
-  300 pts for the finale). Premiere day pays x2 - the **server UTC** clock
-  decides, so changing the local clock cannot cheat.
+- 🚩 **Checkpoint scoring**: 10 CP completes a day (100 pts; 300 pts for the
+  finale). CP accumulate across the whole event day, not just one race.
+  Premiere day pays x2 - the **server UTC** clock decides, so changing the
+  local clock cannot cheat.
 - 🛡️ **Bounty**: most checkpoints on a day wins the record and +150 pts.
   Starts at 15 CP held by `GrinchBot`. Equal CP is broken by the lower
   `timeMs` (the plugin sends 0 today). The bonus is granted at most once per
@@ -25,10 +26,14 @@ technical reference see [DOCS.md](DOCS.md).
 - 🥇 **Run tiers are visual only**: 10 CP completed (emerald), 15 CP silver,
   30 CP gold in the tile outline, day details, tooltip and HUD. Points never
   change.
-- 🔁 **Strict 1-25 December UTC**: one day unlocks per UTC day, no future day
-  is accepted, and the event closes when 25 December ends. There is no January
-  catch-up window any more. Past days stay playable while the event runs, and
-  the worker clock mirrors into `/state`, so tiles unlock on server time.
+- 🔁 **Strict 1-25 December UTC**: days roll over at 02:00 UTC, so a run at
+  01:59 UTC still belongs to the previous day. No future day is accepted and
+  the event closes at 02:00 UTC on 26 December. There is no January catch-up
+  window any more. Past days stay playable while the event runs, and the worker
+  bucket mirrors into `/state`, so tiles unlock on server time.
+- 📈 **Milestones (cosmetic)**: 5 / 10 / 15 / 30 / 50 / 100 CP. The HUD shows
+  the current day total, the last milestone reached and the next one with
+  "to go"; day details and tile tooltips show the same ladder. No extra points.
 - 🏆 **Best 15 of 24 count**. The finale always counts on top. Missing days
   never destroy a run.
 - 🎖️ **Badges**: `GOALMAS-2026`, `GOALMAS-PLAYER`, `BOUNTY-HUNTER`,
@@ -176,8 +181,8 @@ offline. See [DEPLOY.md](backend/DEPLOY.md) for redeployment steps.
 2. 🆔 **UID mapping**: the first submit sends `mapUid`; the worker stores
    `UID -> day` in D1 and shares it through `/state`. New maps work for
    everyone after the first run.
-3. 📅 **UTC date fallback**: during the event (1-25 December UTC) a Goal Hunt
-   map without a number is assigned to today's day.
+3. 📅 **UTC bucket fallback**: during the event (1-25 December UTC, rolling at
+   02:00 UTC) a Goal Hunt map without a number is assigned to today's bucket.
 4. 🛠️ Manual fallbacks: **Assign this map to day N** in the debug panel,
    `Map UID to day` setting, or `Force current map as day`.
 
@@ -244,7 +249,9 @@ player cannot reset anyone's progress.
 
 - The local JSON file is authoritative; the worker is a shared mirror.
 - `Update(float dt)` receives milliseconds; timers use seconds.
-- CP counting uses `CTrackManiaPlayer.ScriptAPI.CurRace.Checkpoints.Length`.
+- CP counting uses a monotonic per-run counter over
+  `CTrackManiaPlayer.ScriptAPI.CurRace.Checkpoints`, accumulated for the whole
+  02:00 UTC bucket. Milestones are display-only.
 - Cloudflare's free tier handles ~30 concurrent players with a large margin.
 - Release notes and full changelog links are generated automatically on each
   `v*` tag: https://github.com/tomekdot/goaladvent-dev/releases

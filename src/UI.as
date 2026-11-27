@@ -412,6 +412,7 @@ void RenderDayGrid() {
                            "Bounty: " + tostring(g_bountyCp[day - 1]) + " CP | " +
                            Text::StripFormatCodes(g_bountyHolder[day - 1]) + "\n" +
                            "Best: " + tostring(best) + " CP | " + CpTierLabel(tier) + "\n" +
+                           MilestoneSummary(best) + "\n" +
                            g_hints[day - 1]);
     }
     UI::SetCursorPos(vec2(origin.x, origin.y + 5.0f * tileH + 4.0f * spacing));
@@ -521,6 +522,8 @@ void RenderDayDetails() {
                    tostring(best) + " CP", TextMain());
         DetailLine("RUN TIER", CpTierLabel(tier) + " | silver " + tostring(SILVER_CP) +
                    " CP | gold " + tostring(GOLD_CP) + " CP", CpTierColour(tier));
+        DetailLine("MILESTONE", "reached " + tostring(LastMilestone(best)) + " CP | " +
+                   MilestoneText(best), Emerald());
         DetailLine("MOON", MoonPhaseName(day) + " | " + tostring(MoonIlluminationPct(day)) + "% lit", TextMain());
     }
     if (locked) {
@@ -1292,6 +1295,26 @@ void RenderBanner() {
     UI::PopStyleColor();
 }
 
+// Which checkpoint numbers are still missing on the current map. The number
+// of checkpoints comes from the map itself, not from the run counter.
+string MapCpStatus() {
+    int total = g_curRaceNbCp;
+    if (total < 1) return "";
+    int passed = g_bufferCp;
+    if (passed > total) passed = total;
+    string left = "";
+    for (int i = passed + 1; i <= total; i++) {
+        if (left.Length > 24) {
+            left += ",...";
+            break;
+        }
+        if (left.Length > 0) left += ",";
+        left += tostring(i);
+    }
+    return "Map CP " + tostring(passed) + "/" + tostring(total) +
+           (left.Length > 0 ? " | left " + left : " | complete");
+}
+
 void RenderGoalHuntHud() {
     ApplyUiScale();
     if (g_activeDay <= 0 || g_activeDay > DAY_COUNT) return;
@@ -1305,8 +1328,19 @@ void RenderGoalHuntHud() {
         if (IsPremiereDay(day)) TextTone(Gold(), "Premiere | x2 points");
         else UI::TextDisabled("Catch-up | x1 points");
         if (InWarmupGate()) UI::TextDisabled("Warmup | checkpoints count");
-        UI::Text("Goal " + tostring(GOAL_CP) + " CP | session " +
-                 tostring(ClampCp(g_sessionCp)) + " CP");
+        if (g_bucketDate.Length > 0) {
+            UI::TextDisabled("Bucket " + g_bucketDate + " | rolls " +
+                             tostring(DAY_ROLLOVER_HOUR_UTC) + ":00 UTC");
+        }
+        string mapCp = MapCpStatus();
+        if (mapCp.Length > 0) UI::Text(mapCp);
+        int dayCp = ClampCp(g_sessionCp);
+        TextTone(Emerald(), "Day " + tostring(g_activeDay) + " | CP " + tostring(dayCp) +
+                 " | reached " + tostring(LastMilestone(dayCp)) + " CP");
+        TextTone(TextMain(), MilestoneText(dayCp));
+        UI::ProgressBar(MilestoneProgress(dayCp), vec2(220.0f * UiK(), 6.0f * UiK()), "");
+        UI::Text("Goal " + tostring(GOAL_CP) + " CP | day total " +
+                 tostring(dayCp) + " CP");
         UI::Text("Bounty " + tostring(g_bountyCp[day - 1]) + " CP | " +
                  Text::StripFormatCodes(g_bountyHolder[day - 1]));
         int best = BestCp(day);

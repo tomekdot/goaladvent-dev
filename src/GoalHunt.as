@@ -341,6 +341,15 @@ int CurrentCpCount() {
         g_bufferCp = int(script.CurRace.Checkpoints.Length);
         if (g_bufferCp > 0) {
             g_bufferLastTime = int(script.CurRace.Checkpoints[uint(g_bufferCp - 1)]);
+        } else if (g_curRaceNbCp > 0) {
+            // A fresh lap cleared the buffer: restart the checkpoint map.
+            g_mapCpPassed.Resize(0);
+        }
+        if (g_curRaceNbCp > 0 && int(g_mapCpPassed.Length) != g_curRaceNbCp + 1) {
+            g_mapCpPassed.Resize(g_curRaceNbCp + 1);
+        }
+        for (uint i = 0; i <= uint(g_bufferCp) && i < g_mapCpPassed.Length; i++) {
+            g_mapCpPassed[i] = i > 0;
         }
         return g_bufferCp;
     }
@@ -430,11 +439,9 @@ void ClaimBounty(int day, int cp) {
 // ---------------------------------------------------------------------------
 // Session loop (called from Update)
 // ---------------------------------------------------------------------------
-void ResetSession() {
-    g_sessionCp = 0;
-    g_lastSentCp = 0;
-    g_submitPending = false;
-    g_submitTimer = 0.0f;
+// A map or round change ends a *run*, not the event day. Everything that
+// belongs to the 02:00 UTC bucket survives; only the per-run signals restart.
+void ResetRun() {
     g_lastRaceState = -1;
     g_liveCp = 0;
     g_liveTrigger = 0;
@@ -443,7 +450,20 @@ void ResetSession() {
     g_runCp = 0;
     g_runBufferHigh = 0;
     g_runLastTime = -1;
+    g_creditedRunCp = 0;
+    g_mapCpPassed.Resize(0);
     g_raceStartStamp = 0;
+    g_runSeedPending = true;
+}
+
+// Only a bucket change (or an admin reset) clears the whole-day total.
+void ResetSession() {
+    ResetRun();
+    g_sessionCp = 0;
+    g_dayCp = 0;
+    g_lastSentCp = 0;
+    g_submitPending = false;
+    g_submitTimer = 0.0f;
 }
 
 void TrackGoalHunt(float dt) {
@@ -455,8 +475,11 @@ void TrackGoalHunt(float dt) {
             RequestCpSubmit(g_activeDay, g_sessionCp);
         }
         g_lastMapUid = uid;
-        ResetSession();
+        ResetRun();
         g_activeDay = DetectGoalHuntDay();
+        // The bucket is the scoring day; a map-name number only labels the UI.
+        int bucketDay = CurrentEventDayUtc();
+        if (bucketDay > 0) g_activeDay = bucketDay;
         // Record every map played for the detection history (debug window/log).
         string histName = Text::StripFormatCodes(CurrentMapName());
         bool histGoal = IsGoalHuntMapName(CurrentMapName()) || IsGoalHuntMapType(CurrentMapType());
@@ -481,25 +504,22 @@ void TrackGoalHunt(float dt) {
     bool justFinished = raceState == RACE_FINISHED && g_lastRaceState != RACE_FINISHED;
 
     // A new round is a change of run identity, never a rewound buffer. A
-    // respawn can truncate CurRace.Checkpoints and lower CurTriggerIndex while
-    // the race is still the same run, so those drops must not reset the count.
+    // respawn or another lap can empty CurRace.Checkpoints with a zero CP time
+    // while the run continues, so that is NOT a round boundary.
     bool newRound = false;
     if (g_runStartTime > 0 && g_raceStartTime > 0 && g_raceStartTime != g_runStartTime) {
         newRound = true;
     }
-    // Arena rounds can restart without a distinct scratch buffer; a fresh
-    // Running transition is the explicit fallback when RaceStartTime is absent.
+    // Arena rounds can restart without a distinct start time; a fresh Running
+    // transition is the only safe fallback.
     if (raceState == RACE_RUNNING && g_lastRaceState != RACE_RUNNING) newRound = true;
-    // Buffer emptied and the checkpoint time cleared while a run was in
-    // progress: the round was recycled without a state or start-time flip.
-    if (g_bufferCp == 0 && g_runCp > 0 && g_lastCpTime == 0) newRound = true;
 
     if (newRound) {
         // The previous run is over: flush its final CP before resetting.
         if (g_submitPending && g_sessionCp > g_lastSentCp) {
             RequestCpSubmit(g_activeDay, g_sessionCp);
         }
-        ResetSession();
+        ResetRun();
         g_raceStartStamp = Time::Stamp;
         g_runStartTime = g_raceStartTime;
     } else if (g_runStartTime < 0 && g_raceStartTime > 0) {
@@ -507,6 +527,16 @@ void TrackGoalHunt(float dt) {
         g_runStartTime = g_raceStartTime;
     }
     g_lastRaceState = raceState;
+
+    // A fresh run inherits whatever checkpoints ManiaScript still exposes in
+    // CurRace. Seed from that buffer so retained CP are not credited twice.
+    if (g_runSeedPending) {
+        g_runCp = g_bufferCp;
+        g_runBufferHigh = g_bufferCp;
+        g_runLastTime = g_bufferLastTime;
+        g_creditedRunCp = g_bufferCp;
+        g_runSeedPending = false;
+    }
 
     CreditCheckpointProgress();
     int cp = g_runCp;
@@ -528,10 +558,23 @@ void TrackGoalHunt(float dt) {
     // server rejects on every retry.
     effective = ClampCp(effective);
 
-    if (effective > g_sessionCp) {
-        g_sessionCp = effective;
-        if (effective >= GOAL_CP) CompleteDay(g_activeDay, effective);
-        if (effective > g_bountyCp[g_activeDay - 1]) ClaimBounty(g_activeDay, effective);
+    // Add only the newly credited checkpoints of this run. A second map or a
+    // recycled arena round continues the same event-day total instead of
+    // throwing away the checkpoints collected earlier in the day.
+    bool gainedCp = false;
+    if (effective > g_creditedRunCp) {
+        int added = effective - g_creditedRunCp;
+        g_creditedRunCp = effective;
+        g_sessionCp = ClampCp(g_sessionCp + added);
+        if (g_sessionCp > g_dayCp) g_dayCp = g_sessionCp;
+        gainedCp = true;
+    }
+
+    if (gainedCp) {
+        if (g_sessionCp >= GOAL_CP) CompleteDay(g_activeDay, g_sessionCp);
+        if (g_sessionCp > g_bountyCp[g_activeDay - 1]) {
+            ClaimBounty(g_activeDay, g_sessionCp);
+        }
         g_submitPending = true;
         g_submitTimer = 0.0f;
     }

@@ -136,13 +136,19 @@ bool ServerDayUnlocked(int day) {
     return g_serverMonth == 12 && g_serverDate >= day && g_serverDate <= DAY_COUNT;
 }
 
-// Event day from the server-side UTC clock, used when a Goal Hunt map has no
-// day number in its name. Returns 0 outside 1-25 December.
+// Offline mirror of the worker's event bucket: shift UTC back by the rollover
+// hour, so a run at 01:00 UTC still belongs to the previous day.
+int LocalBucketDay() {
+    Time::Info bucket = Time::ParseUTC(Time::Stamp - int64(DAY_ROLLOVER_HOUR_UTC) * 3600);
+    if (bucket.Month == 12 && bucket.Day >= 1 && bucket.Day <= DAY_COUNT) return bucket.Day;
+    return 0;
+}
+
+// Event bucket used when a Goal Hunt map has no day number in its name. The
+// server mirror wins; the local calculation is only an offline fallback.
 int CurrentEventDayUtc() {
     if (ServerClockFresh()) return g_serverDay;
-    Time::Info now = Time::ParseUTC();
-    if (now.Month == 12 && now.Day >= 1 && now.Day <= DAY_COUNT) return now.Day;
-    return 0;
+    return LocalBucketDay();
 }
 
 bool DayUnlocked(int day) {
@@ -189,6 +195,58 @@ string CpTierLabel(int tier) {
     if (tier == 2) return "silver";
     if (tier == 1) return "completed";
     return "no run";
+}
+
+// ---------------------------------------------------------------------------
+// Checkpoint milestones (visual only)
+// ---------------------------------------------------------------------------
+// Both helpers are derived from the same ordered list, so the displayed "last"
+// and "next" values can only move forward as CP grows. Nothing here awards
+// points or changes the run tiers above.
+int LastMilestone(int cp) {
+    int total = ClampCp(cp);
+    int last = 0;
+    for (uint i = 0; i < g_cpMilestones.Length; i++) {
+        if (total >= g_cpMilestones[i]) last = g_cpMilestones[i];
+    }
+    return last;
+}
+
+// 0 means every milestone has been reached.
+int NextMilestone(int cp) {
+    int total = ClampCp(cp);
+    for (uint i = 0; i < g_cpMilestones.Length; i++) {
+        if (g_cpMilestones[i] > total) return g_cpMilestones[i];
+    }
+    return 0;
+}
+
+// 0..1 toward the next milestone; stays at 1 after the last one.
+float MilestoneProgress(int cp) {
+    int total = ClampCp(cp);
+    int next = NextMilestone(total);
+    if (next == 0) return 1.0f;
+    int start = LastMilestone(total);
+    if (next <= start) return 1.0f;
+    return float(total - start) / float(next - start);
+}
+
+string MilestoneText(int cp) {
+    int total = ClampCp(cp);
+    int next = NextMilestone(total);
+    if (next == 0) {
+        return "Milestone " + tostring(LastMilestone(total)) + " CP | all reached";
+    }
+    return "Milestone " + tostring(next) + " CP | " + tostring(next - total) + " to go";
+}
+
+string MilestoneSummary(int cp) {
+    string list = "";
+    for (uint i = 0; i < g_cpMilestones.Length; i++) {
+        if (i > 0) list += "/";
+        list += tostring(g_cpMilestones[i]);
+    }
+    return "Milestones " + list + " | " + MilestoneText(cp);
 }
 
 // Best known run for one day. While that day's Goal Hunt is active the live
@@ -364,6 +422,15 @@ void LoadProgress() {
             g_resetEpoch = int(epoch);
         }
     }
+    if (root.HasKey("dayCpBucket")) g_dayCpBucket = string(root["dayCpBucket"]);
+    if (root.HasKey("dayCp")) {
+        Json::Value@ savedDayCp = root["dayCp"];
+        if (savedDayCp !is null && savedDayCp.GetType() == Json::Type::Number) {
+            g_dayCp = ClampCp(int(savedDayCp));
+        }
+    }
+    if (g_dayCpBucket.Length > 0) g_bucketDate = g_dayCpBucket;
+
     LoadArrayBool(root, "opened", g_opened);
     LoadArrayInt(root, "bests", g_bests);
     LoadArrayInt(root, "points", g_points);
@@ -403,6 +470,8 @@ void SaveProgress() {
     root["accountId"] = AccountId();
     root["bounties"] = g_bountiesWon;
     root["resetEpoch"] = g_resetEpoch;
+    root["dayCpBucket"] = g_bucketDate;
+    root["dayCp"] = g_dayCp;
 
     Json::Value@ opened = Json::Array();
     Json::Value@ bests = Json::Array();

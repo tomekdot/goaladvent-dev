@@ -111,19 +111,98 @@ check('titlepack strips author suffix', /int at = id\.IndexOf\("@"\)/.test(hunt)
 
 // --- strict event window (1-25 December UTC) --------------------------------
 check('worker window is strict December 1-25',
-  /month !== 12 \|\| date > DAY_COUNT/.test(worker) && !/month === 1/.test(worker));
+  /inEvent = month === 12 && date >= 1 && date <= DAY_COUNT/.test(worker) &&
+  !/month === 1\b/.test(worker));
 check('worker has no January grace constant',
   !/FINALE_GRACE_DAYS/.test(worker) && !/FINALE_GRACE_DAYS/.test(cfg));
 check('off-season submit needs a server flag',
   has(worker, 'QA_ALLOW_OFFSEASON') && !has(cfg, 'QA_ALLOW_OFFSEASON') && !has(hunt, 'QA_ALLOW_OFFSEASON'));
 check('/state locks outside the window',
-  /const serverDay = \(serverMonth === 12 && serverDate <= DAY_COUNT\)/.test(worker) &&
-  /serverCatchUp = false/.test(worker));
+  /const serverDay = bucket\.day/.test(worker) && /serverCatchUp = false/.test(worker));
 check('client locks outside 1-25 December',
   /now\.Month == 12 && now\.Day >= day && now\.Day <= DAY_COUNT/.test(cal) && !/now\.Month == 1\b/.test(cal));
 check('finale only on 25 December',
   /g_serverDate == DAY_COUNT/.test(cal) && /now\.Day == DAY_COUNT/.test(cal));
 check('no stale January grace text', !/FINALE_GRACE_DAYS/.test(allSrc));
+
+// --- 02:00 UTC event bucket (whole-day counting) ----------------------------
+check('rollover hour matches client and worker',
+  /const int DAY_ROLLOVER_HOUR_UTC = 2/.test(cfg) &&
+  /const DAY_ROLLOVER_HOUR_UTC = 2/.test(worker));
+check('worker computes the bucket from shifted UTC',
+  /function eventBucket\(now\)/.test(worker) &&
+  /now\.getTime\(\) - DAY_ROLLOVER_HOUR_UTC \* 3600 \* 1000/.test(worker) &&
+  /shifted\.toISOString\(\)\.slice\(0, 10\)/.test(worker));
+check('/submit uses the bucket, not the raw date',
+  /const bucketDay = eventBucket\(now\)\.day/.test(worker) &&
+  /dayAllowedByServer\(day, now, env\)/.test(worker) &&
+  /const bucket = eventBucket\(now\)/.test(worker));
+check('/state exposes bucket and day counter',
+  /bucketDate: bucket\.key/.test(worker) && /bucketHourUtc: DAY_ROLLOVER_HOUR_UTC/.test(worker) &&
+  /dayCp: Number\(/.test(worker));
+check('whole-day counter table is keyed by bucket',
+  /PRIMARY KEY \(bucket_date, account_id, day\)/.test(schema) &&
+  /INSERT INTO day_cp/.test(worker) &&
+  /cp = MAX\(day_cp\.cp, excluded\.cp\)/.test(worker));
+check('admin reset clears the bucket counters', /DELETE FROM day_cp WHERE account_id/.test(worker));
+check('client mirrors the bucket and resets only on change',
+  /bucket != g_bucketDate/.test(sync) && /ResetSession\(\);/.test(sync) &&
+  /ResetRun\(\);/.test(hunt) && !/if \(g_bufferCp == 0 && g_runCp > 0/.test(hunt));
+check('local whole-day total accumulates across runs',
+  /g_sessionCp = ClampCp\(g_sessionCp \+ added\)/.test(hunt) &&
+  /g_creditedRunCp = effective/.test(hunt) &&
+  /root\["dayCpBucket"\]/.test(cal) && /root\["dayCp"\]/.test(cal));
+check('HUD shows the bucket day', /Bucket " \+ g_bucketDate/.test(uias));
+
+// --- cosmetic checkpoint milestones -----------------------------------------
+const milestoneDecls = cfg.match(/const int MILESTONE_\d+_CP = [^;]+;/g) || [];
+function resolveConst(name, seen) {
+  if (/^\d+$/.test(name)) return Number(name);
+  if (seen.has(name)) return -1;
+  seen.add(name);
+  const decl = cfg.match(new RegExp('const int ' + name + ' = ([^;]+);'));
+  return decl ? resolveConst(decl[1].trim(), seen) : -1;
+}
+const milestoneValues = milestoneDecls.map((decl) => {
+  const rhs = (decl.match(/=\s*([^;]+)/) || [])[1].trim();
+  return resolveConst(rhs, new Set());
+});
+check('milestone ladder is 5/10/15/30/50/100',
+  JSON.stringify(milestoneValues) === JSON.stringify([5, 10, 15, 30, 50, 100]),
+  milestoneValues.join("/"));
+check('milestones are defined as constants, not UI literals',
+  /array<int> g_cpMilestones = \{/.test(cfg) &&
+  /MILESTONE_5_CP, MILESTONE_10_CP, MILESTONE_15_CP/.test(cfg) &&
+  /MILESTONE_30_CP, MILESTONE_50_CP, MILESTONE_100_CP/.test(cfg));
+for (const fn of ['LastMilestone', 'NextMilestone', 'MilestoneProgress',
+                  'MilestoneText', 'MilestoneSummary']) {
+  check('Calendar defines ' + fn, new RegExp(fn + '\\(int cp\\)').test(cal));
+}
+check('milestone text shows CP to go', /" to go"/.test(cal) &&
+  /"Milestone " \+ tostring\(next\)/.test(cal));
+check('milestones shown in HUD, details and tooltip',
+  /MilestoneText\(dayCp\)/.test(uias) && /UI::ProgressBar\(MilestoneProgress/.test(uias) &&
+  /DetailLine\("MILESTONE"/.test(uias) && /MilestoneSummary\(best\)/.test(uias));
+{
+  let monotonic = true;
+  const lastM = (cp) => milestoneValues.reduce((a, v) => (cp >= v ? v : a), 0);
+  const nextM = (cp) => milestoneValues.find((v) => v > cp) || 0;
+  for (let cp = 0; cp <= 120; cp++) {
+    // 0 is the "all reached" sentinel, so compare it as infinity.
+    if (lastM(cp) > lastM(cp + 1) ||
+        (nextM(cp) || Infinity) > (nextM(cp + 1) || Infinity)) monotonic = false;
+    if (lastM(cp) > cp || (nextM(cp) && nextM(cp) <= cp)) monotonic = false;
+  }
+  check('milestone display is monotonic', monotonic && milestoneValues.length === 6);
+  check('5 CP reaches the first milestone', lastM(5) === 5 && nextM(5) === 10);
+  check('10 CP shows 5 to go', lastM(10) === 10 && nextM(10) === 15 && nextM(10) - 10 === 5);
+  check('all milestones reached at 100 CP', lastM(100) === 100 && nextM(100) === 0);
+}
+check('milestones never change scoring',
+  /const int BASE_POINTS = 100/.test(cfg) && /const int FINALE_POINTS = 300/.test(cfg) &&
+  /const int BOUNTY_POINTS = 150/.test(cfg) &&
+  !/g_cpMilestones|MILESTONE_\d+_CP/.test(worker) &&
+  !/MILESTONE/.test(hunt));
 
 // --- anti-cheat / submit guards ---------------------------------------------
 const submitFn = (worker.match(/if \(request\.method === "POST" && url\.pathname === "\/submit"\) \{[\s\S]*?\n    \}/) || [''])[0];
@@ -138,7 +217,7 @@ check('rate limit runs before state writes',
   rateAt < submitFn.indexOf('INSERT INTO bounties'));
 check('submit keeps day and CP bounds',
   /day < 1 \|\| day > DAY_COUNT/.test(submitFn) &&
-  /cpCount <= 0 \|\| cpCount > MAX_CP/.test(submitFn));
+  /submittedCp <= 0 \|\| submittedCp > MAX_CP/.test(submitFn));
 check('submit validates account id type', /typeof accountId !== "string"/.test(submitFn));
 check('bounty identity is the account id',
   /holder_id/.test(worker) && /bountyHolderAccountId/.test(worker) &&
@@ -202,10 +281,41 @@ check('round identity uses RaceStartTime',
   /g_raceStartTime != g_runStartTime/.test(hunt));
 check('checkpoint counter is monotonic',
   /g_runCp \+= grew/.test(hunt) && /g_runCp \+= 1/.test(hunt));
+check('new run seeds from live buffer', /g_creditedRunCp = g_bufferCp;/.test(hunt) &&
+  /g_runSeedPending/.test(hunt));
 check('recycled buffer credits the newest checkpoint time',
   /g_bufferLastTime = int\(script\.CurRace\.Checkpoints\[uint\(g_bufferCp - 1\)\]\)/.test(hunt) &&
   /g_bufferLastTime > g_runLastTime/.test(hunt));
-check('warmup checkpoints count', /int effective = cp;/.test(hunt) && !/g_warmupCpBaseline/.test(hunt));
+check('HUD shows missing map checkpoints', /string MapCpStatus\(\)/.test(uias) &&
+  /left " \+ left/.test(uias) && /UI::Text\(mapCp\)/.test(uias));
+check('empty buffer does not end the run', !/g_bufferCp == 0 && g_runCp > 0/.test(hunt));
+// Functional mirror of CreditCheckpointProgress(): a 6-checkpoint map must
+// keep crediting checkpoints on later laps instead of stopping at six.
+function simulateCpTicks(ticks) {
+  let runCp = 0, high = 0, lastTime = -1;
+  for (const [buffer, cpTime] of ticks) {
+    if (buffer > high) {
+      runCp += buffer - high;
+      high = buffer;
+      if (cpTime > lastTime) lastTime = cpTime;
+    } else if (cpTime >= 0 && cpTime > lastTime) {
+      lastTime = cpTime;
+      runCp += 1;
+    }
+  }
+  return runCp;
+}
+const lapTicks = [];
+for (let lap = 0; lap < 3; lap++) {
+  for (let cp = 1; cp <= 6; cp++) lapTicks.push([cp, lap * 6000 + cp * 1000]);
+}
+check('multi-lap checkpoints keep counting', simulateCpTicks(lapTicks) === 18,
+  '3 laps x 6 CP = ' + simulateCpTicks(lapTicks));
+// Five distinct checkpoint passes: CP1, CP2, CP3, then a respawn back to CP2
+// and CP3 again. The respawn itself adds nothing extra.
+check('respawn credits only the new checkpoint', simulateCpTicks([
+  [1, 1000], [2, 2000], [3, 3000], [2, 3500], [3, 4000]
+]) === 5);
 check('final CP flushed on race finish', /bool justFinished = raceState == RACE_FINISHED/.test(hunt) && /if \(justFinished && g_sessionCp > g_lastSentCp\)/.test(hunt));
 const detectFn = (hunt.match(/int DetectGoalHuntDay\(\) \{[\s\S]*?\n\}/) || [''])[0];
 check('map name number beats UID mapping', detectFn.indexOf('ParseDayFromMapName(name)') > 0 &&
@@ -281,12 +391,17 @@ async function workerGuardChecks() {
 
   const realDate = global.Date;
   let clock = 1800000000000;
-  global.Date = class extends realDate {
-    constructor(...args) {
-      super(...(args.length ? args : [Date.UTC(2026, 11, 15)]));
-    }
-    static now() { return clock; }
-  };
+  // No-arg Date is the server wall clock; Date.now() only advances the rate
+  // limit. Keep them independent so the rollover boundary can be moved.
+  function setClock(stamp) {
+    global.Date = class extends realDate {
+      constructor(...args) {
+        super(...(args.length ? args : [stamp]));
+      }
+      static now() { return clock; }
+    };
+  }
+  setClock(Date.UTC(2026, 11, 15, 12));
 
   async function call(path, body, useEnv) {
     const req = body === undefined
@@ -357,13 +472,8 @@ async function workerGuardChecks() {
     const openDay = await submit('qa-g', 'Grace', 10, 14, strictEnv);
     check('open day is accepted', openDay.status === 200, 'HTTP ' + openDay.status);
 
-    // 26 December is after the event: nothing is accepted even for day 25.
-    global.Date = class extends realDate {
-      constructor(...args) {
-        super(...(args.length ? args : [Date.UTC(2026, 11, 26)]));
-      }
-      static now() { return clock; }
-    };
+    // 02:00 UTC on 26 December is the first instant after the last bucket.
+    setClock(Date.UTC(2026, 11, 26, 2));
     const closed = await submit('qa-h', 'Helen', 10, 25, strictEnv);
     check('26 December closes the event', closed.status === 403, 'HTTP ' + closed.status);
 
@@ -372,13 +482,56 @@ async function workerGuardChecks() {
     check('26 December locks every tile', closedState.json && closedState.json.serverDay === 0,
       'serverDay ' + (closedState.json && closedState.json.serverDay));
 
+    // --- 02:00 UTC rollover ---------------------------------------------------
+    setClock(Date.UTC(2026, 11, 2, 1, 59));
+    const beforeRoll = await call('/state?accountId=qa-x', undefined, strictEnv);
+    check('01:59 UTC stays on the previous bucket',
+      beforeRoll.json && beforeRoll.json.bucketDate === '2026-12-01' &&
+      beforeRoll.json.serverDay === 1 && beforeRoll.json.bucketHourUtc === 2,
+      beforeRoll.json && beforeRoll.json.bucketDate + ' / day ' + beforeRoll.json.serverDay);
+    const nextDayEarly = await submit('qa-x', 'Xander', 10, 2, strictEnv);
+    check('01:59 UTC refuses the new day', nextDayEarly.status === 403, 'HTTP ' + nextDayEarly.status);
+    const previousDay = await submit('qa-x', 'Xander', 10, 1, strictEnv);
+    check('01:59 UTC accepts the previous day', previousDay.status === 200, 'HTTP ' + previousDay.status);
+
+    setClock(Date.UTC(2026, 11, 2, 2, 0));
+    const afterRoll = await call('/state?accountId=qa-x', undefined, strictEnv);
+    check('02:00 UTC opens the new bucket',
+      afterRoll.json && afterRoll.json.bucketDate === '2026-12-02' &&
+      afterRoll.json.serverDay === 2,
+      afterRoll.json && afterRoll.json.bucketDate + ' / day ' + afterRoll.json.serverDay);
+    const newDay = await submit('qa-x', 'Xander', 10, 2, strictEnv);
+    check('02:00 UTC accepts the new day', newDay.status === 200, 'HTTP ' + newDay.status);
+
+    // --- whole-day accumulation ----------------------------------------------
+    setClock(Date.UTC(2026, 11, 10, 12));
+    const dayFirst = await submit('qa-y', 'Yara', 16, 10, strictEnv);
+    const dayMore = await submit('qa-y', 'Yara', 20, 10, strictEnv);
+    const dayLower = await submit('qa-y', 'Yara', 10, 10, strictEnv);
+    const dayStateY = await call('/state?accountId=qa-y', undefined, strictEnv);
+    const rowY = (dayStateY.json && dayStateY.json.days || []).find((d) => d.day === 10);
+    check('whole-day CP accumulates across sessions',
+      dayFirst.status === 200 && dayMore.status === 200 && dayLower.status === 200 &&
+      dayStateY.json.dayCp === 20 && rowY && rowY.myBestCp === 20,
+      'dayCp ' + dayStateY.json.dayCp + ' / best ' + (rowY && rowY.myBestCp));
+    check('lower replay cannot lower the day counter',
+      dayLower.json && dayLower.json.dayCp === 20,
+      'dayCp ' + (dayLower.json && dayLower.json.dayCp));
+
+    setClock(Date.UTC(2026, 11, 11, 1, 59));
+    const stillOld = await call('/state?accountId=qa-y', undefined, strictEnv);
+    check('01:59 on 11 Dec still belongs to day 10',
+      stillOld.json && stillOld.json.serverDay === 10 && stillOld.json.dayCp === 20,
+      'day ' + (stillOld.json && stillOld.json.serverDay));
+    setClock(Date.UTC(2026, 11, 11, 2, 0));
+    const freshBucket = await call('/state?accountId=qa-y', undefined, strictEnv);
+    check('new bucket starts with a clean counter',
+      freshBucket.json && freshBucket.json.serverDay === 11 && freshBucket.json.dayCp === 0,
+      'day ' + (freshBucket.json && freshBucket.json.serverDay) +
+      ' / dayCp ' + (freshBucket.json && freshBucket.json.dayCp));
+
     // Without the server QA flag the off-season window stays closed.
-    global.Date = class extends realDate {
-      constructor(...args) {
-        super(...(args.length ? args : [Date.UTC(2026, 10, 27)]));
-      }
-      static now() { return clock; }
-    };
+    setClock(Date.UTC(2026, 10, 27));
     const offSeason = await api.fetch(
       { method: 'POST', url: 'https://qa.local/submit', json: async () => ({
         accountId: 'qa-i', name: 'Ivy', day: 5, cpCount: 10, mapUid: 'P_QA', timeMs: 1000

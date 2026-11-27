@@ -41,6 +41,17 @@ CREATE TABLE IF NOT EXISTS bounty_bonus (
   PRIMARY KEY (day, account_id)
 );
 
+-- Whole-day checkpoint totals, keyed by the 02:00 UTC bucket. A new bucket
+-- starts with no row, so the previous day's total can never leak into it.
+CREATE TABLE IF NOT EXISTS day_cp (
+  bucket_date TEXT NOT NULL,   -- YYYY-MM-DD of the event bucket
+  account_id TEXT NOT NULL,
+  day        INTEGER NOT NULL, -- event day the total belongs to
+  cp         INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (bucket_date, account_id, day)
+);
+
 -- Unix seconds of the last admin reset (key = 'reset_epoch'). Clients compare
 -- it with their saved value and drop local test progress once when it changes.
 CREATE TABLE IF NOT EXISTS meta (
