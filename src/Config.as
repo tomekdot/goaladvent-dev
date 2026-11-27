@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.8.2-dev";
+const string PLUGIN_VERSION = "0.8.3-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -266,6 +266,7 @@ int g_lastCpTime = 0;         // CurCheckpointRaceTime this tick (informational)
 int g_curRaceState = 0;       // refreshed by CurrentCpCount()
 int g_curRaceNbCp = 0;        // map checkpoints per lap (Score.LapsNbCheckpoint)
 array<bool> g_mapCpPassed;   // which checkpoint numbers are passed this lap
+int g_mapCpPassedLap = -1;   // lap the passed map belongs to
 int g_raceStartTime = 0;      // ScriptAPI.RaceStartTime this tick (run identity)
 int g_bufferCp = 0;           // raw CurRace.Checkpoints.Length this tick
 int g_bufferLastTime = -1;    // newest CurRace.Checkpoints[] value this tick

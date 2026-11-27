@@ -213,6 +213,10 @@ Openplanet compiles `.as` recursively from `src/`; there is no manifest listing.
    and a fresh checkpoint time then credit one CP per physical checkpoint.
    `CurTriggerIndex` alone can advance twice for one checkpoint, so it is
    never the count by itself.
+   `g_mapCpPassed` is the per-lap authority: each checkpoint number can be
+   credited once per lap, so a trigger index jumping twice for one CP cannot
+   add extra points. The set is cleared only when `CurLapIndex` changes, and
+   `g_mapCpPassedLap` records which lap it belongs to.
   `ResetRun()` ends one run but keeps the whole-day total; `ResetSession()` is
   only for a bucket change or an admin reset. `g_creditedRunCp` prevents a
   run's CP from being added to `g_sessionCp` twice. Debug shows `liveCp`,

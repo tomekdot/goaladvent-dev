@@ -307,6 +307,44 @@ bool InWarmupGate() {
     return Time::Stamp - g_raceStartStamp < WARMUP_GRACE_SEC;
 }
 
+// Per-lap checkpoint identity: one physical checkpoint can be credited once
+// per lap even when ManiaScript advances CurTriggerIndex several times.
+void ResetLapPassedMap(int lap) {
+    g_mapCpPassedLap = lap;
+    int size = (g_curRaceNbCp > 0 ? g_curRaceNbCp : 64) + 1;
+    g_mapCpPassed.Resize(size);
+    for (int i = 0; i < size; i++) {
+        g_mapCpPassed[i] = false;
+    }
+}
+
+void EnsureLapPassedCapacity(int idx) {
+    if (idx < int(g_mapCpPassed.Length)) return;
+    int oldLen = int(g_mapCpPassed.Length);
+    g_mapCpPassed.Resize(idx + 1);
+    for (int i = oldLen; i <= idx; i++) {
+        g_mapCpPassed[i] = false;
+    }
+}
+
+int PassedInLapCount() {
+    int limit = g_curRaceNbCp > 0 ? g_curRaceNbCp : int(g_mapCpPassed.Length) - 1;
+    int count = 0;
+    for (int i = 1; i <= limit && i < int(g_mapCpPassed.Length); i++) {
+        if (g_mapCpPassed[i]) count++;
+    }
+    return count;
+}
+
+int NextUnpassedCpIndex() {
+    int limit = g_curRaceNbCp > 0 ? g_curRaceNbCp : int(g_mapCpPassed.Length) - 1;
+    for (int i = 1; i <= limit; i++) {
+        EnsureLapPassedCapacity(i);
+        if (!g_mapCpPassed[i]) return i;
+    }
+    return 0;
+}
+
 // Checkpoints collected by the local player in the current race.
 // Uses the same path as the working chase-mode overlay (CTrackManiaPlayer.ScriptAPI).
 // Also refreshes the per-tick signals used by the round tracker.
@@ -335,83 +373,88 @@ int CurrentCpCount() {
         if (script.Score !is null) {
             g_curRaceNbCp = int(script.Score.LapsNbCheckpoint);
         }
-        // The checkpoint buffer holds one entry per passed checkpoint. It is
-        // the count; the trigger index is only a debug signal because some
-        // arenas advance it twice for the same checkpoint.
         g_liveTrigger = int(script.CurTriggerIndex);
         g_lastCpTime = int(script.CurCheckpointRaceTime);
         g_bufferCp = int(script.CurRace.Checkpoints.Length);
         if (g_bufferCp > 0) {
             g_bufferLastTime = int(script.CurRace.Checkpoints[uint(g_bufferCp - 1)]);
-        } else if (g_curRaceNbCp > 0) {
-            // A fresh lap cleared the buffer: restart the checkpoint map.
-            g_mapCpPassed.Resize(0);
-        }
-        if (g_curRaceNbCp > 0 && int(g_mapCpPassed.Length) != g_curRaceNbCp + 1) {
-            g_mapCpPassed.Resize(g_curRaceNbCp + 1);
-        }
-        for (uint j = 0; j <= uint(g_bufferCp) && j < g_mapCpPassed.Length; j++) {
-            g_mapCpPassed[j] = j > 0;
         }
         return g_bufferCp;
     }
     return 0;
 }
 
-// Credit every checkpoint exactly once in the current round.
-// The buffer is the primary signal, but on later laps it can stay capped or be
-// cleared one frame late. The lap index and trigger index break that tie: a new
-// (lap, trigger) identity with a fresh checkpoint time is one new checkpoint;
-// a respawn back to the same identity is not.
+// Credit every checkpoint exactly once per lap. The per-lap map is the source
+// of truth; a trigger index that moves several times for one checkpoint cannot
+// add extra points.
 void CreditCheckpointProgress() {
     int liveTime = g_lastCpTime > g_bufferLastTime ? g_lastCpTime : g_bufferLastTime;
 
-    // Buffer shrank or cleared (new lap or delayed ManiaScript clear).
-    if (g_bufferCp < g_runBufferHigh) {
-        bool newLap = g_curLapIndex > g_runLastLap;
-        g_runBufferHigh = g_bufferCp;
-        if (g_bufferCp == 0) {
-            if (!newLap || liveTime < g_runLastTime || liveTime <= 0) {
+    // Clear per-lap checkpoint flags only when CurLapIndex changes.
+    if (g_curLapIndex != g_mapCpPassedLap) {
+        bool lapAdvanced = g_mapCpPassedLap >= 0 && g_curLapIndex > g_mapCpPassedLap;
+        ResetLapPassedMap(g_curLapIndex);
+        g_runLastLap = g_curLapIndex;
+        g_runLastTrigger = g_liveTrigger;
+        if (g_bufferCp < g_runBufferHigh) {
+            g_runBufferHigh = g_bufferCp;
+            if (!lapAdvanced || liveTime < g_runLastTime || liveTime <= 0) {
                 g_runLastTime = -1;
             }
-            g_runLastLap = g_curLapIndex;
+        }
+        if (g_bufferCp == 0) return;
+    }
+
+    // Delayed ManiaScript buffer clear inside the same lap: never credit reset.
+    if (g_bufferCp < g_runBufferHigh) {
+        g_runBufferHigh = g_bufferCp;
+        if (g_bufferCp == 0) {
+            if (liveTime < g_runLastTime || liveTime <= 0) g_runLastTime = -1;
             g_runLastTrigger = g_liveTrigger;
             return;
         }
-        // Buffer wrapped from N to 1 on a new lap: let the identity check
-        // below credit that first checkpoint once.
-        if (newLap && liveTime < g_runLastTime) {
-            g_runLastTime = -1;
-        }
     }
 
-    // Normal buffer growth inside a lap.
+    // Normal buffer growth: mark and credit each checkpoint slot once per lap.
     if (g_bufferCp > g_runBufferHigh) {
-        int grew = g_bufferCp - g_runBufferHigh;
+        int startIdx = g_runBufferHigh + 1;
         g_runBufferHigh = g_bufferCp;
-        g_runCp += grew;
+        for (int idx = startIdx; idx <= g_bufferCp; idx++) {
+            int slot = idx;
+            if (g_curRaceNbCp > 0) {
+                slot = ((idx - 1) % g_curRaceNbCp) + 1;
+            }
+            EnsureLapPassedCapacity(slot);
+            if (!g_mapCpPassed[slot]) {
+                g_mapCpPassed[slot] = true;
+                g_runCp += 1;
+            }
+        }
         g_runLastLap = g_curLapIndex;
         g_runLastTrigger = g_liveTrigger;
         if (liveTime > g_runLastTime) g_runLastTime = liveTime;
         return;
     }
 
-    // Buffer flat across laps: +1 only for a new (lap, trigger) identity with
-    // a newer checkpoint time, so respawns and duplicate triggers stay free.
-    bool identityChanged = (g_curLapIndex != g_runLastLap) ||
-                           (g_liveTrigger != g_runLastTrigger);
-    if (!identityChanged) return;
+    // No credit when the buffer is empty or this lap is already complete.
+    if (g_bufferCp == 0) return;
+    if (g_curRaceNbCp > 0 && PassedInLapCount() >= g_curRaceNbCp) return;
 
-    bool newLapWithTrigger = (g_curLapIndex > g_runLastLap) &&
-                             (g_liveTrigger != g_runLastTrigger) &&
-                             (liveTime > 0);
-    if ((liveTime >= 0 && liveTime > g_runLastTime) || newLapWithTrigger) {
-        g_runLastLap = g_curLapIndex;
-        g_runLastTrigger = g_liveTrigger;
-        g_runLastTime = liveTime;
-        g_runCp += 1;
+    // Later laps where CurRace.Checkpoints stays capped: at most one unpassed
+    // slot per new trigger with a strictly newer checkpoint time.
+    if (g_curLapIndex > 0 && g_liveTrigger != g_runLastTrigger &&
+        liveTime > 0 && liveTime > g_runLastTime) {
+        int slot = NextUnpassedCpIndex();
+        if (slot > 0) {
+            g_mapCpPassed[slot] = true;
+            g_runCp += 1;
+            g_runLastLap = g_curLapIndex;
+            g_runLastTrigger = g_liveTrigger;
+            g_runLastTime = liveTime;
+        }
     }
 }
+
 
 // ---------------------------------------------------------------------------
 // Rewards
@@ -491,6 +534,7 @@ void ResetRun() {
     g_runLastLap = 0;
     g_runLastTrigger = 0;
     g_creditedRunCp = 0;
+    g_mapCpPassedLap = -1;
     g_mapCpPassed.Resize(0);
     g_raceStartStamp = 0;
     g_runSeedPending = true;
@@ -571,6 +615,12 @@ void TrackGoalHunt(float dt) {
     // A fresh run inherits whatever checkpoints ManiaScript still exposes in
     // CurRace. Seed from that buffer so retained CP are not credited twice.
     if (g_runSeedPending) {
+        ResetLapPassedMap(g_curLapIndex);
+        for (int idx = 1; idx <= g_bufferCp; idx++) {
+            int slot = g_curRaceNbCp > 0 ? (((idx - 1) % g_curRaceNbCp) + 1) : idx;
+            EnsureLapPassedCapacity(slot);
+            g_mapCpPassed[slot] = true;
+        }
         g_runCp = g_bufferCp;
         g_runBufferHigh = g_bufferCp;
         g_runLastTime = g_lastCpTime > g_bufferLastTime ? g_lastCpTime : g_bufferLastTime;

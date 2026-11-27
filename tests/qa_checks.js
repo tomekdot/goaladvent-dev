@@ -279,8 +279,11 @@ check('respawn rewinds never reset the round',
 check('round identity uses RaceStartTime',
   /g_raceStartTime = int\(script\.RaceStartTime\)/.test(hunt) &&
   /g_raceStartTime != g_runStartTime/.test(hunt));
-check('checkpoint counter is monotonic',
-  /g_runCp \+= grew/.test(hunt) && /g_runCp \+= 1/.test(hunt));
+check('checkpoint counter is monotonic per lap',
+  /g_mapCpPassed\[slot\] = true/.test(hunt) && /g_runCp \+= 1/.test(hunt));
+check('one checkpoint credited once per lap', /PassedInLapCount\(\) >= g_curRaceNbCp/.test(hunt) &&
+  /ResetLapPassedMap\(g_curLapIndex\)/.test(hunt));
+check('HUD shows run CP next to day total', /" CP \| run " \+ tostring\(g_runCp\)/.test(uias));
 check('new run seeds from live buffer', /g_creditedRunCp = g_bufferCp;/.test(hunt) &&
   /g_runSeedPending/.test(hunt));
 check('one sanitizer for all notifications', has(sync, 'string CleanNotifyText(') &&

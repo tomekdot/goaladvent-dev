@@ -1370,21 +1370,25 @@ void RenderBanner() {
     UI::PopStyleColor();
 }
 
-// Which checkpoint numbers are still missing on the current map. The number
-// of checkpoints comes from the map itself, not from the run counter.
+// Which checkpoint numbers are still missing on the current lap. Values come
+// from the per-lap set, which is marked only when a checkpoint is credited.
 string MapCpStatus() {
     int total = g_curRaceNbCp;
     if (total < 1) return "";
-    int passed = g_bufferCp;
-    if (passed > total) passed = total;
+    int passed = 0;
     string left = "";
-    for (int i = passed + 1; i <= total; i++) {
-        if (left.Length > 24) {
-            left += ",...";
-            break;
+    for (int i = 1; i <= total; i++) {
+        bool isDone = (i < int(g_mapCpPassed.Length)) && g_mapCpPassed[i];
+        if (isDone) {
+            passed++;
+        } else {
+            if (left.Length > 24) {
+                if (!left.EndsWith(",...")) left += ",...";
+            } else {
+                if (left.Length > 0) left += ",";
+                left += tostring(i);
+            }
         }
-        if (left.Length > 0) left += ",";
-        left += tostring(i);
     }
     return "Map CP " + tostring(passed) + "/" + tostring(total) +
            (left.Length > 0 ? " | left " + left : " | complete");
@@ -1414,8 +1418,8 @@ void RenderGoalHuntHud() {
                  " | reached " + tostring(LastMilestone(dayCp)) + " CP");
         TextTone(TextMain(), MilestoneText(dayCp));
         UI::ProgressBar(MilestoneProgress(dayCp), vec2(220.0f * UiK(), 6.0f * UiK()), "");
-        UI::Text("Goal " + tostring(GOAL_CP) + " CP | day total " +
-                 tostring(dayCp) + " CP");
+        UI::Text("Goal " + tostring(GOAL_CP) + " CP | run " + tostring(g_runCp) +
+                 " CP | day total " + tostring(dayCp) + " CP");
         UI::Text("Bounty " + tostring(g_bountyCp[day - 1]) + " CP | " +
                  Text::StripFormatCodes(g_bountyHolder[day - 1]));
         int best = BestCp(day);
