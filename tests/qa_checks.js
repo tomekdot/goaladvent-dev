@@ -347,6 +347,10 @@ check('calendar counter shown', /OPENED \| " \+/.test(uias));
 check('feed uses leaderboard visual language', /bool FeedEventIsMine\(/.test(uias) &&
   /vec4 FeedEventColour\(/.test(uias) && /" events"\)/.test(uias) &&
   /Tone\(Navy\(\)\)/.test(uias));
+check('gift animation removed', !/StartOpenAnimation|RenderOpenAnimation|S_OpenAnimation|g_openAnim/.test(allSrc) &&
+  !/StartOpenAnimation|RenderOpenAnimation/.test(src['Main.as']));
+check('completed tile names its colour', /DONE \| " \+ CpTierColourName/.test(uias) &&
+  /string CpTierColourName/.test(cal));
 const theme = src['Theme.as'];
 check('grey obsidian tiles', /tileBg = vec4\(0\.095/.test(theme));
 check('grey glass tiles', /vec4\(1\.000, 1\.000, 1\.000, 0\.09\)/.test(theme));

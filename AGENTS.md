@@ -106,11 +106,10 @@ editing code. The broader workspace rules also apply:
   before tagging a release.
 - `S_ShowOnStart` defaults to `true` - the dashboard opens by itself. There is
   deliberately no startup banner; banners are only for in-game Goal Hunt events.
-- Reward feedback: `StartOpenAnimation()` / `RenderOpenAnimation()` in `UI.as`
-  draw a gift-opening card on the foreground draw list (no window, no input,
-  4.2 s). `CompleteDay()` and `ClaimBounty()` call it instead of `ShowBanner()`
-  when `S_OpenAnimation` is on; a run that both completes the day and steals the
-  bounty merges into one card. Never make this overlay take mouse input.
+- Reward feedback is a plain `ShowBanner()` toast. There is no gift-opening
+  overlay: the earlier animation did not add information. A completed tile
+  shows `DONE | emerald/silver/gold` in its caption and the matching border;
+  no corner badges.
 - Discord mirror: worker secret `DISCORD_WEBHOOK_URL` posts an embed for every
   bounty takeover (holder change) and first day completion. Repeated +0 submits
   stay silent. `/admin` shows `Discord webhook: configured / not set`.

@@ -62,7 +62,7 @@ int S_MapDayOverride = 0;
 
 
 // Debug overlay only. info.toml is the real version source; keep this in sync.
-const string PLUGIN_VERSION = "0.8.4-dev";
+const string PLUGIN_VERSION = "0.8.5-dev";
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -116,9 +116,6 @@ bool S_Notifications = true;
 
 [Setting category="General" name="Show in-game tips" description="Show the short how-to-play hint inside the calendar tab."]
 bool S_ShowTips = true;
-
-[Setting category="General" name="Opening animation" description="Play a short gift-opening card when a day is completed or a bounty is stolen."]
-bool S_OpenAnimation = true;
 
 [Setting category="General" name="Display name" description="Used only when the game login cannot be read."]
 string S_Nickname = "Player";
@@ -198,17 +195,6 @@ array<string> g_liveFeed;
 string g_bannerText = "";
 float g_bannerTimer = 0.0f;
 string g_lastTopEvent = "";
-
-// Advent opening animation. A completed day replaces the plain banner with a
-// short gift-opening card; it never takes input so it cannot block driving.
-const float OPEN_ANIM_SEC = 4.2f;
-bool g_openAnimActive = false;
-float g_openAnimTimer = 0.0f;
-int g_openAnimDay = 0;
-int g_openAnimPoints = 0;
-int g_openAnimCp = 0;
-bool g_openAnimBounty = false;
-string g_openAnimTitle = "";
 
 // ---------------------------------------------------------------------------
 // Sync state

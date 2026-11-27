@@ -84,7 +84,6 @@ Thresholds: 10 and 24 completed days; `FINALIST` requires all 25.
 ## ✨ Features
 
 - 🖥️ **Dashboard**: compact tab bar, 5×5 calendar, day details, leaderboard, live feed, per-day bounty board, finale tab, HUD and banner. The window is movable and manually resizable; the grid and tables follow the content region. State is shown by tile icon, caption and border (no corner badges).
-- 🎁 **Gift opening**: finishing a day or stealing a bounty plays a short animation with the points, checkpoints and current bounty holder.
 - 💬 **Discord feed**: the worker mirrors bounty takeovers and first clears to a channel webhook, so `#goalmas-leaderboard` updates by itself.
 - 🌗 **Two colour themes** sharing one layout (see [Themes](#-themes)).
 
@@ -118,7 +117,6 @@ All options live in Openplanet's plugin settings (there is no separate in-plugin
 | `Show day details` | off | Side panel with details instead of the full-width grid |
 | `Show in-game tips` | on | Short hint in the calendar tab |
 | `Show notifications` | on | Banners for completed days and bounties |
-| `Opening animation` | on | Gift card on day completion / bounty |
 | `Auto sync` | on | Refresh results every 20 seconds |
 | `Sync mode` | 0 (effective 2) | 0 offline, 1 shared folder, 2 HTTP worker |
 | `Worker URL` | baked in | Cloudflare Worker base URL |

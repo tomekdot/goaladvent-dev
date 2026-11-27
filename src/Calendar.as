@@ -197,6 +197,15 @@ string CpTierLabel(int tier) {
     return "no run";
 }
 
+// Colour name shown on a completed tile. The tile border uses the matching
+// palette colour; this label makes the tier readable without a corner badge.
+string CpTierColourName(int tier) {
+    if (tier >= 3) return "gold";
+    if (tier == 2) return "silver";
+    if (tier == 1) return "emerald";
+    return "gray";
+}
+
 // ---------------------------------------------------------------------------
 // Checkpoint milestones (visual only)
 // ---------------------------------------------------------------------------
